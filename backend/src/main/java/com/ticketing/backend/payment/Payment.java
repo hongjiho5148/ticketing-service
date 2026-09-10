@@ -34,6 +34,10 @@ public class Payment {
     @Column(nullable = false, length = 20)
     private String method;
 
+    /** PortOne payment identifier used to look the payment up for server-side verification. */
+    @Column(length = 100)
+    private String portonePaymentId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private PaymentStatus status;
@@ -43,9 +47,11 @@ public class Payment {
 
     private LocalDateTime paidAt;
 
-    public Payment(Orders order, String method, PaymentStatus status, Integer amount, LocalDateTime paidAt) {
+    public Payment(
+            Orders order, String method, String portonePaymentId, PaymentStatus status, Integer amount, LocalDateTime paidAt) {
         this.order = order;
         this.method = method;
+        this.portonePaymentId = portonePaymentId;
         this.status = status;
         this.amount = amount;
         this.paidAt = paidAt;

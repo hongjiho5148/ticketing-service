@@ -5,6 +5,7 @@ import com.ticketing.backend.common.ErrorCode;
 import com.ticketing.backend.reservation.dto.ReservationCreateRequest;
 import com.ticketing.backend.reservation.dto.ReservationResponse;
 import com.ticketing.backend.seat.Seat;
+import com.ticketing.backend.seat.SeatLockService;
 import com.ticketing.backend.seat.SeatRepository;
 import com.ticketing.backend.seat.SeatStatus;
 import com.ticketing.backend.user.User;
@@ -23,25 +24,37 @@ public class ReservationService {
     private final ReservationRepository reservationRepository;
     private final SeatRepository seatRepository;
     private final UserRepository userRepository;
+    private final SeatLockService seatLockService;
 
     public ReservationService(
-            ReservationRepository reservationRepository, SeatRepository seatRepository, UserRepository userRepository) {
+            ReservationRepository reservationRepository,
+            SeatRepository seatRepository,
+            UserRepository userRepository,
+            SeatLockService seatLockService) {
         this.reservationRepository = reservationRepository;
         this.seatRepository = seatRepository;
         this.userRepository = userRepository;
+        this.seatLockService = seatLockService;
     }
 
     public ReservationResponse reserve(Long userId, ReservationCreateRequest request) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
-        Seat seat = seatRepository.findById(request.seatId()).orElseThrow(() -> new ApiException(ErrorCode.SEAT_NOT_FOUND));
+        // A per-seat Redis lock rejects concurrent contenders immediately, before they ever touch
+        // the database - only the request currently holding the lock does DB work. The @Version
+        // optimistic lock on Seat is still the real correctness backstop underneath this.
+        return seatLockService.executeWithLock(request.seatId(), () -> {
+            User user = userRepository.findById(userId).orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
+            Seat seat = seatRepository
+                    .findById(request.seatId())
+                    .orElseThrow(() -> new ApiException(ErrorCode.SEAT_NOT_FOUND));
 
-        if (seat.getStatus() != SeatStatus.AVAILABLE) {
-            throw new ApiException(ErrorCode.SEAT_ALREADY_RESERVED);
-        }
-        seat.hold();
+            if (seat.getStatus() != SeatStatus.AVAILABLE) {
+                throw new ApiException(ErrorCode.SEAT_ALREADY_RESERVED);
+            }
+            seat.hold();
 
-        Reservation reservation = new Reservation(user, seat, LocalDateTime.now().plus(HOLD_DURATION));
-        return ReservationResponse.from(reservationRepository.save(reservation));
+            Reservation reservation = new Reservation(user, seat, LocalDateTime.now().plus(HOLD_DURATION));
+            return ReservationResponse.from(reservationRepository.save(reservation));
+        });
     }
 
     public void cancel(Long userId, Long reservationId) {

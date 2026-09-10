@@ -5,8 +5,12 @@ export function createOrder(reservationId: number) {
   return apiClient.post<Order>("/orders", { reservationId }).then((res) => res.data);
 }
 
-export function payOrder(orderId: number, method = "MOCK") {
-  return apiClient.post<PaymentResult>(`/orders/${orderId}/payment`, { method }).then((res) => res.data);
+export function payOrder(orderId: number, paymentId: string) {
+  return apiClient.post<PaymentResult>(`/orders/${orderId}/payment`, { paymentId }).then((res) => res.data);
+}
+
+export function cancelOrder(orderId: number) {
+  return apiClient.delete(`/orders/${orderId}`).then(() => undefined);
 }
 
 export function fetchOrders(params: { page?: number; size?: number } = {}) {

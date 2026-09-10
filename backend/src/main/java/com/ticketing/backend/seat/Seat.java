@@ -34,6 +34,16 @@ public class Seat {
     @Column(nullable = false, length = 20)
     private String seatGrade;
 
+    /** Visual block within the venue, e.g. "1층 101구역" - groups seats for the section-based seat map. */
+    @Column(nullable = false, length = 50)
+    private String section;
+
+    @Column(nullable = false)
+    private Integer rowNo;
+
+    @Column(nullable = false)
+    private Integer seatNumber;
+
     @Column(nullable = false, length = 20)
     private String seatNo;
 
@@ -48,10 +58,13 @@ public class Seat {
     @Column(nullable = false)
     private Integer version;
 
-    public Seat(Event event, String seatGrade, String seatNo, Integer price) {
+    public Seat(Event event, String seatGrade, String section, Integer rowNo, Integer seatNumber, Integer price) {
         this.event = event;
         this.seatGrade = seatGrade;
-        this.seatNo = seatNo;
+        this.section = section;
+        this.rowNo = rowNo;
+        this.seatNumber = seatNumber;
+        this.seatNo = rowNo + "열 " + seatNumber + "번";
         this.price = price;
         this.status = SeatStatus.AVAILABLE;
     }
