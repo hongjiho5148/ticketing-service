@@ -38,6 +38,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+    env_file:
+      - .env
     environment:
       TZ: Asia/Seoul
       DB_HOST: mysql
@@ -47,6 +49,7 @@ services:
       DB_PASSWORD: ticketing
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      APP_FRONTEND_URL: http://localhost:5173
     ports:
       - "8080:8080"
 

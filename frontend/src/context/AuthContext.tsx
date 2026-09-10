@@ -8,6 +8,7 @@ interface AuthContextValue {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
+  completeOAuthLogin: (accessToken: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -36,7 +37,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signup(email: string, password: string, name: string) {
     await signupApi({ email, password, name });
-    await login(email, password);
+  }
+
+  async function completeOAuthLogin(accessToken: string) {
+    setAccessToken(accessToken);
+    setUser(await getMe());
   }
 
   function logout() {
@@ -45,7 +50,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, signup, logout }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ user, isLoading, login, signup, completeOAuthLogin, logout }}>
+      {children}
+    </AuthContext.Provider>
   );
 }
 
