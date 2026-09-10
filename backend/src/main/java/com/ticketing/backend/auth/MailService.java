@@ -21,7 +21,7 @@ public class MailService {
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(to);
-        message.setSubject("[선착순 티켓팅] 이메일 인증을 완료해주세요");
+        message.setSubject("[픽시트] 이메일 인증을 완료해주세요");
         message.setText(name + "님, 아래 링크를 눌러 이메일 인증을 완료해주세요.\n\n"
                 + verifyUrl
                 + "\n\n이 링크는 24시간 동안 유효합니다.");

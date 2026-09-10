@@ -62,4 +62,8 @@ public class Reservation {
     public void cancel() {
         this.status = ReservationStatus.CANCELLED;
     }
+
+    public void expire() {
+        this.status = ReservationStatus.EXPIRED;
+    }
 }

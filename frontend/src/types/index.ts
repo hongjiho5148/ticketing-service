@@ -6,7 +6,8 @@ export type PaymentStatus = "SUCCESS" | "FAILED";
 
 export interface User {
   id: number;
-  email: string;
+  // Kakao logins don't grant an email scope, so this can genuinely be null.
+  email: string | null;
   name: string;
 }
 
@@ -36,19 +37,32 @@ export interface SeatGradeSummary {
   availableCount: number;
 }
 
+export interface SeatSectionSummary {
+  section: string;
+  grade: string;
+  price: number;
+  totalCount: number;
+  availableCount: number;
+}
+
 export interface EventDetail {
   id: number;
   title: string;
   venue: string;
+  description: string | null;
   startAt: string;
   status: EventStatus;
   seatSummary: SeatGradeSummary[];
+  sectionSummary: SeatSectionSummary[];
 }
 
 export interface Seat {
   id: number;
   seatNo: string;
   grade: string;
+  section: string;
+  rowNo: number;
+  seatNumber: number;
   price: number;
   status: SeatStatus;
 }
@@ -75,7 +89,13 @@ export interface PaymentResult {
 
 export interface OrderHistoryItem {
   orderId: number;
+  eventId: number;
   eventTitle: string;
+  venue: string;
+  grade: string;
+  section: string;
+  rowNo: number;
+  seatNumber: number;
   seatNo: string;
   totalPrice: number;
   status: OrderStatus;

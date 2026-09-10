@@ -13,7 +13,7 @@ export function Header() {
   return (
     <header className="header">
       <Link to="/" className="header-logo">
-        선착순 티켓팅
+        픽시트
       </Link>
       <nav className="header-nav">
         {user ? (

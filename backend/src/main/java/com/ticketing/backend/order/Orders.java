@@ -62,4 +62,8 @@ public class Orders {
     public void markFailed() {
         this.status = OrderStatus.FAILED;
     }
+
+    public void cancel() {
+        this.status = OrderStatus.CANCELLED;
+    }
 }

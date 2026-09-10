@@ -30,6 +30,9 @@ public class Event {
     @Column(nullable = false, length = 200)
     private String venue;
 
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
     @Column(nullable = false)
     private LocalDateTime startAt;
 
