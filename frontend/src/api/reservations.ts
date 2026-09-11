@@ -1,8 +1,10 @@
 import { apiClient } from "./client";
 import type { Reservation } from "../types";
 
-export function createReservation(seatId: number) {
-  return apiClient.post<Reservation>("/reservations", { seatId }).then((res) => res.data);
+export function createReservation(seatId: number, passToken: string) {
+  return apiClient
+    .post<Reservation>("/reservations", { seatId }, { headers: { "X-Pass-Token": passToken } })
+    .then((res) => res.data);
 }
 
 export function cancelReservation(reservationId: number) {

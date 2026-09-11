@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -24,8 +25,10 @@ public class ReservationController {
     }
 
     @PostMapping
-    public ResponseEntity<ReservationResponse> reserve(@Valid @RequestBody ReservationCreateRequest request) {
-        ReservationResponse response = reservationService.reserve(SecurityUtil.getCurrentUserId(), request);
+    public ResponseEntity<ReservationResponse> reserve(
+            @Valid @RequestBody ReservationCreateRequest request,
+            @RequestHeader(value = "X-Pass-Token", required = false) String passToken) {
+        ReservationResponse response = reservationService.reserve(SecurityUtil.getCurrentUserId(), request, passToken);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

@@ -84,3 +84,10 @@ redis:
   seat-lock:
     wait-ms: 500
     lease-ms: 3000
+
+queue:
+  # Deliberately small so the waiting room is easy to see/test locally - a real launch would size
+  # this to whatever the reservation path can actually handle.
+  active-capacity: ${QUEUE_ACTIVE_CAPACITY:3}
+  admission-interval-ms: ${QUEUE_ADMISSION_INTERVAL_MS:5000}
+  pass-token-ttl-ms: ${QUEUE_PASS_TOKEN_TTL_MS:600000}
