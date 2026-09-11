@@ -2,6 +2,8 @@ package com.ticketing.backend.reservation;
 
 import com.ticketing.backend.common.ApiException;
 import com.ticketing.backend.common.ErrorCode;
+import com.ticketing.backend.messaging.ReservationCreatedEvent;
+import com.ticketing.backend.messaging.ReservationEventPublisher;
 import com.ticketing.backend.queue.QueueService;
 import com.ticketing.backend.reservation.dto.ReservationCreateRequest;
 import com.ticketing.backend.reservation.dto.ReservationResponse;
@@ -27,18 +29,21 @@ public class ReservationService {
     private final UserRepository userRepository;
     private final SeatLockService seatLockService;
     private final QueueService queueService;
+    private final ReservationEventPublisher reservationEventPublisher;
 
     public ReservationService(
             ReservationRepository reservationRepository,
             SeatRepository seatRepository,
             UserRepository userRepository,
             SeatLockService seatLockService,
-            QueueService queueService) {
+            QueueService queueService,
+            ReservationEventPublisher reservationEventPublisher) {
         this.reservationRepository = reservationRepository;
         this.seatRepository = seatRepository;
         this.userRepository = userRepository;
         this.seatLockService = seatLockService;
         this.queueService = queueService;
+        this.reservationEventPublisher = reservationEventPublisher;
     }
 
     public ReservationResponse reserve(Long userId, ReservationCreateRequest request, String passToken) {
@@ -64,7 +69,12 @@ public class ReservationService {
             seat.hold();
 
             Reservation reservation = new Reservation(user, seat, LocalDateTime.now().plus(HOLD_DURATION));
-            return ReservationResponse.from(reservationRepository.save(reservation));
+            Reservation saved = reservationRepository.save(reservation);
+
+            reservationEventPublisher.publishReservationCreated(new ReservationCreatedEvent(
+                    saved.getId(), seat.getId(), userId, seat.getEvent().getId(), saved.getCreatedAt().toString()));
+
+            return ReservationResponse.from(saved);
         });
     }
 
