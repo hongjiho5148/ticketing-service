@@ -1,4 +1,4 @@
-package com.ticketing.backend.auth.oauth;
+package com.ticketing.authservice.auth.oauth;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

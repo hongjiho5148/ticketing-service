@@ -1,4 +1,4 @@
-package com.ticketing.backend.auth.dto;
+package com.ticketing.authservice.auth.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

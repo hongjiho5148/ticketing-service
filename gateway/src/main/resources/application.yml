@@ -1,5 +1,9 @@
 server:
   port: 8080
+  # Trust nginx's X-Forwarded-Host/Proto so this gateway resolves its own "current request" as
+  # localhost:8080 - it then re-emits fresh X-Forwarded-* headers reflecting that when proxying
+  # onward, which is what lets auth-service build a correct OAuth2 redirect-uri in turn.
+  forward-headers-strategy: framework
 
 spring:
   application:
@@ -8,12 +12,15 @@ spring:
     gateway:
       server:
         webmvc:
+          # Without this, the gateway won't honor/re-emit X-Forwarded-* from nginx at all - every
+          # hop is inside our own docker network here, so trusting all of it is fine.
+          trusted-proxies: .*
           routes:
-            # Every route points at the monolith today - splitting a domain out later is just
+            # Remaining routes still point at the monolith - splitting each domain out is just
             # swapping that route's `uri` for the new service's address (see docs/02_엔티티설계서.docx §3
-            # for the target service/table ownership this mirrors).
+            # for the target service/table ownership this mirrors). auth-service was the first cut.
             - id: auth-service
-              uri: ${BACKEND_URI:http://backend:8080}
+              uri: ${AUTH_SERVICE_URI:http://auth-service:8080}
               predicates:
                 - Path=/api/auth/**,/oauth2/**,/login/oauth2/**
             - id: event-service

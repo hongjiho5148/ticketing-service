@@ -1,7 +1,6 @@
 package com.ticketing.backend.reservation;
 
 import com.ticketing.backend.seat.Seat;
-import com.ticketing.backend.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -29,9 +28,8 @@ public class Reservation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "seat_id", nullable = false, unique = true)
@@ -48,8 +46,8 @@ public class Reservation {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    public Reservation(User user, Seat seat, LocalDateTime holdExpireAt) {
-        this.user = user;
+    public Reservation(Long userId, Seat seat, LocalDateTime holdExpireAt) {
+        this.userId = userId;
         this.seat = seat;
         this.status = ReservationStatus.HOLDING;
         this.holdExpireAt = holdExpireAt;

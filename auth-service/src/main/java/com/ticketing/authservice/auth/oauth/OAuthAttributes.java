@@ -1,6 +1,6 @@
-package com.ticketing.backend.auth.oauth;
+package com.ticketing.authservice.auth.oauth;
 
-import com.ticketing.backend.user.AuthProvider;
+import com.ticketing.authservice.user.AuthProvider;
 import java.util.Map;
 
 public record OAuthAttributes(AuthProvider provider, String providerId, String email, String name) {

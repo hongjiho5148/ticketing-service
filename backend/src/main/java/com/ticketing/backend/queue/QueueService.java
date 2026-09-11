@@ -6,8 +6,6 @@ import com.ticketing.backend.event.Event;
 import com.ticketing.backend.event.EventRepository;
 import com.ticketing.backend.queue.dto.QueueEnterResponse;
 import com.ticketing.backend.queue.dto.QueueStatusResponse;
-import com.ticketing.backend.user.User;
-import com.ticketing.backend.user.UserRepository;
 import java.time.Duration;
 import java.util.UUID;
 import org.redisson.api.RAtomicLong;
@@ -29,7 +27,6 @@ public class QueueService {
     private final RedissonClient redissonClient;
     private final WaitingQueueRepository waitingQueueRepository;
     private final EventRepository eventRepository;
-    private final UserRepository userRepository;
     private final int activeCapacity;
     private final long admissionIntervalMs;
 
@@ -37,20 +34,17 @@ public class QueueService {
             RedissonClient redissonClient,
             WaitingQueueRepository waitingQueueRepository,
             EventRepository eventRepository,
-            UserRepository userRepository,
             @Value("${queue.active-capacity}") int activeCapacity,
             @Value("${queue.admission-interval-ms}") long admissionIntervalMs) {
         this.redissonClient = redissonClient;
         this.waitingQueueRepository = waitingQueueRepository;
         this.eventRepository = eventRepository;
-        this.userRepository = userRepository;
         this.activeCapacity = activeCapacity;
         this.admissionIntervalMs = admissionIntervalMs;
     }
 
     @Transactional
     public QueueEnterResponse enter(Long userId, Long eventId) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
         Event event = eventRepository.findById(eventId).orElseThrow(() -> new ApiException(ErrorCode.EVENT_NOT_FOUND));
 
         String queueToken = UUID.randomUUID().toString();
@@ -66,7 +60,7 @@ public class QueueService {
 
         long rankNo = rankOf(waiting, queueToken);
 
-        waitingQueueRepository.save(new WaitingQueue(user, event, queueToken, rankNo));
+        waitingQueueRepository.save(new WaitingQueue(userId, event, queueToken, rankNo));
 
         return new QueueEnterResponse(queueToken, rankNo, estimateWaitSeconds(rankNo));
     }

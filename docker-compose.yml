@@ -48,6 +48,27 @@ services:
     expose:
       - "9092"
 
+  auth-service:
+    build: ./auth-service
+    container_name: ticketing-auth-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      TZ: Asia/Seoul
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ticketing_auth
+      DB_USERNAME: ticketing
+      DB_PASSWORD: ticketing
+      APP_FRONTEND_URL: http://localhost:5173
+      APP_BACKEND_URL: http://localhost:8080
+    expose:
+      - "8080"
+
   backend:
     build: ./backend
     restart: unless-stopped
@@ -70,7 +91,6 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      APP_FRONTEND_URL: http://localhost:5173
     expose:
       - "8080"
 
@@ -80,6 +100,7 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
+      - auth-service
     expose:
       - "8080"
 

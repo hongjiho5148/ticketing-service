@@ -1,15 +1,15 @@
-package com.ticketing.backend.auth;
+package com.ticketing.authservice.auth;
 
-import com.ticketing.backend.auth.dto.LoginRequest;
-import com.ticketing.backend.auth.dto.LoginResponse;
-import com.ticketing.backend.auth.dto.MeResponse;
-import com.ticketing.backend.auth.dto.SignupRequest;
-import com.ticketing.backend.auth.dto.SignupResponse;
-import com.ticketing.backend.common.ApiException;
-import com.ticketing.backend.common.ErrorCode;
-import com.ticketing.backend.user.AuthProvider;
-import com.ticketing.backend.user.User;
-import com.ticketing.backend.user.UserRepository;
+import com.ticketing.authservice.auth.dto.LoginRequest;
+import com.ticketing.authservice.auth.dto.LoginResponse;
+import com.ticketing.authservice.auth.dto.MeResponse;
+import com.ticketing.authservice.auth.dto.SignupRequest;
+import com.ticketing.authservice.auth.dto.SignupResponse;
+import com.ticketing.authservice.common.ApiException;
+import com.ticketing.authservice.common.ErrorCode;
+import com.ticketing.authservice.user.AuthProvider;
+import com.ticketing.authservice.user.User;
+import com.ticketing.authservice.user.UserRepository;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.UUID;

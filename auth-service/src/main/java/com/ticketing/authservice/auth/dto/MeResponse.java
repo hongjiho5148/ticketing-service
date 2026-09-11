@@ -1,6 +1,6 @@
-package com.ticketing.backend.auth.dto;
+package com.ticketing.authservice.auth.dto;
 
-import com.ticketing.backend.user.User;
+import com.ticketing.authservice.user.User;
 
 public record MeResponse(Long id, String email, String name) {
 

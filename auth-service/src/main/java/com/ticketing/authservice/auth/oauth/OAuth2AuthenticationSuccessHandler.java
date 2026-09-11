@@ -1,10 +1,10 @@
-package com.ticketing.backend.auth.oauth;
+package com.ticketing.authservice.auth.oauth;
 
-import com.ticketing.backend.auth.JwtTokenProvider;
-import com.ticketing.backend.common.ApiException;
-import com.ticketing.backend.common.ErrorCode;
-import com.ticketing.backend.user.User;
-import com.ticketing.backend.user.UserRepository;
+import com.ticketing.authservice.auth.JwtTokenProvider;
+import com.ticketing.authservice.common.ApiException;
+import com.ticketing.authservice.common.ErrorCode;
+import com.ticketing.authservice.user.User;
+import com.ticketing.authservice.user.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;

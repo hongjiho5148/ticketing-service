@@ -16,8 +16,6 @@ import com.ticketing.backend.payment.portone.PortOnePaymentResponse;
 import com.ticketing.backend.reservation.Reservation;
 import com.ticketing.backend.reservation.ReservationRepository;
 import com.ticketing.backend.reservation.ReservationStatus;
-import com.ticketing.backend.user.User;
-import com.ticketing.backend.user.UserRepository;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import org.springframework.data.domain.Page;
@@ -34,34 +32,30 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final ReservationRepository reservationRepository;
-    private final UserRepository userRepository;
     private final PaymentRepository paymentRepository;
     private final PortOneClient portOneClient;
 
     public OrderService(
             OrderRepository orderRepository,
             ReservationRepository reservationRepository,
-            UserRepository userRepository,
             PaymentRepository paymentRepository,
             PortOneClient portOneClient) {
         this.orderRepository = orderRepository;
         this.reservationRepository = reservationRepository;
-        this.userRepository = userRepository;
         this.paymentRepository = paymentRepository;
         this.portOneClient = portOneClient;
     }
 
     public OrderResponse createOrder(Long userId, OrderCreateRequest request) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
         Reservation reservation = reservationRepository.findById(request.reservationId())
                 .orElseThrow(() -> new ApiException(ErrorCode.RESERVATION_NOT_FOUND));
-        if (!reservation.getUser().getId().equals(userId)) {
+        if (!reservation.getUserId().equals(userId)) {
             throw new ApiException(ErrorCode.FORBIDDEN);
         }
         if (reservation.getStatus() != ReservationStatus.HOLDING) {
             throw new ApiException(ErrorCode.RESERVATION_NOT_CANCELLABLE);
         }
-        Orders order = new Orders(user, reservation, reservation.getSeat().getPrice());
+        Orders order = new Orders(userId, reservation, reservation.getSeat().getPrice());
         return OrderResponse.from(orderRepository.save(order));
     }
 
@@ -72,7 +66,7 @@ public class OrderService {
      */
     public PaymentResponse pay(Long userId, Long orderId, PaymentRequest request) {
         Orders order = orderRepository.findById(orderId).orElseThrow(() -> new ApiException(ErrorCode.ORDER_NOT_FOUND));
-        if (!order.getUser().getId().equals(userId)) {
+        if (!order.getUserId().equals(userId)) {
             throw new ApiException(ErrorCode.FORBIDDEN);
         }
         if (order.getStatus() != OrderStatus.PENDING) {
@@ -107,7 +101,7 @@ public class OrderService {
      */
     public void cancelOrder(Long userId, Long orderId) {
         Orders order = orderRepository.findById(orderId).orElseThrow(() -> new ApiException(ErrorCode.ORDER_NOT_FOUND));
-        if (!order.getUser().getId().equals(userId)) {
+        if (!order.getUserId().equals(userId)) {
             throw new ApiException(ErrorCode.FORBIDDEN);
         }
         if (order.getStatus() != OrderStatus.PAID) {

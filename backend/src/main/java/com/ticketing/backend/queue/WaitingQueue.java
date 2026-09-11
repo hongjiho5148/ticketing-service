@@ -1,7 +1,6 @@
 package com.ticketing.backend.queue;
 
 import com.ticketing.backend.event.Event;
-import com.ticketing.backend.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -34,9 +33,8 @@ public class WaitingQueue {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "event_id", nullable = false)
@@ -58,8 +56,8 @@ public class WaitingQueue {
 
     private LocalDateTime passedAt;
 
-    public WaitingQueue(User user, Event event, String queueToken, Long rankNo) {
-        this.user = user;
+    public WaitingQueue(Long userId, Event event, String queueToken, Long rankNo) {
+        this.userId = userId;
         this.event = event;
         this.queueToken = queueToken;
         this.rankNo = rankNo;
