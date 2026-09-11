@@ -48,8 +48,12 @@ public class SeatLockService {
         try {
             return action.get();
         } finally {
-            if (lock.isHeldByCurrentThread()) {
-                lock.unlock();
+            try {
+                if (lock.isHeldByCurrentThread()) {
+                    lock.unlock();
+                }
+            } catch (IllegalMonitorStateException e) {
+                // Lease already expired and the lock was reassigned elsewhere - nothing to unlock.
             }
         }
     }
