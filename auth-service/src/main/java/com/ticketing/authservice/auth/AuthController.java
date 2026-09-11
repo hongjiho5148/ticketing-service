@@ -1,11 +1,11 @@
-package com.ticketing.backend.auth;
+package com.ticketing.authservice.auth;
 
-import com.ticketing.backend.auth.dto.LoginRequest;
-import com.ticketing.backend.auth.dto.LoginResponse;
-import com.ticketing.backend.auth.dto.MeResponse;
-import com.ticketing.backend.auth.dto.SignupRequest;
-import com.ticketing.backend.auth.dto.SignupResponse;
-import com.ticketing.backend.common.ApiException;
+import com.ticketing.authservice.auth.dto.LoginRequest;
+import com.ticketing.authservice.auth.dto.LoginResponse;
+import com.ticketing.authservice.auth.dto.MeResponse;
+import com.ticketing.authservice.auth.dto.SignupRequest;
+import com.ticketing.authservice.auth.dto.SignupResponse;
+import com.ticketing.authservice.common.ApiException;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.io.IOException;

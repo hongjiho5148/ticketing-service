@@ -1,4 +1,4 @@
-package com.ticketing.backend.user;
+package com.ticketing.authservice.user;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

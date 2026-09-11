@@ -1,7 +1,7 @@
-package com.ticketing.backend.auth.oauth;
+package com.ticketing.authservice.auth.oauth;
 
-import com.ticketing.backend.user.User;
-import com.ticketing.backend.user.UserRepository;
+import com.ticketing.authservice.user.User;
+import com.ticketing.authservice.user.UserRepository;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

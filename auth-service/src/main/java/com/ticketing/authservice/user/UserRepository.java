@@ -1,4 +1,4 @@
-package com.ticketing.backend.user;
+package com.ticketing.authservice.user;
 
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;

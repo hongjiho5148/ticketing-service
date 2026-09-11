@@ -11,8 +11,6 @@ import com.ticketing.backend.seat.Seat;
 import com.ticketing.backend.seat.SeatLockService;
 import com.ticketing.backend.seat.SeatRepository;
 import com.ticketing.backend.seat.SeatStatus;
-import com.ticketing.backend.user.User;
-import com.ticketing.backend.user.UserRepository;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
@@ -26,7 +24,6 @@ public class ReservationService {
 
     private final ReservationRepository reservationRepository;
     private final SeatRepository seatRepository;
-    private final UserRepository userRepository;
     private final SeatLockService seatLockService;
     private final QueueService queueService;
     private final ReservationEventPublisher reservationEventPublisher;
@@ -34,13 +31,11 @@ public class ReservationService {
     public ReservationService(
             ReservationRepository reservationRepository,
             SeatRepository seatRepository,
-            UserRepository userRepository,
             SeatLockService seatLockService,
             QueueService queueService,
             ReservationEventPublisher reservationEventPublisher) {
         this.reservationRepository = reservationRepository;
         this.seatRepository = seatRepository;
-        this.userRepository = userRepository;
         this.seatLockService = seatLockService;
         this.queueService = queueService;
         this.reservationEventPublisher = reservationEventPublisher;
@@ -58,7 +53,6 @@ public class ReservationService {
         // the database - only the request currently holding the lock does DB work. The @Version
         // optimistic lock on Seat is still the real correctness backstop underneath this.
         return seatLockService.executeWithLock(request.seatId(), () -> {
-            User user = userRepository.findById(userId).orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
             Seat seat = seatRepository
                     .findById(request.seatId())
                     .orElseThrow(() -> new ApiException(ErrorCode.SEAT_NOT_FOUND));
@@ -68,7 +62,7 @@ public class ReservationService {
             }
             seat.hold();
 
-            Reservation reservation = new Reservation(user, seat, LocalDateTime.now().plus(HOLD_DURATION));
+            Reservation reservation = new Reservation(userId, seat, LocalDateTime.now().plus(HOLD_DURATION));
             Reservation saved = reservationRepository.save(reservation);
 
             reservationEventPublisher.publishReservationCreated(new ReservationCreatedEvent(
@@ -81,7 +75,7 @@ public class ReservationService {
     public void cancel(Long userId, Long reservationId) {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new ApiException(ErrorCode.RESERVATION_NOT_FOUND));
-        if (!reservation.getUser().getId().equals(userId)) {
+        if (!reservation.getUserId().equals(userId)) {
             throw new ApiException(ErrorCode.FORBIDDEN);
         }
         if (reservation.getStatus() != ReservationStatus.HOLDING) {

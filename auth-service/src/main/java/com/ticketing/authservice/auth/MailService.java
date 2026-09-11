@@ -1,4 +1,4 @@
-package com.ticketing.backend.auth;
+package com.ticketing.authservice.auth;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
