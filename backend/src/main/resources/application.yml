@@ -86,8 +86,10 @@ redis:
     lease-ms: 3000
 
 queue:
-  # Deliberately small so the waiting room is easy to see/test locally - a real launch would size
-  # this to whatever the reservation path can actually handle.
-  active-capacity: ${QUEUE_ACTIVE_CAPACITY:3}
-  admission-interval-ms: ${QUEUE_ADMISSION_INTERVAL_MS:5000}
+  # Sized from a 5000-VU k6 load test (loadtest/reserve_flow.js): with more than ~500 concurrent
+  # reservation-fighters, seat-lock contention pushed p95 reservation latency past 3.5s; at 500 it
+  # stayed under 800ms with near-zero lock conflicts. Lower this for a local demo of the waiting
+  # room UI (e.g. QUEUE_ACTIVE_CAPACITY=3 via .env) - it's still fully overridable per environment.
+  active-capacity: ${QUEUE_ACTIVE_CAPACITY:500}
+  admission-interval-ms: ${QUEUE_ADMISSION_INTERVAL_MS:300}
   pass-token-ttl-ms: ${QUEUE_PASS_TOKEN_TTL_MS:600000}
