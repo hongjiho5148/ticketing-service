@@ -102,6 +102,21 @@ export interface OrderHistoryItem {
   createdAt: string;
 }
 
+export type QueueStatus = "WAITING" | "PASSED";
+
+export interface QueueEnterResult {
+  queueToken: string;
+  rankNo: number;
+  estimatedWaitSeconds: number;
+}
+
+export interface QueueStatusResult {
+  rankNo: number;
+  status: QueueStatus;
+  estimatedWaitSeconds: number | null;
+  passToken: string | null;
+}
+
 export interface ApiErrorBody {
   code: string;
   message: string;

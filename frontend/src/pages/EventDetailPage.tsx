@@ -7,6 +7,7 @@ import { extractErrorMessage } from "../utils/error";
 import { useAuth } from "../context/AuthContext";
 import { VenueSeatMap } from "../components/VenueSeatMap";
 import { SeatGrid } from "../components/SeatGrid";
+import { QueueWaitingRoom } from "../components/QueueWaitingRoom";
 import { dDayLabel, formatDateTime } from "../utils/date";
 import { posterGlyph, posterThemeClass } from "../utils/poster";
 import { requestCardPayment } from "../utils/portone";
@@ -21,6 +22,7 @@ export function EventDetailPage() {
 
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [seats, setSeats] = useState<Seat[]>([]);
+  const [passToken, setPassToken] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
   const [reservation, setReservation] = useState<Reservation | null>(null);
@@ -60,16 +62,11 @@ export function EventDetailPage() {
   }
 
   async function handleReserve() {
-    if (!selectedSeat) return;
-    if (!user) {
-      window.alert("로그인이 필요합니다.");
-      navigate("/login");
-      return;
-    }
+    if (!selectedSeat || !passToken) return;
     setError(null);
     setIsProcessing(true);
     try {
-      const created = await createReservation(selectedSeat.id);
+      const created = await createReservation(selectedSeat.id, passToken);
       setReservation(created);
     } catch (err) {
       setError(extractErrorMessage(err));
@@ -136,6 +133,24 @@ export function EventDetailPage() {
 
   if (!event) {
     return <p className="page-status">{error ?? "불러오는 중..."}</p>;
+  }
+
+  if (!user) {
+    return (
+      <div className="queue-room">
+        <div className="queue-card">
+          <h2>로그인이 필요합니다</h2>
+          <p className="page-status">이 공연 예매 대기열에 입장하려면 먼저 로그인해주세요.</p>
+          <button type="button" onClick={() => navigate("/login")}>
+            로그인하러 가기
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!passToken) {
+    return <QueueWaitingRoom eventId={event.id} onPassed={setPassToken} />;
   }
 
   return (
