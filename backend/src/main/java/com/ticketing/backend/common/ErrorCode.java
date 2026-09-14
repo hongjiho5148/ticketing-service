@@ -23,7 +23,8 @@ public enum ErrorCode {
     REFUND_PERIOD_EXPIRED(HttpStatus.CONFLICT, "환불 가능 기간이 지났습니다. 공연 시작 24시간 전까지만 취소할 수 있어요."),
     REFUND_FAILED(HttpStatus.BAD_GATEWAY, "환불 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."),
     QUEUE_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "대기열 정보를 찾을 수 없습니다. 다시 입장해주세요."),
-    PASS_TOKEN_REQUIRED(HttpStatus.FORBIDDEN, "대기열을 통과한 뒤에만 예약할 수 있습니다.");
+    PASS_TOKEN_REQUIRED(HttpStatus.FORBIDDEN, "대기열을 통과한 뒤에만 예약할 수 있습니다."),
+    EVENT_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "좌석/이벤트 정보를 가져올 수 없습니다. 잠시 후 다시 시도해주세요.");
 
     private final HttpStatus status;
     private final String message;

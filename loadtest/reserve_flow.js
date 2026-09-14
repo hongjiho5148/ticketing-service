@@ -91,13 +91,24 @@ function pickRandomSeatId(token) {
 
 export default function () {
   const token = loginToken();
-  if (!token) return;
+  if (!token) {
+    // Don't tight-loop on a failed login - that turns one transient hiccup into a retry storm
+    // that floods /auth/login and can exhaust the proxy's ephemeral ports on its own.
+    sleep(1);
+    return;
+  }
 
   const passToken = enterAndPassQueue(token);
-  if (!passToken) return;
+  if (!passToken) {
+    sleep(0.5);
+    return;
+  }
 
   const seatId = pickRandomSeatId(token);
-  if (!seatId) return;
+  if (!seatId) {
+    sleep(0.5);
+    return;
+  }
 
   const start = Date.now();
   const reserveRes = http.post(

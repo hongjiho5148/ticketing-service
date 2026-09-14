@@ -55,10 +55,9 @@ portone:
 reservation:
   hold-expire-sweep-cron: "0 * * * * *"
 
-redis:
-  seat-lock:
-    wait-ms: 500
-    lease-ms: 3000
+event:
+  service:
+    uri: ${EVENT_SERVICE_URI:http://event-service:8080}
 
 queue:
   # Sized from a 5000-VU k6 load test (loadtest/reserve_flow.js): with more than ~500 concurrent

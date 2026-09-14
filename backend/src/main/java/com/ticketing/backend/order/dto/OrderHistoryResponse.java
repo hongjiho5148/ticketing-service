@@ -1,5 +1,6 @@
 package com.ticketing.backend.order.dto;
 
+import com.ticketing.backend.eventclient.dto.SeatDetailResponse;
 import com.ticketing.backend.order.OrderStatus;
 import com.ticketing.backend.order.Orders;
 import java.time.LocalDateTime;
@@ -18,19 +19,17 @@ public record OrderHistoryResponse(
         OrderStatus status,
         LocalDateTime createdAt) {
 
-    public static OrderHistoryResponse from(Orders order) {
-        var seat = order.getReservation().getSeat();
-        var event = seat.getEvent();
+    public static OrderHistoryResponse from(Orders order, SeatDetailResponse seat) {
         return new OrderHistoryResponse(
                 order.getId(),
-                event.getId(),
-                event.getTitle(),
-                event.getVenue(),
-                seat.getSeatGrade(),
-                seat.getSection(),
-                seat.getRowNo(),
-                seat.getSeatNumber(),
-                seat.getSeatNo(),
+                seat.eventId(),
+                seat.eventTitle(),
+                seat.venue(),
+                seat.grade(),
+                seat.section(),
+                seat.rowNo(),
+                seat.seatNumber(),
+                seat.seatNo(),
                 order.getTotalPrice(),
                 order.getStatus(),
                 order.getCreatedAt());
