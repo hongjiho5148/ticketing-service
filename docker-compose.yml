@@ -69,6 +69,29 @@ services:
     expose:
       - "8080"
 
+  event-service:
+    build: ./event-service
+    container_name: ticketing-event-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      TZ: Asia/Seoul
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ticketing_event
+      DB_USERNAME: ticketing
+      DB_PASSWORD: ticketing
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    expose:
+      - "8080"
+
   backend:
     build: ./backend
     restart: unless-stopped
@@ -78,6 +101,8 @@ services:
       redis:
         condition: service_started
       kafka:
+        condition: service_started
+      event-service:
         condition: service_started
     env_file:
       - .env
@@ -91,6 +116,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      EVENT_SERVICE_URI: http://event-service:8080
     expose:
       - "8080"
 
@@ -101,6 +127,7 @@ services:
     depends_on:
       - backend
       - auth-service
+      - event-service
     expose:
       - "8080"
 

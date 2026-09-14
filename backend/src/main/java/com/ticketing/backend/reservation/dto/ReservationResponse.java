@@ -8,6 +8,6 @@ public record ReservationResponse(Long reservationId, Long seatId, ReservationSt
 
     public static ReservationResponse from(Reservation reservation) {
         return new ReservationResponse(
-                reservation.getId(), reservation.getSeat().getId(), reservation.getStatus(), reservation.getHoldExpireAt());
+                reservation.getId(), reservation.getSeatId(), reservation.getStatus(), reservation.getHoldExpireAt());
     }
 }

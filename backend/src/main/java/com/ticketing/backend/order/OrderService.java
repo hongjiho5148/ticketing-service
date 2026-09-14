@@ -2,6 +2,8 @@ package com.ticketing.backend.order;
 
 import com.ticketing.backend.common.ApiException;
 import com.ticketing.backend.common.ErrorCode;
+import com.ticketing.backend.eventclient.EventServiceClient;
+import com.ticketing.backend.eventclient.dto.SeatDetailResponse;
 import com.ticketing.backend.order.dto.OrderCreateRequest;
 import com.ticketing.backend.order.dto.OrderHistoryListResponse;
 import com.ticketing.backend.order.dto.OrderHistoryResponse;
@@ -18,6 +20,10 @@ import com.ticketing.backend.reservation.ReservationRepository;
 import com.ticketing.backend.reservation.ReservationStatus;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -34,16 +40,19 @@ public class OrderService {
     private final ReservationRepository reservationRepository;
     private final PaymentRepository paymentRepository;
     private final PortOneClient portOneClient;
+    private final EventServiceClient eventServiceClient;
 
     public OrderService(
             OrderRepository orderRepository,
             ReservationRepository reservationRepository,
             PaymentRepository paymentRepository,
-            PortOneClient portOneClient) {
+            PortOneClient portOneClient,
+            EventServiceClient eventServiceClient) {
         this.orderRepository = orderRepository;
         this.reservationRepository = reservationRepository;
         this.paymentRepository = paymentRepository;
         this.portOneClient = portOneClient;
+        this.eventServiceClient = eventServiceClient;
     }
 
     public OrderResponse createOrder(Long userId, OrderCreateRequest request) {
@@ -55,7 +64,8 @@ public class OrderService {
         if (reservation.getStatus() != ReservationStatus.HOLDING) {
             throw new ApiException(ErrorCode.RESERVATION_NOT_CANCELLABLE);
         }
-        Orders order = new Orders(userId, reservation, reservation.getSeat().getPrice());
+        SeatDetailResponse seat = eventServiceClient.getSeat(reservation.getSeatId());
+        Orders order = new Orders(userId, reservation, seat.price());
         return OrderResponse.from(orderRepository.save(order));
     }
 
@@ -80,7 +90,7 @@ public class OrderService {
             LocalDateTime paidAt = LocalDateTime.now();
             order.markPaid();
             order.getReservation().confirm();
-            order.getReservation().getSeat().sell();
+            eventServiceClient.sell(order.getReservation().getSeatId());
             paymentRepository.save(
                     new Payment(order, "CARD", request.paymentId(), PaymentStatus.SUCCESS, order.getTotalPrice(), paidAt));
             return new PaymentResponse(order.getId(), PaymentStatus.SUCCESS, paidAt);
@@ -88,7 +98,7 @@ public class OrderService {
 
         order.markFailed();
         order.getReservation().cancel();
-        order.getReservation().getSeat().release();
+        eventServiceClient.release(order.getReservation().getSeatId());
         paymentRepository.save(
                 new Payment(order, "CARD", request.paymentId(), PaymentStatus.FAILED, order.getTotalPrice(), null));
         return new PaymentResponse(order.getId(), PaymentStatus.FAILED, null);
@@ -108,8 +118,8 @@ public class OrderService {
             throw new ApiException(ErrorCode.ORDER_NOT_CANCELLABLE);
         }
 
-        LocalDateTime eventStartAt = order.getReservation().getSeat().getEvent().getStartAt();
-        if (LocalDateTime.now().isAfter(eventStartAt.minus(REFUND_CUTOFF_BEFORE_EVENT))) {
+        SeatDetailResponse seat = eventServiceClient.getSeat(order.getReservation().getSeatId());
+        if (LocalDateTime.now().isAfter(seat.eventStartAt().minus(REFUND_CUTOFF_BEFORE_EVENT))) {
             throw new ApiException(ErrorCode.REFUND_PERIOD_EXPIRED);
         }
 
@@ -122,12 +132,23 @@ public class OrderService {
 
         order.cancel();
         order.getReservation().cancel();
-        order.getReservation().getSeat().release();
+        eventServiceClient.release(order.getReservation().getSeatId());
     }
 
     @Transactional(readOnly = true)
     public OrderHistoryListResponse getOrders(Long userId, Pageable pageable) {
         Page<Orders> page = orderRepository.findByUserId(userId, pageable);
-        return new OrderHistoryListResponse(page.getContent().stream().map(OrderHistoryResponse::from).toList());
+        List<Orders> orders = page.getContent();
+
+        List<Long> seatIds = orders.stream().map(order -> order.getReservation().getSeatId()).distinct().toList();
+        Map<Long, SeatDetailResponse> seatsById = seatIds.isEmpty()
+                ? Map.of()
+                : eventServiceClient.getSeats(seatIds).stream()
+                        .collect(Collectors.toMap(SeatDetailResponse::seatId, Function.identity()));
+
+        List<OrderHistoryResponse> content = orders.stream()
+                .map(order -> OrderHistoryResponse.from(order, seatsById.get(order.getReservation().getSeatId())))
+                .toList();
+        return new OrderHistoryListResponse(content);
     }
 }

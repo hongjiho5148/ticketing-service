@@ -1,16 +1,12 @@
 package com.ticketing.backend.reservation;
 
-import com.ticketing.backend.seat.Seat;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
@@ -31,9 +27,8 @@ public class Reservation {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "seat_id", nullable = false, unique = true)
-    private Seat seat;
+    @Column(name = "seat_id", nullable = false, unique = true)
+    private Long seatId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -46,9 +41,9 @@ public class Reservation {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    public Reservation(Long userId, Seat seat, LocalDateTime holdExpireAt) {
+    public Reservation(Long userId, Long seatId, LocalDateTime holdExpireAt) {
         this.userId = userId;
-        this.seat = seat;
+        this.seatId = seatId;
         this.status = ReservationStatus.HOLDING;
         this.holdExpireAt = holdExpireAt;
     }

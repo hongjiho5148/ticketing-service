@@ -24,7 +24,7 @@ spring:
               predicates:
                 - Path=/api/auth/**,/oauth2/**,/login/oauth2/**
             - id: event-service
-              uri: ${BACKEND_URI:http://backend:8080}
+              uri: ${EVENT_SERVICE_URI:http://event-service:8080}
               predicates:
                 - Path=/api/events/**
             - id: queue-service

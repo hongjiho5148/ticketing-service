@@ -2,15 +2,13 @@ package com.ticketing.backend.reservation;
 
 import com.ticketing.backend.common.ApiException;
 import com.ticketing.backend.common.ErrorCode;
+import com.ticketing.backend.eventclient.EventServiceClient;
+import com.ticketing.backend.eventclient.dto.SeatDetailResponse;
 import com.ticketing.backend.messaging.ReservationCreatedEvent;
 import com.ticketing.backend.messaging.ReservationEventPublisher;
 import com.ticketing.backend.queue.QueueService;
 import com.ticketing.backend.reservation.dto.ReservationCreateRequest;
 import com.ticketing.backend.reservation.dto.ReservationResponse;
-import com.ticketing.backend.seat.Seat;
-import com.ticketing.backend.seat.SeatLockService;
-import com.ticketing.backend.seat.SeatRepository;
-import com.ticketing.backend.seat.SeatStatus;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
@@ -23,53 +21,39 @@ public class ReservationService {
     private static final Duration HOLD_DURATION = Duration.ofMinutes(5);
 
     private final ReservationRepository reservationRepository;
-    private final SeatRepository seatRepository;
-    private final SeatLockService seatLockService;
+    private final EventServiceClient eventServiceClient;
     private final QueueService queueService;
     private final ReservationEventPublisher reservationEventPublisher;
 
     public ReservationService(
             ReservationRepository reservationRepository,
-            SeatRepository seatRepository,
-            SeatLockService seatLockService,
+            EventServiceClient eventServiceClient,
             QueueService queueService,
             ReservationEventPublisher reservationEventPublisher) {
         this.reservationRepository = reservationRepository;
-        this.seatRepository = seatRepository;
-        this.seatLockService = seatLockService;
+        this.eventServiceClient = eventServiceClient;
         this.queueService = queueService;
         this.reservationEventPublisher = reservationEventPublisher;
     }
 
     public ReservationResponse reserve(Long userId, ReservationCreateRequest request, String passToken) {
-        Seat requestedSeat = seatRepository
-                .findById(request.seatId())
-                .orElseThrow(() -> new ApiException(ErrorCode.SEAT_NOT_FOUND));
-        if (!queueService.isPassTokenValid(requestedSeat.getEvent().getId(), passToken)) {
+        SeatDetailResponse requestedSeat = eventServiceClient.getSeat(request.seatId());
+        if (!queueService.isPassTokenValid(requestedSeat.eventId(), passToken)) {
             throw new ApiException(ErrorCode.PASS_TOKEN_REQUIRED);
         }
 
-        // A per-seat Redis lock rejects concurrent contenders immediately, before they ever touch
-        // the database - only the request currently holding the lock does DB work. The @Version
-        // optimistic lock on Seat is still the real correctness backstop underneath this.
-        return seatLockService.executeWithLock(request.seatId(), () -> {
-            Seat seat = seatRepository
-                    .findById(request.seatId())
-                    .orElseThrow(() -> new ApiException(ErrorCode.SEAT_NOT_FOUND));
+        // event-service holds the same per-seat Redis lock this used to wrap locally, then does
+        // the status-check + hold atomically on its side - see EventServiceClient.hold().
+        LocalDateTime holdExpireAt = LocalDateTime.now().plus(HOLD_DURATION);
+        SeatDetailResponse heldSeat = eventServiceClient.hold(request.seatId(), holdExpireAt);
 
-            if (seat.getStatus() != SeatStatus.AVAILABLE) {
-                throw new ApiException(ErrorCode.SEAT_ALREADY_RESERVED);
-            }
-            seat.hold();
+        Reservation reservation = new Reservation(userId, request.seatId(), holdExpireAt);
+        Reservation saved = reservationRepository.save(reservation);
 
-            Reservation reservation = new Reservation(userId, seat, LocalDateTime.now().plus(HOLD_DURATION));
-            Reservation saved = reservationRepository.save(reservation);
+        reservationEventPublisher.publishReservationCreated(new ReservationCreatedEvent(
+                saved.getId(), heldSeat.seatId(), userId, heldSeat.eventId(), saved.getCreatedAt().toString()));
 
-            reservationEventPublisher.publishReservationCreated(new ReservationCreatedEvent(
-                    saved.getId(), seat.getId(), userId, seat.getEvent().getId(), saved.getCreatedAt().toString()));
-
-            return ReservationResponse.from(saved);
-        });
+        return ReservationResponse.from(saved);
     }
 
     public void cancel(Long userId, Long reservationId) {
@@ -82,6 +66,6 @@ public class ReservationService {
             throw new ApiException(ErrorCode.RESERVATION_NOT_CANCELLABLE);
         }
         reservation.cancel();
-        reservation.getSeat().release();
+        eventServiceClient.release(reservation.getSeatId());
     }
 }
