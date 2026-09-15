@@ -1,4 +1,4 @@
-package com.ticketing.backend.messaging;
+package com.ticketing.reservationservice.messaging;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

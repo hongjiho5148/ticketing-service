@@ -1,8 +1,8 @@
-package com.ticketing.backend.reservation;
+package com.ticketing.reservationservice.reservation;
 
-import com.ticketing.backend.auth.SecurityUtil;
-import com.ticketing.backend.reservation.dto.ReservationCreateRequest;
-import com.ticketing.backend.reservation.dto.ReservationResponse;
+import com.ticketing.reservationservice.auth.SecurityUtil;
+import com.ticketing.reservationservice.reservation.dto.ReservationCreateRequest;
+import com.ticketing.reservationservice.reservation.dto.ReservationResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

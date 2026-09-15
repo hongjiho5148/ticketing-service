@@ -1,7 +1,7 @@
-package com.ticketing.backend.reservation.dto;
+package com.ticketing.reservationservice.reservation.dto;
 
-import com.ticketing.backend.reservation.Reservation;
-import com.ticketing.backend.reservation.ReservationStatus;
+import com.ticketing.reservationservice.reservation.Reservation;
+import com.ticketing.reservationservice.reservation.ReservationStatus;
 import java.time.LocalDateTime;
 
 public record ReservationResponse(Long reservationId, Long seatId, ReservationStatus status, LocalDateTime holdExpireAt) {

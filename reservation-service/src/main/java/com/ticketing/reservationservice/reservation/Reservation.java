@@ -1,4 +1,4 @@
-package com.ticketing.backend.reservation;
+package com.ticketing.reservationservice.reservation;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

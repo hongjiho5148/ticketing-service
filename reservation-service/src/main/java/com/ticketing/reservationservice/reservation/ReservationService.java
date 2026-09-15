@@ -1,14 +1,14 @@
-package com.ticketing.backend.reservation;
+package com.ticketing.reservationservice.reservation;
 
-import com.ticketing.backend.common.ApiException;
-import com.ticketing.backend.common.ErrorCode;
-import com.ticketing.backend.eventclient.EventServiceClient;
-import com.ticketing.backend.eventclient.dto.SeatDetailResponse;
-import com.ticketing.backend.messaging.ReservationCreatedEvent;
-import com.ticketing.backend.messaging.ReservationEventPublisher;
-import com.ticketing.backend.queue.QueueService;
-import com.ticketing.backend.reservation.dto.ReservationCreateRequest;
-import com.ticketing.backend.reservation.dto.ReservationResponse;
+import com.ticketing.reservationservice.common.ApiException;
+import com.ticketing.reservationservice.common.ErrorCode;
+import com.ticketing.reservationservice.eventclient.EventServiceClient;
+import com.ticketing.reservationservice.eventclient.dto.SeatDetailResponse;
+import com.ticketing.reservationservice.messaging.ReservationCreatedEvent;
+import com.ticketing.reservationservice.messaging.ReservationEventPublisher;
+import com.ticketing.reservationservice.queueclient.QueueServiceClient;
+import com.ticketing.reservationservice.reservation.dto.ReservationCreateRequest;
+import com.ticketing.reservationservice.reservation.dto.ReservationResponse;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
@@ -22,23 +22,23 @@ public class ReservationService {
 
     private final ReservationRepository reservationRepository;
     private final EventServiceClient eventServiceClient;
-    private final QueueService queueService;
+    private final QueueServiceClient queueServiceClient;
     private final ReservationEventPublisher reservationEventPublisher;
 
     public ReservationService(
             ReservationRepository reservationRepository,
             EventServiceClient eventServiceClient,
-            QueueService queueService,
+            QueueServiceClient queueServiceClient,
             ReservationEventPublisher reservationEventPublisher) {
         this.reservationRepository = reservationRepository;
         this.eventServiceClient = eventServiceClient;
-        this.queueService = queueService;
+        this.queueServiceClient = queueServiceClient;
         this.reservationEventPublisher = reservationEventPublisher;
     }
 
     public ReservationResponse reserve(Long userId, ReservationCreateRequest request, String passToken) {
         SeatDetailResponse requestedSeat = eventServiceClient.getSeat(request.seatId());
-        if (!queueService.isPassTokenValid(requestedSeat.eventId(), passToken)) {
+        if (!queueServiceClient.isPassTokenValid(requestedSeat.eventId(), passToken)) {
             throw new ApiException(ErrorCode.PASS_TOKEN_REQUIRED);
         }
 

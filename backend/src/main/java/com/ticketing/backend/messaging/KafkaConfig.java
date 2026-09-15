@@ -2,9 +2,7 @@ package com.ticketing.backend.messaging;
 
 import java.util.Map;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,36 +10,18 @@ import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
-import org.springframework.kafka.core.DefaultKafkaProducerFactory;
-import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.core.ProducerFactory;
 
 /**
- * Producer/consumer are wired for plain String payloads - event records are marshalled to/from
- * JSON with the app's own Jackson 3 ObjectMapper in ReservationEventPublisher/Listener, instead
- * of spring-kafka's JsonSerializer/JsonDeserializer, which are built on classic Jackson 2 and
- * don't resolve on this app's Jackson 3 classpath. Also sidesteps the fact that Spring Boot's
- * auto-configured KafkaTemplate/listener-container-factory are generically <Object, Object>,
- * which doesn't satisfy a typed injection point either way.
+ * Consumer-only (backend no longer publishes reservation.created - reservation-service does, since
+ * it owns the domain now). Wired for a plain String payload - ReservationEventListener marshals it
+ * with the app's own Jackson 3 ObjectMapper instead of spring-kafka's JsonDeserializer, which is
+ * built on classic Jackson 2 and doesn't resolve on this app's Jackson 3 classpath. Also sidesteps
+ * the fact that Spring Boot's auto-configured listener-container-factory is generically
+ * <Object, Object>, which doesn't satisfy a typed injection point either way.
  */
 @Configuration
 @EnableKafka
 public class KafkaConfig {
-
-    @Bean
-    public ProducerFactory<String, String> stringProducerFactory(
-            @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers) {
-        Map<String, Object> configs = Map.of(
-                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers,
-                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class,
-                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        return new DefaultKafkaProducerFactory<>(configs);
-    }
-
-    @Bean
-    public KafkaTemplate<String, String> kafkaTemplate(ProducerFactory<String, String> stringProducerFactory) {
-        return new KafkaTemplate<>(stringProducerFactory);
-    }
 
     @Bean
     public ConsumerFactory<String, String> stringConsumerFactory(
