@@ -6,6 +6,6 @@ import com.ticketing.backend.order.Orders;
 public record OrderResponse(Long orderId, Long reservationId, Integer totalPrice, OrderStatus status) {
 
     public static OrderResponse from(Orders order) {
-        return new OrderResponse(order.getId(), order.getReservation().getId(), order.getTotalPrice(), order.getStatus());
+        return new OrderResponse(order.getId(), order.getReservationId(), order.getTotalPrice(), order.getStatus());
     }
 }

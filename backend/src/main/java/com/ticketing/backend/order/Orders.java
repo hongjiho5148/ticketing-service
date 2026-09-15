@@ -1,16 +1,12 @@
 package com.ticketing.backend.order;
 
-import com.ticketing.backend.reservation.Reservation;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
@@ -31,9 +27,13 @@ public class Orders {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reservation_id", nullable = false, unique = true)
-    private Reservation reservation;
+    @Column(name = "reservation_id", nullable = false, unique = true)
+    private Long reservationId;
+
+    // Denormalized from the reservation at order-creation time - it never changes afterward, so
+    // caching it here avoids a reservation-service round trip on every order-history render.
+    @Column(name = "seat_id", nullable = false)
+    private Long seatId;
 
     @Column(nullable = false)
     private Integer totalPrice;
@@ -46,9 +46,10 @@ public class Orders {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    public Orders(Long userId, Reservation reservation, Integer totalPrice) {
+    public Orders(Long userId, Long reservationId, Long seatId, Integer totalPrice) {
         this.userId = userId;
-        this.reservation = reservation;
+        this.reservationId = reservationId;
+        this.seatId = seatId;
         this.totalPrice = totalPrice;
         this.status = OrderStatus.PENDING;
     }

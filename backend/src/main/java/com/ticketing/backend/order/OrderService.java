@@ -15,9 +15,8 @@ import com.ticketing.backend.payment.PaymentRepository;
 import com.ticketing.backend.payment.PaymentStatus;
 import com.ticketing.backend.payment.portone.PortOneClient;
 import com.ticketing.backend.payment.portone.PortOnePaymentResponse;
-import com.ticketing.backend.reservation.Reservation;
-import com.ticketing.backend.reservation.ReservationRepository;
-import com.ticketing.backend.reservation.ReservationStatus;
+import com.ticketing.backend.reservationclient.ReservationServiceClient;
+import com.ticketing.backend.reservationclient.dto.ReservationDetailResponse;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -35,37 +34,37 @@ import org.springframework.web.client.RestClientException;
 public class OrderService {
 
     private static final Duration REFUND_CUTOFF_BEFORE_EVENT = Duration.ofHours(24);
+    private static final String HOLDING_STATUS = "HOLDING";
 
     private final OrderRepository orderRepository;
-    private final ReservationRepository reservationRepository;
     private final PaymentRepository paymentRepository;
     private final PortOneClient portOneClient;
     private final EventServiceClient eventServiceClient;
+    private final ReservationServiceClient reservationServiceClient;
 
     public OrderService(
             OrderRepository orderRepository,
-            ReservationRepository reservationRepository,
             PaymentRepository paymentRepository,
             PortOneClient portOneClient,
-            EventServiceClient eventServiceClient) {
+            EventServiceClient eventServiceClient,
+            ReservationServiceClient reservationServiceClient) {
         this.orderRepository = orderRepository;
-        this.reservationRepository = reservationRepository;
         this.paymentRepository = paymentRepository;
         this.portOneClient = portOneClient;
         this.eventServiceClient = eventServiceClient;
+        this.reservationServiceClient = reservationServiceClient;
     }
 
     public OrderResponse createOrder(Long userId, OrderCreateRequest request) {
-        Reservation reservation = reservationRepository.findById(request.reservationId())
-                .orElseThrow(() -> new ApiException(ErrorCode.RESERVATION_NOT_FOUND));
-        if (!reservation.getUserId().equals(userId)) {
+        ReservationDetailResponse reservation = reservationServiceClient.getReservation(request.reservationId());
+        if (!reservation.userId().equals(userId)) {
             throw new ApiException(ErrorCode.FORBIDDEN);
         }
-        if (reservation.getStatus() != ReservationStatus.HOLDING) {
+        if (!HOLDING_STATUS.equals(reservation.status())) {
             throw new ApiException(ErrorCode.RESERVATION_NOT_CANCELLABLE);
         }
-        SeatDetailResponse seat = eventServiceClient.getSeat(reservation.getSeatId());
-        Orders order = new Orders(userId, reservation, seat.price());
+        SeatDetailResponse seat = eventServiceClient.getSeat(reservation.seatId());
+        Orders order = new Orders(userId, reservation.reservationId(), reservation.seatId(), seat.price());
         return OrderResponse.from(orderRepository.save(order));
     }
 
@@ -88,17 +87,18 @@ public class OrderService {
 
         if (verified) {
             LocalDateTime paidAt = LocalDateTime.now();
+            // Confirm on reservation-service (which sells the seat on its end) before committing our
+            // own PAID status locally, so a failed confirm never leaves an order marked paid with no
+            // matching reservation/seat state on the other side.
+            reservationServiceClient.confirm(order.getReservationId());
             order.markPaid();
-            order.getReservation().confirm();
-            eventServiceClient.sell(order.getReservation().getSeatId());
             paymentRepository.save(
                     new Payment(order, "CARD", request.paymentId(), PaymentStatus.SUCCESS, order.getTotalPrice(), paidAt));
             return new PaymentResponse(order.getId(), PaymentStatus.SUCCESS, paidAt);
         }
 
+        reservationServiceClient.cancel(order.getReservationId());
         order.markFailed();
-        order.getReservation().cancel();
-        eventServiceClient.release(order.getReservation().getSeatId());
         paymentRepository.save(
                 new Payment(order, "CARD", request.paymentId(), PaymentStatus.FAILED, order.getTotalPrice(), null));
         return new PaymentResponse(order.getId(), PaymentStatus.FAILED, null);
@@ -118,7 +118,7 @@ public class OrderService {
             throw new ApiException(ErrorCode.ORDER_NOT_CANCELLABLE);
         }
 
-        SeatDetailResponse seat = eventServiceClient.getSeat(order.getReservation().getSeatId());
+        SeatDetailResponse seat = eventServiceClient.getSeat(order.getSeatId());
         if (LocalDateTime.now().isAfter(seat.eventStartAt().minus(REFUND_CUTOFF_BEFORE_EVENT))) {
             throw new ApiException(ErrorCode.REFUND_PERIOD_EXPIRED);
         }
@@ -131,8 +131,7 @@ public class OrderService {
         }
 
         order.cancel();
-        order.getReservation().cancel();
-        eventServiceClient.release(order.getReservation().getSeatId());
+        reservationServiceClient.cancel(order.getReservationId());
     }
 
     @Transactional(readOnly = true)
@@ -140,14 +139,14 @@ public class OrderService {
         Page<Orders> page = orderRepository.findByUserId(userId, pageable);
         List<Orders> orders = page.getContent();
 
-        List<Long> seatIds = orders.stream().map(order -> order.getReservation().getSeatId()).distinct().toList();
+        List<Long> seatIds = orders.stream().map(Orders::getSeatId).distinct().toList();
         Map<Long, SeatDetailResponse> seatsById = seatIds.isEmpty()
                 ? Map.of()
                 : eventServiceClient.getSeats(seatIds).stream()
                         .collect(Collectors.toMap(SeatDetailResponse::seatId, Function.identity()));
 
         List<OrderHistoryResponse> content = orders.stream()
-                .map(order -> OrderHistoryResponse.from(order, seatsById.get(order.getReservation().getSeatId())))
+                .map(order -> OrderHistoryResponse.from(order, seatsById.get(order.getSeatId())))
                 .toList();
         return new OrderHistoryListResponse(content);
     }

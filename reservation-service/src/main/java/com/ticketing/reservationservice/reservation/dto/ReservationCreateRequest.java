@@ -1,4 +1,4 @@
-package com.ticketing.backend.reservation.dto;
+package com.ticketing.reservationservice.reservation.dto;
 
 import jakarta.validation.constraints.NotNull;
 

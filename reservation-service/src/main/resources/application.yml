@@ -1,0 +1,45 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: reservation-service
+  autoconfigure:
+    exclude: org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:ticketing_reservation}?useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${DB_USERNAME:ticketing}
+    password: ${DB_PASSWORD:ticketing}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
+# Verification only here (auth-service is the one that mints tokens) - secret must match
+# auth-service's/backend's exactly since that's what makes a JWT it signs valid here too.
+jwt:
+  secret: ${JWT_SECRET:local-development-secret-key-change-me-please-32bytes-min}
+
+reservation:
+  hold-expire-sweep-cron: "0 * * * * *"
+
+event:
+  service:
+    uri: ${EVENT_SERVICE_URI:http://event-service:8080}
+
+queue:
+  service:
+    uri: ${BACKEND_URI:http://backend:8080}

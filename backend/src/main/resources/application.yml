@@ -25,9 +25,6 @@ spring:
       port: ${REDIS_PORT:6379}
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
     consumer:
       group-id: backend
       auto-offset-reset: earliest
@@ -52,12 +49,13 @@ portone:
   api-secret: ${PORTONE_API_SECRET:}
   api-base-url: https://api.portone.io
 
-reservation:
-  hold-expire-sweep-cron: "0 * * * * *"
-
 event:
   service:
     uri: ${EVENT_SERVICE_URI:http://event-service:8080}
+
+reservation:
+  service:
+    uri: ${RESERVATION_SERVICE_URI:http://reservation-service:8080}
 
 queue:
   # Sized from a 5000-VU k6 load test (loadtest/reserve_flow.js): with more than ~500 concurrent

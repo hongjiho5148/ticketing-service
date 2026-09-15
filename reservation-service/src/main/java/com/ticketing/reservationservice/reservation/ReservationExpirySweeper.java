@@ -1,6 +1,6 @@
-package com.ticketing.backend.reservation;
+package com.ticketing.reservationservice.reservation;
 
-import com.ticketing.backend.eventclient.EventServiceClient;
+import com.ticketing.reservationservice.eventclient.EventServiceClient;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.slf4j.Logger;

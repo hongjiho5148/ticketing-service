@@ -1,13 +1,12 @@
-package com.ticketing.backend.config;
+package com.ticketing.reservationservice.config;
 
-import com.ticketing.backend.auth.JwtAuthenticationFilter;
-import com.ticketing.backend.common.ErrorCode;
-import com.ticketing.backend.common.ErrorResponse;
+import com.ticketing.reservationservice.auth.JwtAuthenticationFilter;
+import com.ticketing.reservationservice.common.ErrorCode;
+import com.ticketing.reservationservice.common.ErrorResponse;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -56,7 +55,6 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/error").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/events/**").permitAll()
                         // Service-to-service only, reached directly within the docker network - never
                         // carries a user JWT, so it can't go through the normal auth check.
                         .requestMatchers("/internal/**").permitAll()
