@@ -27,7 +27,13 @@ public class Reservation {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @Column(name = "seat_id", nullable = false, unique = true)
+    // Not unique: event-service's hold() already serializes access to a seat with its own
+    // per-seat Redis lock and AVAILABLE-status check before this row is ever written, so it's the
+    // real concurrency guard. A DB-level unique constraint here would additionally mean "this seat
+    // can only ever be booked once in its lifetime" - the same seat_id would collide against a
+    // prior row forever, even a long-CANCELLED/EXPIRED one, permanently blocking every future
+    // reservation for that seat once someone's very first hold on it is cancelled or expires.
+    @Column(name = "seat_id", nullable = false)
     private Long seatId;
 
     @Enumerated(EnumType.STRING)
