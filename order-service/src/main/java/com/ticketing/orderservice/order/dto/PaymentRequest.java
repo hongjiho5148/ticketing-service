@@ -1,0 +1,6 @@
+package com.ticketing.orderservice.order.dto;
+
+import jakarta.validation.constraints.NotBlank;
+
+public record PaymentRequest(@NotBlank String paymentId) {
+}

@@ -117,8 +117,30 @@ services:
       REDIS_PORT: 6379
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       EVENT_SERVICE_URI: http://event-service:8080
-      # reservation-service itself depends on backend being up (pass-token validation), so backend
-      # can't wait on it in turn without a dependency cycle - it just tolerates a 503 until both are up.
+    expose:
+      - "8080"
+
+  order-service:
+    build: ./order-service
+    container_name: ticketing-order-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      event-service:
+        condition: service_started
+      reservation-service:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      TZ: Asia/Seoul
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ticketing_order
+      DB_USERNAME: ticketing
+      DB_PASSWORD: ticketing
+      EVENT_SERVICE_URI: http://event-service:8080
       RESERVATION_SERVICE_URI: http://reservation-service:8080
     expose:
       - "8080"
@@ -160,6 +182,7 @@ services:
       - auth-service
       - event-service
       - reservation-service
+      - order-service
     expose:
       - "8080"
 

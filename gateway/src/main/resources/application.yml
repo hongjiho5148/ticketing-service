@@ -36,6 +36,6 @@ spring:
               predicates:
                 - Path=/api/reservations/**
             - id: order-service
-              uri: ${BACKEND_URI:http://backend:8080}
+              uri: ${ORDER_SERVICE_URI:http://order-service:8080}
               predicates:
                 - Path=/api/orders/**
