@@ -28,7 +28,12 @@ spring:
               predicates:
                 - Path=/api/events/**
             - id: queue-service
-              uri: ${BACKEND_URI:http://backend:8080}
+              # Through nginx's backend load-balancer port (8081), not straight to backend:8080 -
+              # backend is the one service that actually gets scaled, and this gateway's own HTTP
+              # client doesn't spread requests across replicas on its own (confirmed by testing:
+              # every request landed on the same container). nginx re-resolves `backend` per
+              # request instead and picks up whichever replicas are currently up.
+              uri: ${BACKEND_URI:http://nginx:8081}
               predicates:
                 - Path=/api/queue/**
             - id: reservation-service
