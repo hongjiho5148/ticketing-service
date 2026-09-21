@@ -228,6 +228,71 @@ button:disabled {
   font-weight: 600;
 }
 
+.password-strength {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: -6px;
+}
+
+.password-strength-bar {
+  height: 5px;
+  border-radius: 3px;
+  background: var(--border-soft);
+  overflow: hidden;
+}
+
+.password-strength-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.15s ease, background-color 0.15s ease;
+}
+
+.password-strength-bar.level-weak .password-strength-bar-fill {
+  background: var(--danger);
+}
+
+.password-strength-bar.level-fair .password-strength-bar-fill {
+  background: var(--grade-r-dark);
+}
+
+.password-strength-bar.level-good .password-strength-bar-fill {
+  background: var(--grade-s-dark);
+}
+
+.password-strength-label {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.password-strength-label.level-weak {
+  color: var(--danger);
+}
+
+.password-strength-label.level-fair {
+  color: var(--grade-r-dark);
+}
+
+.password-strength-label.level-good {
+  color: var(--grade-s-dark);
+}
+
+.password-requirements {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.78rem;
+  color: var(--text-faint);
+}
+
+.password-requirements li.met {
+  color: var(--grade-s-dark);
+}
+
 .form-error {
   color: var(--danger);
   font-size: 0.88rem;

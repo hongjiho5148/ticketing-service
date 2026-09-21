@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { SocialLoginButtons } from "../components/SocialLoginButtons";
 import { useAuth } from "../context/AuthContext";
 import { extractErrorMessage } from "../utils/error";
+import { getPasswordStrength } from "../utils/passwordStrength";
 
 const EMAIL_DOMAINS = ["naver.com", "gmail.com", "daum.net", "kakao.com", "nate.com", "hanmail.net"];
 const CUSTOM_DOMAIN = "custom";
@@ -20,6 +21,7 @@ export function SignupPage() {
   const [isDone, setIsDone] = useState(false);
 
   const email = emailLocal && emailDomain ? `${emailLocal}@${emailDomain}` : "";
+  const passwordStrength = getPasswordStrength(password);
 
   function handleDomainPresetChange(value: string) {
     setDomainPreset(value);
@@ -33,6 +35,11 @@ export function SignupPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+
+    if (!passwordStrength.isValid) {
+      setError("비밀번호는 영문 대/소문자, 숫자, 특수문자를 모두 포함해 8자 이상으로 입력해주세요.");
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError("비밀번호가 일치하지 않습니다.");
@@ -106,7 +113,7 @@ export function SignupPage() {
           </div>
         </label>
         <label>
-          비밀번호 (8자 이상)
+          비밀번호
           <input
             type="password"
             value={password}
@@ -115,6 +122,21 @@ export function SignupPage() {
             required
           />
         </label>
+        {password.length > 0 && (
+          <div className="password-strength">
+            <div className={`password-strength-bar level-${passwordStrength.level}`}>
+              <div className="password-strength-bar-fill" style={{ width: `${(passwordStrength.metCount / 5) * 100}%` }} />
+            </div>
+            <p className={`password-strength-label level-${passwordStrength.level}`}>보안 상태: {passwordStrength.label}</p>
+            <ul className="password-requirements">
+              {passwordStrength.requirements.map((req) => (
+                <li key={req.key} className={req.met ? "met" : ""}>
+                  {req.met ? "✓" : "·"} {req.label}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <label>
           비밀번호 확인
           <input
