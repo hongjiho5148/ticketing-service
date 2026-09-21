@@ -190,6 +190,44 @@ button:disabled {
   background: var(--surface);
 }
 
+.form select {
+  padding: 11px 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.98rem;
+  font-family: inherit;
+  color: inherit;
+  background: var(--bg);
+}
+
+.form select:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: var(--surface);
+}
+
+.email-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.email-field-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.email-field-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.email-at {
+  color: var(--text-faint);
+  font-weight: 600;
+}
+
 .form-error {
   color: var(--danger);
   font-size: 0.88rem;

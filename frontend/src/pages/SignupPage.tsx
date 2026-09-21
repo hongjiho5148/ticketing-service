@@ -4,15 +4,31 @@ import { SocialLoginButtons } from "../components/SocialLoginButtons";
 import { useAuth } from "../context/AuthContext";
 import { extractErrorMessage } from "../utils/error";
 
+const EMAIL_DOMAINS = ["naver.com", "gmail.com", "daum.net", "kakao.com", "nate.com", "hanmail.net"];
+const CUSTOM_DOMAIN = "custom";
+
 export function SignupPage() {
   const { signup } = useAuth();
-  const [email, setEmail] = useState("");
+  const [emailLocal, setEmailLocal] = useState("");
+  const [emailDomain, setEmailDomain] = useState("");
+  const [domainPreset, setDomainPreset] = useState(CUSTOM_DOMAIN);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDone, setIsDone] = useState(false);
+
+  const email = emailLocal && emailDomain ? `${emailLocal}@${emailDomain}` : "";
+
+  function handleDomainPresetChange(value: string) {
+    setDomainPreset(value);
+    if (value !== CUSTOM_DOMAIN) {
+      setEmailDomain(value);
+    } else {
+      setEmailDomain("");
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -58,7 +74,36 @@ export function SignupPage() {
         </label>
         <label>
           이메일
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <div className="email-field">
+            <div className="email-field-row">
+              <input
+                type="text"
+                value={emailLocal}
+                onChange={(e) => setEmailLocal(e.target.value)}
+                placeholder="이메일"
+                required
+              />
+              <span className="email-at">@</span>
+              <input
+                type="text"
+                value={emailDomain}
+                onChange={(e) => {
+                  setEmailDomain(e.target.value);
+                  setDomainPreset(CUSTOM_DOMAIN);
+                }}
+                placeholder="도메인 입력"
+                required
+              />
+            </div>
+            <select value={domainPreset} onChange={(e) => handleDomainPresetChange(e.target.value)}>
+              <option value={CUSTOM_DOMAIN}>직접 입력</option>
+              {EMAIL_DOMAINS.map((domain) => (
+                <option key={domain} value={domain}>
+                  {domain}
+                </option>
+              ))}
+            </select>
+          </div>
         </label>
         <label>
           비밀번호 (8자 이상)
