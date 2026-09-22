@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 export function Header() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [isConfirmingLogout, setIsConfirmingLogout] = useState(false);
 
   function handleLogout() {
     logout();
@@ -19,8 +22,9 @@ export function Header() {
         {user ? (
           <>
             <Link to="/orders">내 주문</Link>
+            <Link to="/account">마이페이지</Link>
             <span className="header-user">{user.name}님</span>
-            <button type="button" onClick={handleLogout}>
+            <button type="button" onClick={() => setIsConfirmingLogout(true)}>
               로그아웃
             </button>
           </>
@@ -31,6 +35,18 @@ export function Header() {
           </>
         )}
       </nav>
+      {isConfirmingLogout && (
+        <ConfirmDialog
+          title="로그아웃"
+          message="로그아웃 하시겠어요?"
+          confirmLabel="로그아웃"
+          onConfirm={() => {
+            setIsConfirmingLogout(false);
+            handleLogout();
+          }}
+          onCancel={() => setIsConfirmingLogout(false)}
+        />
+      )}
     </header>
   );
 }

@@ -32,10 +32,18 @@ public class EventService {
         this.seatRepository = seatRepository;
     }
 
-    public EventListResponse listEvents(EventStatus status, Pageable pageable) {
-        Page<Event> page = status == null
-                ? eventRepository.findAll(pageable)
-                : eventRepository.findByStatus(status, pageable);
+    public EventListResponse listEvents(EventStatus status, String keyword, Pageable pageable) {
+        boolean hasKeyword = keyword != null && !keyword.isBlank();
+        Page<Event> page;
+        if (status != null && hasKeyword) {
+            page = eventRepository.findByStatusAndTitleContainingIgnoreCase(status, keyword, pageable);
+        } else if (hasKeyword) {
+            page = eventRepository.findByTitleContainingIgnoreCase(keyword, pageable);
+        } else if (status != null) {
+            page = eventRepository.findByStatus(status, pageable);
+        } else {
+            page = eventRepository.findAll(pageable);
+        }
         List<EventSummaryResponse> content = page.getContent().stream()
                 .map(EventSummaryResponse::from)
                 .toList();

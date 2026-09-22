@@ -44,3 +44,6 @@ spring:
               uri: ${ORDER_SERVICE_URI:http://order-service:8080}
               predicates:
                 - Path=/api/orders/**
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}

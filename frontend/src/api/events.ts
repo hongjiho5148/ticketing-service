@@ -1,7 +1,15 @@
 import { apiClient } from "./client";
 import type { EventDetail, EventListResponse, EventStatus, Seat } from "../types";
 
-export function fetchEvents(params: { status?: EventStatus; page?: number; size?: number } = {}) {
+export function fetchEvents(
+  params: {
+    status?: EventStatus;
+    keyword?: string;
+    sortDir?: "asc" | "desc";
+    page?: number;
+    size?: number;
+  } = {},
+) {
   return apiClient.get<EventListResponse>("/events", { params }).then((res) => res.data);
 }
 

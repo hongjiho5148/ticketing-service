@@ -1,10 +1,13 @@
 import { Route, Routes } from "react-router-dom";
+import { Footer } from "./components/Footer";
 import { Header } from "./components/Header";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { AccountPage } from "./pages/AccountPage";
 import { EventDetailPage } from "./pages/EventDetailPage";
 import { EventListPage } from "./pages/EventListPage";
 import { LoginPage } from "./pages/LoginPage";
 import { MyOrdersPage } from "./pages/MyOrdersPage";
+import { NotFoundPage } from "./pages/NotFoundPage";
 import { OAuth2RedirectPage } from "./pages/OAuth2RedirectPage";
 import { SignupPage } from "./pages/SignupPage";
 
@@ -27,8 +30,18 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/account"
+            element={
+              <ProtectedRoute>
+                <AccountPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
+      <Footer />
     </>
   );
 }

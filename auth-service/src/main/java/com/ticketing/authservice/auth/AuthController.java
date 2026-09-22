@@ -1,10 +1,12 @@
 package com.ticketing.authservice.auth;
 
+import com.ticketing.authservice.auth.dto.ChangePasswordRequest;
 import com.ticketing.authservice.auth.dto.LoginRequest;
 import com.ticketing.authservice.auth.dto.LoginResponse;
 import com.ticketing.authservice.auth.dto.MeResponse;
 import com.ticketing.authservice.auth.dto.SignupRequest;
 import com.ticketing.authservice.auth.dto.SignupResponse;
+import com.ticketing.authservice.auth.dto.UpdateProfileRequest;
 import com.ticketing.authservice.common.ApiException;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -13,6 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -54,5 +57,16 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<MeResponse> me() {
         return ResponseEntity.ok(authService.getMe(SecurityUtil.getCurrentUserId()));
+    }
+
+    @PatchMapping("/me")
+    public ResponseEntity<MeResponse> updateProfile(@Valid @RequestBody UpdateProfileRequest request) {
+        return ResponseEntity.ok(authService.updateProfile(SecurityUtil.getCurrentUserId(), request));
+    }
+
+    @PatchMapping("/password")
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        authService.changePassword(SecurityUtil.getCurrentUserId(), request);
+        return ResponseEntity.noContent().build();
     }
 }

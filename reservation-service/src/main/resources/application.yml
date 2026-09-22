@@ -25,9 +25,6 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
-cors:
-  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
-
 # Verification only here (auth-service is the one that mints tokens) - secret must match
 # auth-service's/backend's exactly since that's what makes a JWT it signs valid here too.
 jwt:

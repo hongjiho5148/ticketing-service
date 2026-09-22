@@ -7,4 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface EventRepository extends JpaRepository<Event, Long> {
 
     Page<Event> findByStatus(EventStatus status, Pageable pageable);
+
+    Page<Event> findByTitleContainingIgnoreCase(String keyword, Pageable pageable);
+
+    Page<Event> findByStatusAndTitleContainingIgnoreCase(EventStatus status, String keyword, Pageable pageable);
 }

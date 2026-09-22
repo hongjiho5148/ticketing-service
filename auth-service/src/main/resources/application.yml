@@ -62,9 +62,6 @@ spring:
             user-info-uri: https://kapi.kakao.com/v2/user/me
             user-name-attribute: id
 
-cors:
-  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
-
 app:
   frontend-url: ${APP_FRONTEND_URL:http://localhost:5173}
   backend-url: ${APP_BACKEND_URL:http://localhost:8080}

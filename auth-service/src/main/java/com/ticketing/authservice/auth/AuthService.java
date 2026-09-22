@@ -1,10 +1,12 @@
 package com.ticketing.authservice.auth;
 
+import com.ticketing.authservice.auth.dto.ChangePasswordRequest;
 import com.ticketing.authservice.auth.dto.LoginRequest;
 import com.ticketing.authservice.auth.dto.LoginResponse;
 import com.ticketing.authservice.auth.dto.MeResponse;
 import com.ticketing.authservice.auth.dto.SignupRequest;
 import com.ticketing.authservice.auth.dto.SignupResponse;
+import com.ticketing.authservice.auth.dto.UpdateProfileRequest;
 import com.ticketing.authservice.common.ApiException;
 import com.ticketing.authservice.common.ErrorCode;
 import com.ticketing.authservice.user.AuthProvider;
@@ -81,5 +83,24 @@ public class AuthService {
     public MeResponse getMe(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
         return MeResponse.from(user);
+    }
+
+    @Transactional
+    public MeResponse updateProfile(Long userId, UpdateProfileRequest request) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
+        user.updateName(request.name());
+        return MeResponse.from(user);
+    }
+
+    @Transactional
+    public void changePassword(Long userId, ChangePasswordRequest request) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
+        if (user.getProvider() != AuthProvider.LOCAL) {
+            throw new ApiException(ErrorCode.OAUTH_ACCOUNT_NO_PASSWORD);
+        }
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
+            throw new ApiException(ErrorCode.INVALID_CREDENTIALS);
+        }
+        user.changePassword(passwordEncoder.encode(request.newPassword()));
     }
 }

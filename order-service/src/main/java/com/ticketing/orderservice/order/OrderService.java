@@ -148,6 +148,6 @@ public class OrderService {
         List<OrderHistoryResponse> content = orders.stream()
                 .map(order -> OrderHistoryResponse.from(order, seatsById.get(order.getSeatId())))
                 .toList();
-        return new OrderHistoryListResponse(content);
+        return new OrderHistoryListResponse(content, page.getTotalElements());
     }
 }

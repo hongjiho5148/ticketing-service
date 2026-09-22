@@ -1099,3 +1099,259 @@ button:disabled {
     position: static;
   }
 }
+
+/* ---------- Toast ---------- */
+
+.toast-container {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 200;
+}
+
+.toast {
+  padding: 12px 18px;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  font-size: 0.88rem;
+  color: #fff;
+  animation: toast-in 0.18s ease;
+  max-width: 320px;
+}
+
+.toast-success {
+  background: var(--grade-s-dark);
+}
+
+.toast-error {
+  background: var(--danger);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------- Confirm dialog / buttons ---------- */
+
+.modal-confirm {
+  max-width: 380px;
+}
+
+.modal-confirm h3 {
+  margin: 0 0 8px;
+}
+
+.modal-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.btn-danger {
+  background: var(--danger);
+}
+
+/* ---------- Skeleton ---------- */
+
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-soft) 25%, var(--border-soft) 37%, var(--surface-soft) 63%);
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+.event-card-skeleton {
+  pointer-events: none;
+}
+
+.skeleton-poster {
+  height: 160px;
+  border-radius: 0;
+}
+
+.skeleton-line {
+  height: 14px;
+  margin: 10px 0;
+}
+
+.skeleton-line-lg {
+  height: 20px;
+  width: 70%;
+}
+
+.skeleton-line-sm {
+  width: 40%;
+}
+
+.skeleton-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ---------- Error boundary / 404 ---------- */
+
+.error-boundary,
+.not-found {
+  max-width: 480px;
+  margin: 80px auto;
+  text-align: center;
+}
+
+.not-found-code {
+  font-size: 3.2rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin: 0;
+}
+
+.error-boundary p,
+.not-found p {
+  color: var(--text-muted);
+  margin: 10px 0 22px;
+}
+
+/* ---------- Footer ---------- */
+
+.footer {
+  max-width: 1080px;
+  margin: 60px auto 0;
+  padding: 24px 20px 40px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-faint);
+  font-size: 0.82rem;
+}
+
+.footer-links {
+  display: flex;
+  gap: 18px;
+}
+
+.footer-links a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.footer-links a:hover {
+  text-decoration: underline;
+}
+
+.footer-copyright {
+  margin: 0;
+}
+
+/* ---------- Event list toolbar ---------- */
+
+.event-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 22px;
+}
+
+.event-search {
+  flex: 1 1 220px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.92rem;
+  font-family: inherit;
+  background: var(--surface);
+}
+
+.event-search:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.event-filter-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.filter-chip {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.filter-chip.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+
+.event-sort {
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.86rem;
+  font-family: inherit;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.load-more-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 26px;
+}
+
+/* ---------- Account page ---------- */
+
+.account-page {
+  max-width: 480px;
+}
+
+.account-section {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.account-section:first-of-type {
+  margin-top: 20px;
+  padding-top: 0;
+  border-top: none;
+}
+
+.account-section h2 {
+  font-size: 1.05rem;
+  margin: 0 0 14px;
+}
+
+.account-page input:disabled {
+  color: var(--text-faint);
+  background: var(--surface-soft);
+}

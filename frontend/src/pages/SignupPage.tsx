@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { SocialLoginButtons } from "../components/SocialLoginButtons";
 import { useAuth } from "../context/AuthContext";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { extractErrorMessage } from "../utils/error";
 import { getPasswordStrength } from "../utils/passwordStrength";
 
@@ -9,6 +10,7 @@ const EMAIL_DOMAINS = ["naver.com", "gmail.com", "daum.net", "kakao.com", "nate.
 const CUSTOM_DOMAIN = "custom";
 
 export function SignupPage() {
+  useDocumentTitle("회원가입");
   const { signup } = useAuth();
   const [emailLocal, setEmailLocal] = useState("");
   const [emailDomain, setEmailDomain] = useState("");

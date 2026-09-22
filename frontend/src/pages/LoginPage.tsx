@@ -2,9 +2,11 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { SocialLoginButtons } from "../components/SocialLoginButtons";
 import { useAuth } from "../context/AuthContext";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { extractErrorMessage } from "../utils/error";
 
 export function LoginPage() {
+  useDocumentTitle("로그인");
   const { login } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();

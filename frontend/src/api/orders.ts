@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import type { Order, OrderHistoryItem, PaymentResult } from "../types";
+import type { Order, OrderHistoryListResponse, PaymentResult } from "../types";
 
 export function createOrder(reservationId: number) {
   return apiClient.post<Order>("/orders", { reservationId }).then((res) => res.data);
@@ -14,7 +14,5 @@ export function cancelOrder(orderId: number) {
 }
 
 export function fetchOrders(params: { page?: number; size?: number } = {}) {
-  return apiClient
-    .get<{ content: OrderHistoryItem[] }>("/orders", { params })
-    .then((res) => res.data.content);
+  return apiClient.get<OrderHistoryListResponse>("/orders", { params }).then((res) => res.data);
 }

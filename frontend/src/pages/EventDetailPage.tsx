@@ -5,6 +5,9 @@ import { cancelReservation, createReservation } from "../api/reservations";
 import { createOrder, payOrder } from "../api/orders";
 import { extractErrorMessage } from "../utils/error";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { VenueSeatMap } from "../components/VenueSeatMap";
 import { SeatGrid } from "../components/SeatGrid";
 import { QueueWaitingRoom } from "../components/QueueWaitingRoom";
@@ -18,6 +21,7 @@ const GRADE_ORDER = ["VIP", "R", "S"];
 export function EventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>();
   const { user } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
 
   const [event, setEvent] = useState<EventDetail | null>(null);
@@ -29,6 +33,9 @@ export function EventDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
+
+  useDocumentTitle(event ? event.title : "이벤트 상세");
 
   useEffect(() => {
     if (!eventId) return;
@@ -77,12 +84,14 @@ export function EventDetailPage() {
 
   async function handleCancelReservation() {
     if (!reservation) return;
+    setIsConfirmingCancel(false);
     setIsProcessing(true);
     try {
       await cancelReservation(reservation.reservationId);
       setReservation(null);
       setSelectedSeat(null);
       setOrder(null);
+      showToast("예약이 취소됐어요.");
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
@@ -250,7 +259,12 @@ export function EventDetailPage() {
               <button type="button" onClick={handleCheckout} disabled={isProcessing}>
                 주문 및 결제하기
               </button>
-              <button type="button" className="btn-secondary" onClick={handleCancelReservation} disabled={isProcessing}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setIsConfirmingCancel(true)}
+                disabled={isProcessing}
+              >
                 예약 취소
               </button>
             </div>
@@ -259,6 +273,17 @@ export function EventDetailPage() {
           <p className="refund-policy">공연 시작 24시간 전까지 전액 환불 가능합니다.</p>
         </div>
       </div>
+
+      {isConfirmingCancel && (
+        <ConfirmDialog
+          title="예약 취소"
+          message="좌석 예약을 취소할까요?"
+          confirmLabel="취소하기"
+          danger
+          onConfirm={handleCancelReservation}
+          onCancel={() => setIsConfirmingCancel(false)}
+        />
+      )}
     </div>
   );
 }

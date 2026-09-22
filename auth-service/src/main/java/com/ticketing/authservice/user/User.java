@@ -91,4 +91,12 @@ public class User {
         this.emailVerificationToken = null;
         this.emailVerificationExpiresAt = null;
     }
+
+    public void updateName(String name) {
+        this.name = name;
+    }
+
+    public void changePassword(String encodedPassword) {
+        this.password = encodedPassword;
+    }
 }

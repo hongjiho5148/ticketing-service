@@ -4,11 +4,14 @@ export type ReservationStatus = "HOLDING" | "CONFIRMED" | "CANCELLED" | "EXPIRED
 export type OrderStatus = "PENDING" | "PAID" | "FAILED" | "CANCELLED";
 export type PaymentStatus = "SUCCESS" | "FAILED";
 
+export type AuthProvider = "LOCAL" | "GOOGLE" | "KAKAO";
+
 export interface User {
   id: number;
   // Kakao logins don't grant an email scope, so this can genuinely be null.
   email: string | null;
   name: string;
+  provider: AuthProvider;
 }
 
 export interface LoginResponse {
@@ -100,6 +103,11 @@ export interface OrderHistoryItem {
   totalPrice: number;
   status: OrderStatus;
   createdAt: string;
+}
+
+export interface OrderHistoryListResponse {
+  content: OrderHistoryItem[];
+  totalElements: number;
 }
 
 export type QueueStatus = "WAITING" | "PASSED";
