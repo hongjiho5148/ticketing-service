@@ -64,7 +64,8 @@ public class OrderService {
             throw new ApiException(ErrorCode.RESERVATION_NOT_CANCELLABLE);
         }
         SeatDetailResponse seat = eventServiceClient.getSeat(reservation.seatId());
-        Orders order = new Orders(userId, reservation.reservationId(), reservation.seatId(), seat.price());
+        Orders order = new Orders(
+                userId, reservation.reservationId(), reservation.seatId(), seat.eventStartAt(), seat.price());
         return OrderResponse.from(orderRepository.save(order));
     }
 

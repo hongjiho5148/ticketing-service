@@ -306,6 +306,33 @@ button:disabled {
   font-size: 0.88rem;
 }
 
+.scan-log {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.scan-result {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.88rem;
+}
+
+.scan-result.success {
+  background: var(--grade-s-soft);
+  color: var(--grade-s-dark);
+}
+
+.scan-result.success strong {
+  font-size: 0.95rem;
+}
+
 .form-divider {
   display: flex;
   align-items: center;

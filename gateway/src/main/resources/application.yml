@@ -44,6 +44,15 @@ spring:
               uri: ${ORDER_SERVICE_URI:http://order-service:8080}
               predicates:
                 - Path=/api/orders/**
+            # order-service's admin endpoints (ticket scan, and more to come - order summary,
+            # coupons) live under /api/admin/**, a sibling of /api/orders/** rather than a
+            # subpath of it, so they need their own route. event-service's admin endpoints don't
+            # need one of their own since they're nested under /api/events/admin/**, already
+            # covered by the event-service route above.
+            - id: order-service-admin
+              uri: ${ORDER_SERVICE_URI:http://order-service:8080}
+              predicates:
+                - Path=/api/admin/**
 
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}

@@ -35,6 +35,12 @@ public class Orders {
     @Column(name = "seat_id", nullable = false)
     private Long seatId;
 
+    // Denormalized from event-service at order-creation time too, for the same reason - lets the
+    // QR-ticket issuance sweeper find "paid orders whose show starts soon" with a local query
+    // instead of calling event-service once per candidate order on every tick.
+    @Column(name = "event_start_at", nullable = false)
+    private LocalDateTime eventStartAt;
+
     @Column(nullable = false)
     private Integer totalPrice;
 
@@ -46,10 +52,11 @@ public class Orders {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    public Orders(Long userId, Long reservationId, Long seatId, Integer totalPrice) {
+    public Orders(Long userId, Long reservationId, Long seatId, LocalDateTime eventStartAt, Integer totalPrice) {
         this.userId = userId;
         this.reservationId = reservationId;
         this.seatId = seatId;
+        this.eventStartAt = eventStartAt;
         this.totalPrice = totalPrice;
         this.status = OrderStatus.PENDING;
     }
