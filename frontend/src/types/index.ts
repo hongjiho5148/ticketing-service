@@ -5,6 +5,7 @@ export type OrderStatus = "PENDING" | "PAID" | "FAILED" | "CANCELLED";
 export type PaymentStatus = "SUCCESS" | "FAILED";
 
 export type AuthProvider = "LOCAL" | "GOOGLE" | "KAKAO";
+export type Role = "USER" | "ADMIN";
 
 export interface User {
   id: number;
@@ -12,6 +13,7 @@ export interface User {
   email: string | null;
   name: string;
   provider: AuthProvider;
+  role: Role;
 }
 
 export interface LoginResponse {

@@ -1,4 +1,4 @@
-package com.ticketing.orderservice.auth;
+package com.ticketing.eventservice.auth;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -8,7 +8,7 @@ import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-/** Verification only - order-service never mints tokens, only checks ones auth-service issued. */
+/** Verification only - event-service never mints tokens, only checks ones auth-service issued. */
 @Component
 public class JwtTokenProvider {
 

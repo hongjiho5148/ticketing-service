@@ -1,4 +1,4 @@
-package com.ticketing.authservice.auth;
+package com.ticketing.eventservice.auth;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

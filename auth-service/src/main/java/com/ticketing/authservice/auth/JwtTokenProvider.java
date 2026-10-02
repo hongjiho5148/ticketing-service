@@ -1,5 +1,6 @@
 package com.ticketing.authservice.auth;
 
+import com.ticketing.authservice.user.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
@@ -25,24 +26,25 @@ public class JwtTokenProvider {
         this.refreshTokenExpirationMs = refreshTokenExpirationMs;
     }
 
-    public String createAccessToken(Long userId, String email) {
-        return createToken(userId, email, accessTokenExpirationMs);
+    public String createAccessToken(Long userId, String email, Role role) {
+        return createToken(userId, email, role, accessTokenExpirationMs);
     }
 
-    public String createRefreshToken(Long userId, String email) {
-        return createToken(userId, email, refreshTokenExpirationMs);
+    public String createRefreshToken(Long userId, String email, Role role) {
+        return createToken(userId, email, role, refreshTokenExpirationMs);
     }
 
     public long getAccessTokenExpirationSeconds() {
         return accessTokenExpirationMs / 1000;
     }
 
-    private String createToken(Long userId, String email, long expirationMs) {
+    private String createToken(Long userId, String email, Role role, long expirationMs) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + expirationMs);
         return Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim("email", email)
+                .claim("role", role.name())
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(key)
@@ -51,6 +53,10 @@ public class JwtTokenProvider {
 
     public Long getUserId(String token) {
         return Long.valueOf(parseClaims(token).getSubject());
+    }
+
+    public String getRole(String token) {
+        return parseClaims(token).get("role", String.class);
     }
 
     public boolean isValid(String token) {
