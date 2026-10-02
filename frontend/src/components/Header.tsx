@@ -23,6 +23,7 @@ export function Header() {
           <>
             <Link to="/orders">내 주문</Link>
             <Link to="/account">마이페이지</Link>
+            {user.role === "ADMIN" && <Link to="/admin/scan">입장 스캔</Link>}
             <span className="header-user">{user.name}님</span>
             <button type="button" onClick={() => setIsConfirmingLogout(true)}>
               로그아웃

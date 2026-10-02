@@ -112,6 +112,22 @@ export interface OrderHistoryListResponse {
   totalElements: number;
 }
 
+export type TicketStatus = "ISSUED" | "USED";
+
+export interface Ticket {
+  ticketId: number;
+  qrToken: string;
+  status: TicketStatus;
+  issuedAt: string;
+}
+
+export interface ScanResult {
+  ticketId: number;
+  orderId: number;
+  seatId: number;
+  usedAt: string;
+}
+
 export type QueueStatus = "WAITING" | "PASSED";
 
 export interface QueueEnterResult {

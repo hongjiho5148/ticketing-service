@@ -1,4 +1,5 @@
 import { Route, Routes } from "react-router-dom";
+import { AdminRoute } from "./components/AdminRoute";
 import { Footer } from "./components/Footer";
 import { Header } from "./components/Header";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -10,6 +11,7 @@ import { MyOrdersPage } from "./pages/MyOrdersPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { OAuth2RedirectPage } from "./pages/OAuth2RedirectPage";
 import { SignupPage } from "./pages/SignupPage";
+import { StaffScanPage } from "./pages/StaffScanPage";
 
 function App() {
   return (
@@ -36,6 +38,14 @@ function App() {
               <ProtectedRoute>
                 <AccountPage />
               </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/scan"
+            element={
+              <AdminRoute>
+                <StaffScanPage />
+              </AdminRoute>
             }
           />
           <Route path="*" element={<NotFoundPage />} />

@@ -16,7 +16,10 @@ public enum ErrorCode {
     REFUND_PERIOD_EXPIRED(HttpStatus.CONFLICT, "환불 가능 기간이 지났습니다. 공연 시작 24시간 전까지만 취소할 수 있어요."),
     REFUND_FAILED(HttpStatus.BAD_GATEWAY, "환불 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."),
     EVENT_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "좌석/이벤트 정보를 가져올 수 없습니다. 잠시 후 다시 시도해주세요."),
-    RESERVATION_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "예약 정보를 가져올 수 없습니다. 잠시 후 다시 시도해주세요.");
+    RESERVATION_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "예약 정보를 가져올 수 없습니다. 잠시 후 다시 시도해주세요."),
+    TICKET_NOT_ISSUED_YET(HttpStatus.NOT_FOUND, "아직 발급되지 않은 입장권입니다. 공연 시작 2시간 전부터 발급됩니다."),
+    TICKET_INVALID(HttpStatus.BAD_REQUEST, "유효하지 않은 QR 코드입니다."),
+    TICKET_ALREADY_USED(HttpStatus.CONFLICT, "이미 사용된 입장권입니다.");
 
     private final HttpStatus status;
     private final String message;

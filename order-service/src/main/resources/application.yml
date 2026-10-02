@@ -31,6 +31,16 @@ portone:
   api-secret: ${PORTONE_API_SECRET:}
   api-base-url: https://api.portone.io
 
+ticket:
+  issuance-sweep-cron: "0 * * * * *"
+  # How far ahead of the show the sweeper starts issuing QR tickets for paid orders.
+  issuance-lead-hours: 2
+  qr-token:
+    # Deliberately a different secret from jwt.secret above - a QR shown at the gate and a login
+    # token are never interchangeable even if one leaks.
+    secret: ${QR_TOKEN_SECRET:local-development-qr-secret-key-change-me-please-32bytes-min}
+    expiration-ms: ${QR_TOKEN_EXPIRATION_MS:21600000}
+
 event:
   service:
     uri: ${EVENT_SERVICE_URI:http://event-service:8080}
