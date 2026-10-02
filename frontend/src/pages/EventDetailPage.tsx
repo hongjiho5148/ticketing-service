@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { fetchEventDetail, fetchEventSeats } from "../api/events";
 import { cancelReservation, createReservation } from "../api/reservations";
 import { createOrder, payOrder } from "../api/orders";
+import { createReview, fetchReviews } from "../api/reviews";
+import { addToWishlist, fetchWishlist, removeFromWishlist } from "../api/wishlist";
 import { extractErrorMessage } from "../utils/error";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
@@ -14,7 +16,7 @@ import { QueueWaitingRoom } from "../components/QueueWaitingRoom";
 import { dDayLabel, formatDateTime } from "../utils/date";
 import { posterGlyph, posterThemeClass } from "../utils/poster";
 import { requestCardPayment } from "../utils/portone";
-import type { EventDetail, Order, Reservation, Seat } from "../types";
+import type { EventDetail, Order, Reservation, ReviewListResponse, Seat } from "../types";
 
 const GRADE_ORDER = ["VIP", "R", "S"];
 
@@ -35,6 +37,15 @@ export function EventDetailPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
 
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [isTogglingWishlist, setIsTogglingWishlist] = useState(false);
+
+  const [reviews, setReviews] = useState<ReviewListResponse | null>(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewContent, setReviewContent] = useState("");
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+
   useDocumentTitle(event ? event.title : "이벤트 상세");
 
   useEffect(() => {
@@ -45,7 +56,51 @@ export function EventDetailPage() {
     fetchEventSeats(Number(eventId))
       .then(setSeats)
       .catch((err) => setError(extractErrorMessage(err)));
+    fetchReviews(Number(eventId)).then(setReviews).catch(() => undefined);
   }, [eventId]);
+
+  useEffect(() => {
+    if (!user || !eventId) return;
+    fetchWishlist()
+      .then((list) => setIsWishlisted(list.some((e) => e.id === Number(eventId))))
+      .catch(() => undefined);
+  }, [user, eventId]);
+
+  async function toggleWishlist() {
+    if (!event) return;
+    setIsTogglingWishlist(true);
+    try {
+      if (isWishlisted) {
+        await removeFromWishlist(event.id);
+        setIsWishlisted(false);
+      } else {
+        await addToWishlist(event.id);
+        setIsWishlisted(true);
+      }
+    } catch (err) {
+      showToast(extractErrorMessage(err), "error");
+    } finally {
+      setIsTogglingWishlist(false);
+    }
+  }
+
+  async function handleSubmitReview(e: FormEvent) {
+    e.preventDefault();
+    if (!event) return;
+    setReviewError(null);
+    setIsSubmittingReview(true);
+    try {
+      await createReview(event.id, reviewRating, reviewContent);
+      setReviewContent("");
+      setReviewRating(5);
+      showToast("후기가 등록됐어요.");
+      fetchReviews(event.id).then(setReviews).catch(() => undefined);
+    } catch (err) {
+      setReviewError(extractErrorMessage(err));
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  }
 
   const gradeLegend = useMemo(() => {
     if (!event) return [];
@@ -172,7 +227,17 @@ export function EventDetailPage() {
         <span className="poster-glyph">{posterGlyph(event.title)}</span>
         <div className="detail-hero-content">
           {event.status !== "CLOSED" && <span className="detail-hero-dday">{dDayLabel(event.startAt)}</span>}
-          <h1>{event.title}</h1>
+          <div className="detail-hero-title-row">
+            <h1>{event.title}</h1>
+            <button
+              type="button"
+              className={`wishlist-toggle ${isWishlisted ? "active" : ""}`}
+              onClick={toggleWishlist}
+              disabled={isTogglingWishlist}
+            >
+              {isWishlisted ? "♥ 찜 완료" : "♡ 찜하기"}
+            </button>
+          </div>
           <div className="detail-hero-meta">
             <span>📍 {event.venue}</span>
             <span>🗓 {formatDateTime(event.startAt)}</span>
@@ -273,6 +338,54 @@ export function EventDetailPage() {
           <p className="refund-policy">공연 시작 24시간 전까지 전액 환불 가능합니다.</p>
         </div>
       </div>
+
+      <section className="detail-reviews">
+        <h2 className="detail-section-title">
+          관람 후기
+          {reviews?.averageRating != null && ` · 평균 ${reviews.averageRating.toFixed(1)}점`}
+        </h2>
+        <form onSubmit={handleSubmitReview} className="form review-form">
+          <label>
+            평점
+            <select value={reviewRating} onChange={(e) => setReviewRating(Number(e.target.value))}>
+              {[5, 4, 3, 2, 1].map((n) => (
+                <option key={n} value={n}>
+                  {n}점
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            후기
+            <textarea
+              value={reviewContent}
+              onChange={(e) => setReviewContent(e.target.value)}
+              maxLength={1000}
+              rows={3}
+              placeholder="관람 경험을 남겨주세요 (결제 완료한 공연만 작성 가능해요)"
+              required
+            />
+          </label>
+          {reviewError && <p className="form-error">{reviewError}</p>}
+          <button type="submit" disabled={isSubmittingReview}>
+            {isSubmittingReview ? "등록 중..." : "후기 작성"}
+          </button>
+        </form>
+
+        {reviews && reviews.content.length > 0 ? (
+          <ul className="review-list">
+            {reviews.content.map((review) => (
+              <li key={review.id} className="review-item">
+                <span className="review-rating">{"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</span>
+                <p>{review.content}</p>
+                <span className="review-date">{new Date(review.createdAt).toLocaleDateString("ko-KR")}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="page-status">아직 후기가 없어요.</p>
+        )}
+      </section>
 
       {isConfirmingCancel && (
         <ConfirmDialog

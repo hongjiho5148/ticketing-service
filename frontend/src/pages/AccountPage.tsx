@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { changePassword, updateProfile } from "../api/auth";
+import { fetchNotificationPreference, updateNotificationPreference } from "../api/notifications";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
@@ -28,7 +29,29 @@ export function AccountPage() {
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const passwordStrength = getPasswordStrength(newPassword);
 
+  const [emailOptIn, setEmailOptIn] = useState(true);
+  const [isSavingNotificationPref, setIsSavingNotificationPref] = useState(false);
+
+  useEffect(() => {
+    fetchNotificationPreference()
+      .then((pref) => setEmailOptIn(pref.emailOptIn))
+      .catch(() => undefined);
+  }, []);
+
   if (!user) return null;
+
+  async function handleToggleEmailOptIn() {
+    const next = !emailOptIn;
+    setIsSavingNotificationPref(true);
+    try {
+      const pref = await updateNotificationPreference(next);
+      setEmailOptIn(pref.emailOptIn);
+    } catch (err) {
+      showToast(extractErrorMessage(err), "error");
+    } finally {
+      setIsSavingNotificationPref(false);
+    }
+  }
 
   async function handleProfileSubmit(e: FormEvent) {
     e.preventDefault();
@@ -163,6 +186,19 @@ export function AccountPage() {
           <p className="form-notice">{PROVIDER_LABEL[user.provider] ?? user.provider} 계정으로 로그인 중이라 비밀번호를 별도로 관리하지 않아요.</p>
         </section>
       )}
+
+      <section className="account-section">
+        <h2>알림 설정</h2>
+        <label className="notification-pref-row">
+          <input type="checkbox" checked={emailOptIn} onChange={handleToggleEmailOptIn} disabled={isSavingNotificationPref} />
+          공연 임박 알림, QR 발급 알림을 이메일로 받기
+        </label>
+      </section>
+
+      <section className="account-section">
+        <h2>포인트 · 쿠폰</h2>
+        <p className="form-notice">준비 중이에요. 곧 만나보실 수 있어요.</p>
+      </section>
     </div>
   );
 }

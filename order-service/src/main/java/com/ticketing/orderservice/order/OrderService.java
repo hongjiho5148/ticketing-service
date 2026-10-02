@@ -65,7 +65,12 @@ public class OrderService {
         }
         SeatDetailResponse seat = eventServiceClient.getSeat(reservation.seatId());
         Orders order = new Orders(
-                userId, reservation.reservationId(), reservation.seatId(), seat.eventStartAt(), seat.price());
+                userId,
+                reservation.reservationId(),
+                reservation.seatId(),
+                seat.eventStartAt(),
+                seat.eventId(),
+                seat.price());
         return OrderResponse.from(orderRepository.save(order));
     }
 

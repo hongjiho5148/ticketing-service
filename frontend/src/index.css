@@ -306,6 +306,75 @@ button:disabled {
   font-size: 0.88rem;
 }
 
+.ticket-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ticket-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+.ticket-card-main h3 {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+}
+
+.ticket-card-meta {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin: 0 0 6px;
+}
+
+.ticket-card-side {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.ticket-status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.ticket-status-badge.status-issued {
+  background: var(--grade-s-soft);
+  color: var(--grade-s-dark);
+}
+
+.ticket-status-badge.status-used {
+  background: var(--sold-bg);
+  color: var(--sold-text);
+}
+
+.ticket-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+}
+
+.ticket-qr img {
+  border-radius: var(--radius-sm);
+}
+
 .scan-log {
   display: flex;
   flex-direction: column;
@@ -417,6 +486,11 @@ button:disabled {
   display: block;
   text-decoration: none;
   color: var(--text);
+}
+
+.wishlist-remove {
+  width: 100%;
+  border-radius: 0;
 }
 
 .event-card-poster {
@@ -621,8 +695,32 @@ button:disabled {
 
 .detail-hero h1 {
   font-size: 1.7rem;
-  margin: 0 0 10px;
+  margin: 0;
   line-height: 1.3;
+}
+
+.detail-hero-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.wishlist-toggle {
+  flex-shrink: 0;
+  background: var(--surface);
+  color: var(--text-muted);
+  border: none;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.wishlist-toggle.active {
+  color: var(--danger);
 }
 
 .detail-hero-meta {
@@ -654,6 +752,45 @@ button:disabled {
   padding: 18px 20px;
   margin: 0 0 28px;
   box-shadow: var(--shadow-sm);
+}
+
+.detail-reviews {
+  margin-top: 36px;
+}
+
+.review-form {
+  margin-bottom: 20px;
+}
+
+.review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.review-item {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  box-shadow: var(--shadow-sm);
+}
+
+.review-rating {
+  color: var(--grade-r-dark);
+  letter-spacing: 1px;
+}
+
+.review-item p {
+  margin: 6px 0;
+  line-height: 1.5;
+}
+
+.review-date {
+  color: var(--text-faint);
+  font-size: 0.8rem;
 }
 
 .refund-policy {
@@ -1376,6 +1513,19 @@ button:disabled {
 .account-section h2 {
   font-size: 1.05rem;
   margin: 0 0 14px;
+}
+
+.notification-pref-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.92rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.notification-pref-row input {
+  width: auto;
 }
 
 .account-page input:disabled {

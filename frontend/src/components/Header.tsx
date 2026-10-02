@@ -22,6 +22,8 @@ export function Header() {
         {user ? (
           <>
             <Link to="/orders">내 주문</Link>
+            <Link to="/tickets">내 티켓함</Link>
+            <Link to="/wishlist">찜한 공연</Link>
             <Link to="/account">마이페이지</Link>
             {user.role === "ADMIN" && <Link to="/admin/scan">입장 스캔</Link>}
             <span className="header-user">{user.name}님</span>

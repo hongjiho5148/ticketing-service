@@ -11,4 +11,9 @@ public interface OrderRepository extends JpaRepository<Orders, Long> {
     Page<Orders> findByUserId(Long userId, Pageable pageable);
 
     List<Orders> findByStatusAndEventStartAtBetween(OrderStatus status, LocalDateTime from, LocalDateTime to);
+
+    List<Orders> findByStatusAndReminderSentAtIsNullAndEventStartAtBetween(
+            OrderStatus status, LocalDateTime from, LocalDateTime to);
+
+    boolean existsByUserIdAndEventIdAndStatus(Long userId, Long eventId, OrderStatus status);
 }

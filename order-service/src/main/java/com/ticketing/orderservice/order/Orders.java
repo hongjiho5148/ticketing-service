@@ -41,6 +41,17 @@ public class Orders {
     @Column(name = "event_start_at", nullable = false)
     private LocalDateTime eventStartAt;
 
+    // Also denormalized from event-service at creation time - lets event-service check "does this
+    // user have a paid order for this event" (review-write eligibility) via one local query here
+    // instead of resolving every order's seatId back to an eventId itself.
+    @Column(name = "event_id", nullable = false)
+    private Long eventId;
+
+    // Set once the D-1 reminder mail goes out, so ReminderSweeper's every-minute tick doesn't
+    // re-send it on every pass through the "within 24-25h of the show" window.
+    @Column(name = "reminder_sent_at")
+    private LocalDateTime reminderSentAt;
+
     @Column(nullable = false)
     private Integer totalPrice;
 
@@ -52,17 +63,23 @@ public class Orders {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    public Orders(Long userId, Long reservationId, Long seatId, LocalDateTime eventStartAt, Integer totalPrice) {
+    public Orders(
+            Long userId, Long reservationId, Long seatId, LocalDateTime eventStartAt, Long eventId, Integer totalPrice) {
         this.userId = userId;
         this.reservationId = reservationId;
         this.seatId = seatId;
         this.eventStartAt = eventStartAt;
+        this.eventId = eventId;
         this.totalPrice = totalPrice;
         this.status = OrderStatus.PENDING;
     }
 
     public void markPaid() {
         this.status = OrderStatus.PAID;
+    }
+
+    public void markReminderSent() {
+        this.reminderSentAt = LocalDateTime.now();
     }
 
     public void markFailed() {

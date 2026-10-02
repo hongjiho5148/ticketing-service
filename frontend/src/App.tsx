@@ -8,10 +8,12 @@ import { EventDetailPage } from "./pages/EventDetailPage";
 import { EventListPage } from "./pages/EventListPage";
 import { LoginPage } from "./pages/LoginPage";
 import { MyOrdersPage } from "./pages/MyOrdersPage";
+import { MyTicketsPage } from "./pages/MyTicketsPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { OAuth2RedirectPage } from "./pages/OAuth2RedirectPage";
 import { SignupPage } from "./pages/SignupPage";
 import { StaffScanPage } from "./pages/StaffScanPage";
+import { WishlistPage } from "./pages/WishlistPage";
 
 function App() {
   return (
@@ -37,6 +39,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <AccountPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tickets"
+            element={
+              <ProtectedRoute>
+                <MyTicketsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/wishlist"
+            element={
+              <ProtectedRoute>
+                <WishlistPage />
               </ProtectedRoute>
             }
           />

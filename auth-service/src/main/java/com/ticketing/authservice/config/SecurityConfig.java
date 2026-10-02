@@ -59,6 +59,7 @@ public class SecurityConfig {
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/verify-email").permitAll()
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
+                        .requestMatchers("/internal/**").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(exception -> exception.authenticationEntryPoint((request, response, authException) -> {
                     response.setStatus(ErrorCode.UNAUTHORIZED.getStatus().value());

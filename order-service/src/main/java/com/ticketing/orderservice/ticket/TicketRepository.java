@@ -1,6 +1,7 @@
 package com.ticketing.orderservice.ticket;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -14,6 +15,8 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     Optional<Ticket> findByOrderId(Long orderId);
 
     Optional<Ticket> findByTokenJti(String tokenJti);
+
+    List<Ticket> findByOrder_UserIdOrderByIssuedAtDesc(Long userId);
 
     /**
      * Atomic ISSUED-&gt;USED transition at the DB level: only one of two concurrent scans of the
