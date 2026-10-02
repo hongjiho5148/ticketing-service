@@ -36,3 +36,7 @@ redis:
 
 seat:
   hold-expiry-sweep-cron: "0 * * * * *"
+
+order:
+  service:
+    uri: ${ORDER_SERVICE_URI:http://order-service:8080}

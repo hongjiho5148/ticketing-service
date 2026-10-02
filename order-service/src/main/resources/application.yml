@@ -19,6 +19,17 @@ spring:
       hibernate:
         format_sql: true
     show-sql: true
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 # Verification only here (auth-service is the one that mints tokens) - secret must match
 # auth-service's/backend's exactly since that's what makes a JWT it signs valid here too.
@@ -41,6 +52,12 @@ ticket:
     secret: ${QR_TOKEN_SECRET:local-development-qr-secret-key-change-me-please-32bytes-min}
     expiration-ms: ${QR_TOKEN_EXPIRATION_MS:21600000}
 
+reminder:
+  sweep-cron: "0 * * * * *"
+  # D-1 reminder window: orders whose show starts between 24h and (24h + window) from now.
+  lead-hours: 24
+  window-hours: 1
+
 event:
   service:
     uri: ${EVENT_SERVICE_URI:http://event-service:8080}
@@ -48,3 +65,7 @@ event:
 reservation:
   service:
     uri: ${RESERVATION_SERVICE_URI:http://reservation-service:8080}
+
+auth:
+  service:
+    uri: ${AUTH_SERVICE_URI:http://auth-service:8080}

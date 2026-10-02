@@ -27,6 +27,12 @@ spring:
               uri: ${EVENT_SERVICE_URI:http://event-service:8080}
               predicates:
                 - Path=/api/events/**
+            # Wishlist is a sibling of /api/events/** (not /api/events/{id}/wishlist), same reason
+            # order-service-admin below needs its own route rather than riding another service's.
+            - id: event-service-wishlist
+              uri: ${EVENT_SERVICE_URI:http://event-service:8080}
+              predicates:
+                - Path=/api/wishlist/**
             - id: queue-service
               # Through nginx's backend load-balancer port (8081), not straight to backend:8080 -
               # backend is the one service that actually gets scaled, and this gateway's own HTTP

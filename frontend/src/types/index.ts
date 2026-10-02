@@ -128,6 +128,39 @@ export interface ScanResult {
   usedAt: string;
 }
 
+export interface TicketHistoryItem {
+  ticketId: number;
+  orderId: number;
+  eventId: number;
+  eventTitle: string;
+  venue: string;
+  grade: string;
+  section: string;
+  rowNo: number;
+  seatNumber: number;
+  seatNo: string;
+  eventStartAt: string;
+  status: TicketStatus;
+  issuedAt: string;
+}
+
+export interface Review {
+  id: number;
+  rating: number;
+  content: string;
+  createdAt: string;
+}
+
+export interface ReviewListResponse {
+  content: Review[];
+  totalElements: number;
+  averageRating: number | null;
+}
+
+export interface NotificationPreference {
+  emailOptIn: boolean;
+}
+
 export type QueueStatus = "WAITING" | "PASSED";
 
 export interface QueueEnterResult {
