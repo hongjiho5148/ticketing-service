@@ -3,6 +3,7 @@ package com.ticketing.authservice.auth.oauth;
 import com.ticketing.authservice.auth.JwtTokenProvider;
 import com.ticketing.authservice.common.ApiException;
 import com.ticketing.authservice.common.ErrorCode;
+import com.ticketing.authservice.user.Role;
 import com.ticketing.authservice.user.User;
 import com.ticketing.authservice.user.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -35,6 +36,12 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
         Long userId = Long.valueOf(String.valueOf(oAuth2User.getAttributes().get("internalUserId")));
         User user = userRepository.findById(userId).orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
+
+        // Social login never yields a token for an admin account - admins use the admin app's own login.
+        if (user.getRole() == Role.ADMIN) {
+            response.sendRedirect(frontendUrl + "/login?error=oauth2");
+            return;
+        }
 
         String accessToken = jwtTokenProvider.createAccessToken(user.getId(), user.getEmail(), user.getRole());
         String refreshToken = jwtTokenProvider.createRefreshToken(user.getId(), user.getEmail(), user.getRole());

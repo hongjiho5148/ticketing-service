@@ -6,7 +6,7 @@ import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { extractErrorMessage } from "../utils/error";
 import type { EventStats, OrderSummary } from "../types";
 
-export function AdminDashboardPage() {
+export function DashboardPage() {
   useDocumentTitle("관리자 대시보드");
 
   const [stats, setStats] = useState<EventStats[]>([]);
@@ -47,7 +47,7 @@ export function AdminDashboardPage() {
     <div>
       <div className="admin-header">
         <h1>관리자 대시보드</h1>
-        <Link to="/admin/events/new" className="btn-link">
+        <Link to="/events/new" className="btn-link">
           + 새 공연 등록
         </Link>
       </div>
@@ -99,7 +99,7 @@ export function AdminDashboardPage() {
                 </td>
                 <td>{(summary?.revenue ?? 0).toLocaleString()}원</td>
                 <td>
-                  <Link to={`/admin/events/${event.eventId}/edit`} className="btn-link">
+                  <Link to={`/events/${event.eventId}/edit`} className="btn-link">
                     수정
                   </Link>
                 </td>

@@ -20,7 +20,7 @@ function toInputValue(iso: string) {
   return iso.slice(0, 16);
 }
 
-export function AdminEventFormPage() {
+export function EventFormPage() {
   const { eventId } = useParams<{ eventId: string }>();
   const isEdit = Boolean(eventId);
   useDocumentTitle(isEdit ? "공연 수정" : "공연 등록");
@@ -74,7 +74,7 @@ export function AdminEventFormPage() {
       } else {
         const created = await createEvent(form);
         showToast("공연이 등록됐어요. 이어서 좌석을 만들어주세요.");
-        navigate(`/admin/events/${created.id}/edit`);
+        navigate(`/events/${created.id}/edit`);
       }
     } catch (err) {
       setError(extractErrorMessage(err));
@@ -107,7 +107,7 @@ export function AdminEventFormPage() {
 
   return (
     <div className="form-page admin-form-page">
-      <Link to="/admin" className="detail-back">
+      <Link to="/" className="detail-back">
         ← 대시보드
       </Link>
       <h1>{isEdit ? "공연 수정" : "공연 등록"}</h1>

@@ -25,8 +25,6 @@ export function Header() {
             <Link to="/tickets">내 티켓함</Link>
             <Link to="/wishlist">찜한 공연</Link>
             <Link to="/account">마이페이지</Link>
-            {user.role === "ADMIN" && <Link to="/admin">관리자</Link>}
-            {user.role === "ADMIN" && <Link to="/admin/scan">입장 스캔</Link>}
             <span className="header-user">{user.name}님</span>
             <button type="button" onClick={() => setIsConfirmingLogout(true)}>
               로그아웃

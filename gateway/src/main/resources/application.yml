@@ -61,4 +61,5 @@ spring:
                 - Path=/api/admin/**
 
 cors:
-  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  # 5173 = public site, 5174 = admin app (separate origin on purpose, so the two never share storage).
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174}

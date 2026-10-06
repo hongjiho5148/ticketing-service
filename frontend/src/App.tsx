@@ -1,11 +1,8 @@
 import { Route, Routes } from "react-router-dom";
-import { AdminRoute } from "./components/AdminRoute";
 import { Footer } from "./components/Footer";
 import { Header } from "./components/Header";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AccountPage } from "./pages/AccountPage";
-import { AdminDashboardPage } from "./pages/AdminDashboardPage";
-import { AdminEventFormPage } from "./pages/AdminEventFormPage";
 import { EventDetailPage } from "./pages/EventDetailPage";
 import { EventListPage } from "./pages/EventListPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -14,7 +11,6 @@ import { MyTicketsPage } from "./pages/MyTicketsPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { OAuth2RedirectPage } from "./pages/OAuth2RedirectPage";
 import { SignupPage } from "./pages/SignupPage";
-import { StaffScanPage } from "./pages/StaffScanPage";
 import { WishlistPage } from "./pages/WishlistPage";
 
 function App() {
@@ -58,38 +54,6 @@ function App() {
               <ProtectedRoute>
                 <WishlistPage />
               </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin"
-            element={
-              <AdminRoute>
-                <AdminDashboardPage />
-              </AdminRoute>
-            }
-          />
-          <Route
-            path="/admin/events/new"
-            element={
-              <AdminRoute>
-                <AdminEventFormPage />
-              </AdminRoute>
-            }
-          />
-          <Route
-            path="/admin/events/:eventId/edit"
-            element={
-              <AdminRoute>
-                <AdminEventFormPage />
-              </AdminRoute>
-            }
-          />
-          <Route
-            path="/admin/scan"
-            element={
-              <AdminRoute>
-                <StaffScanPage />
-              </AdminRoute>
             }
           />
           <Route path="*" element={<NotFoundPage />} />

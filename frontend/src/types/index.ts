@@ -122,13 +122,6 @@ export interface Ticket {
   issuedAt: string;
 }
 
-export interface ScanResult {
-  ticketId: number;
-  orderId: number;
-  seatId: number;
-  usedAt: string;
-}
-
 export interface TicketHistoryItem {
   ticketId: number;
   orderId: number;
@@ -160,49 +153,6 @@ export interface ReviewListResponse {
 
 export interface NotificationPreference {
   emailOptIn: boolean;
-}
-
-export interface EventUpsertPayload {
-  title: string;
-  venue: string;
-  description: string;
-  startAt: string;
-  openAt: string;
-  status: EventStatus;
-}
-
-export interface SeatBlockPayload {
-  section: string;
-  grade: string;
-  price: number;
-  rows: number;
-  seatsPerRow: number;
-}
-
-export interface GradeStats {
-  grade: string;
-  total: number;
-  available: number;
-  hold: number;
-  sold: number;
-}
-
-export interface EventStats {
-  eventId: number;
-  title: string;
-  totalSeats: number;
-  availableSeats: number;
-  holdSeats: number;
-  soldSeats: number;
-  soldSeatRevenue: number;
-  grades: GradeStats[];
-}
-
-export interface OrderSummary {
-  eventId: number;
-  paidCount: number;
-  cancelledCount: number;
-  revenue: number;
 }
 
 export type QueueStatus = "WAITING" | "PASSED";

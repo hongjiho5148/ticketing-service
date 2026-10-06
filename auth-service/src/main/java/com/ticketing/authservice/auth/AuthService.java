@@ -1,5 +1,6 @@
 package com.ticketing.authservice.auth;
 
+import com.ticketing.authservice.auth.dto.AdminLoginResponse;
 import com.ticketing.authservice.auth.dto.ChangePasswordRequest;
 import com.ticketing.authservice.auth.dto.LoginRequest;
 import com.ticketing.authservice.auth.dto.LoginResponse;
@@ -10,6 +11,7 @@ import com.ticketing.authservice.auth.dto.UpdateProfileRequest;
 import com.ticketing.authservice.common.ApiException;
 import com.ticketing.authservice.common.ErrorCode;
 import com.ticketing.authservice.user.AuthProvider;
+import com.ticketing.authservice.user.Role;
 import com.ticketing.authservice.user.User;
 import com.ticketing.authservice.user.UserRepository;
 import java.time.Duration;
@@ -57,6 +59,28 @@ public class AuthService {
     }
 
     public LoginResponse login(LoginRequest request) {
+        User user = authenticate(request);
+        // Admin accounts only sign in through the separate admin app's endpoint (adminLogin) - the
+        // public site never sees an admin token. Same error as a wrong password so this doesn't
+        // reveal which emails are admins.
+        if (user.getRole() == Role.ADMIN) {
+            throw new ApiException(ErrorCode.INVALID_CREDENTIALS);
+        }
+        String accessToken = jwtTokenProvider.createAccessToken(user.getId(), user.getEmail(), user.getRole());
+        String refreshToken = jwtTokenProvider.createRefreshToken(user.getId(), user.getEmail(), user.getRole());
+        return new LoginResponse(accessToken, refreshToken, jwtTokenProvider.getAccessTokenExpirationSeconds());
+    }
+
+    public AdminLoginResponse adminLogin(LoginRequest request) {
+        User user = authenticate(request);
+        if (user.getRole() != Role.ADMIN) {
+            throw new ApiException(ErrorCode.INVALID_CREDENTIALS);
+        }
+        String accessToken = jwtTokenProvider.createAdminAccessToken(user.getId(), user.getEmail(), user.getRole());
+        return new AdminLoginResponse(accessToken, jwtTokenProvider.getAdminAccessTokenExpirationSeconds());
+    }
+
+    private User authenticate(LoginRequest request) {
         User user = userRepository.findByProviderAndEmail(AuthProvider.LOCAL, request.email())
                 .orElseThrow(() -> new ApiException(ErrorCode.INVALID_CREDENTIALS));
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
@@ -65,9 +89,7 @@ public class AuthService {
         if (!user.isEmailVerified()) {
             throw new ApiException(ErrorCode.EMAIL_NOT_VERIFIED);
         }
-        String accessToken = jwtTokenProvider.createAccessToken(user.getId(), user.getEmail(), user.getRole());
-        String refreshToken = jwtTokenProvider.createRefreshToken(user.getId(), user.getEmail(), user.getRole());
-        return new LoginResponse(accessToken, refreshToken, jwtTokenProvider.getAccessTokenExpirationSeconds());
+        return user;
     }
 
     @Transactional
