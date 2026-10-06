@@ -17,7 +17,6 @@ import com.ticketing.orderservice.payment.portone.PortOneClient;
 import com.ticketing.orderservice.payment.portone.PortOnePaymentResponse;
 import com.ticketing.orderservice.reservationclient.ReservationServiceClient;
 import com.ticketing.orderservice.reservationclient.dto.ReservationDetailResponse;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +36,6 @@ public class OrderService {
 
     private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
-    private static final Duration REFUND_CUTOFF_BEFORE_EVENT = Duration.ofHours(24);
     private static final String HOLDING_STATUS = "HOLDING";
 
     private final OrderRepository orderRepository;
@@ -126,6 +124,8 @@ public class OrderService {
 
         PortOnePaymentResponse portOnePayment = portOneClient.getPayment(request.paymentId());
         boolean verified = portOnePayment.isPaid() && portOnePayment.amount().total() == order.getTotalPrice();
+        // Recorded from PortOne's own report (card / KAKAOPAY / NAVERPAY ...), not from anything the client sent.
+        String method = portOnePayment.methodLabel();
 
         if (verified) {
             try {
@@ -137,7 +137,7 @@ public class OrderService {
                 // it no longer qualifies for.
                 log.warn("Benefits no longer valid for order {}: {}", orderId, e.getErrorCode());
                 refundQuietly(request.paymentId());
-                return failPayment(order, request.paymentId());
+                return failPayment(order, request.paymentId(), method);
             }
             LocalDateTime paidAt = LocalDateTime.now();
             // Confirm on reservation-service (which sells the seat on its end) before committing our
@@ -146,17 +146,17 @@ public class OrderService {
             reservationServiceClient.confirm(order.getReservationId());
             order.markPaid();
             paymentRepository.save(
-                    new Payment(order, "CARD", request.paymentId(), PaymentStatus.SUCCESS, order.getTotalPrice(), paidAt));
+                    new Payment(order, method, request.paymentId(), PaymentStatus.SUCCESS, order.getTotalPrice(), paidAt));
             return new PaymentResponse(order.getId(), PaymentStatus.SUCCESS, paidAt);
         }
 
-        return failPayment(order, request.paymentId());
+        return failPayment(order, request.paymentId(), method);
     }
 
-    private PaymentResponse failPayment(Orders order, String paymentId) {
+    private PaymentResponse failPayment(Orders order, String paymentId, String method) {
         reservationServiceClient.cancel(order.getReservationId());
         order.markFailed();
-        paymentRepository.save(new Payment(order, "CARD", paymentId, PaymentStatus.FAILED, order.getTotalPrice(), null));
+        paymentRepository.save(new Payment(order, method, paymentId, PaymentStatus.FAILED, order.getTotalPrice(), null));
         return new PaymentResponse(order.getId(), PaymentStatus.FAILED, null);
     }
 
@@ -169,12 +169,51 @@ public class OrderService {
         }
     }
 
+    /** What cancelling this order right now would refund - the order page shows this before the user confirms. */
+    @Transactional(readOnly = true)
+    public RefundQuote refundPreview(Long userId, Long orderId) {
+        return RefundPolicy.quote(loadCancellableOrder(userId, orderId), LocalDateTime.now());
+    }
+
     /**
-     * Cancels a paid order and refunds it through PortOne. Only allowed up to
-     * {@link #REFUND_CUTOFF_BEFORE_EVENT} before the show starts, matching common ticketing
-     * refund policies.
+     * Cancels a paid order and refunds it through PortOne per {@link RefundPolicy}: the full amount
+     * well ahead of the show, a shrinking share as it gets closer, and not at all inside the last day.
+     *
+     * @param expectedRefundAmount the amount the user was shown in the confirmation dialog, if any - the
+     *     tier can tick over between "shown" and "confirmed", and the user must never get less than
+     *     what they agreed to
      */
-    public void cancelOrder(Long userId, Long orderId) {
+    public void cancelOrder(Long userId, Long orderId, Integer expectedRefundAmount) {
+        Orders order = loadCancellableOrder(userId, orderId);
+
+        RefundQuote quote = RefundPolicy.quote(order, LocalDateTime.now());
+        if (!quote.isCancellable()) {
+            throw new ApiException(ErrorCode.REFUND_PERIOD_EXPIRED);
+        }
+        if (expectedRefundAmount != null && expectedRefundAmount != quote.refundAmount()) {
+            throw new ApiException(ErrorCode.REFUND_QUOTE_CHANGED);
+        }
+
+        Payment payment = paymentRepository.findByOrderId(orderId).orElseThrow(() -> new ApiException(ErrorCode.REFUND_FAILED));
+        boolean full = quote.refundPercent() == 100;
+        try {
+            portOneClient.cancelPayment(
+                    payment.getPortonePaymentId(), "고객 요청 취소", full ? null : Long.valueOf(quote.refundAmount()));
+        } catch (RestClientException e) {
+            throw new ApiException(ErrorCode.REFUND_FAILED);
+        }
+
+        payment.markRefunded(quote.refundAmount());
+        if (full) {
+            order.cancel();
+        } else {
+            order.markPartiallyRefunded();
+        }
+        orderBenefitService.reverse(order, quote.refundPercent());
+        reservationServiceClient.cancel(order.getReservationId());
+    }
+
+    private Orders loadCancellableOrder(Long userId, Long orderId) {
         Orders order = orderRepository.findById(orderId).orElseThrow(() -> new ApiException(ErrorCode.ORDER_NOT_FOUND));
         if (!order.getUserId().equals(userId)) {
             throw new ApiException(ErrorCode.FORBIDDEN);
@@ -182,22 +221,7 @@ public class OrderService {
         if (order.getStatus() != OrderStatus.PAID) {
             throw new ApiException(ErrorCode.ORDER_NOT_CANCELLABLE);
         }
-
-        SeatDetailResponse seat = eventServiceClient.getSeat(order.getSeatId());
-        if (LocalDateTime.now().isAfter(seat.eventStartAt().minus(REFUND_CUTOFF_BEFORE_EVENT))) {
-            throw new ApiException(ErrorCode.REFUND_PERIOD_EXPIRED);
-        }
-
-        Payment payment = paymentRepository.findByOrderId(orderId).orElseThrow(() -> new ApiException(ErrorCode.REFUND_FAILED));
-        try {
-            portOneClient.cancelPayment(payment.getPortonePaymentId(), "고객 요청 취소");
-        } catch (RestClientException e) {
-            throw new ApiException(ErrorCode.REFUND_FAILED);
-        }
-
-        order.cancel();
-        orderBenefitService.reverse(order);
-        reservationServiceClient.cancel(order.getReservationId());
+        return order;
     }
 
     @Transactional(readOnly = true)
@@ -211,8 +235,15 @@ public class OrderService {
                 : eventServiceClient.getSeats(seatIds).stream()
                         .collect(Collectors.toMap(SeatDetailResponse::seatId, Function.identity()));
 
+        List<Long> orderIds = orders.stream().map(Orders::getId).toList();
+        Map<Long, Payment> paymentsByOrderId = orderIds.isEmpty()
+                ? Map.of()
+                : paymentRepository.findByOrderIdIn(orderIds).stream()
+                        .collect(Collectors.toMap(p -> p.getOrder().getId(), Function.identity()));
+
         List<OrderHistoryResponse> content = orders.stream()
-                .map(order -> OrderHistoryResponse.from(order, seatsById.get(order.getSeatId())))
+                .map(order -> OrderHistoryResponse.from(
+                        order, seatsById.get(order.getSeatId()), paymentsByOrderId.get(order.getId())))
                 .toList();
         return new OrderHistoryListResponse(content, page.getTotalElements());
     }

@@ -1,7 +1,7 @@
 export type EventStatus = "UPCOMING" | "OPEN" | "CLOSED";
 export type SeatStatus = "AVAILABLE" | "HOLD" | "SOLD";
 export type ReservationStatus = "HOLDING" | "CONFIRMED" | "CANCELLED" | "EXPIRED";
-export type OrderStatus = "PENDING" | "PAID" | "FAILED" | "CANCELLED";
+export type OrderStatus = "PENDING" | "PAID" | "FAILED" | "CANCELLED" | "PARTIALLY_REFUNDED";
 export type PaymentStatus = "SUCCESS" | "FAILED";
 
 export type AuthProvider = "LOCAL" | "GOOGLE" | "KAKAO";
@@ -130,6 +130,9 @@ export interface OrderHistoryItem {
   seatNumber: number;
   seatNo: string;
   totalPrice: number;
+  // How it was actually paid ("CARD", "KAKAOPAY"...) and what was given back on cancellation; null before payment.
+  paymentMethod: string | null;
+  refundedAmount: number | null;
   status: OrderStatus;
   createdAt: string;
 }
@@ -200,4 +203,12 @@ export interface ApiErrorBody {
   code: string;
   message: string;
   timestamp: string;
+}
+
+export interface RefundPreview {
+  cancellable: boolean;
+  refundPercent: number;
+  refundAmount: number;
+  feeAmount: number;
+  pointsRestored: number;
 }

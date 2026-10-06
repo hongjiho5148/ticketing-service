@@ -9,8 +9,9 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface OrderRepository extends JpaRepository<Orders, Long> {
 
-    /** Rows of [eventId, status, orderCount, totalPriceSum] for the admin sales summary. */
-    @Query("select o.eventId, o.status, count(o), sum(o.totalPrice) from Orders o group by o.eventId, o.status")
+    /** Rows of [eventId, status, orderCount, totalPriceSum, refundedSum] for the admin sales summary. */
+    @Query("select o.eventId, o.status, count(o), sum(o.totalPrice), coalesce(sum(p.refundedAmount), 0) "
+            + "from Orders o left join Payment p on p.order = o group by o.eventId, o.status")
     List<Object[]> aggregateByEventAndStatus();
 
     Page<Orders> findByUserId(Long userId, Pageable pageable);

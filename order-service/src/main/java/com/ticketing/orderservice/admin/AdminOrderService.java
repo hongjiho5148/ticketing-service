@@ -28,12 +28,17 @@ public class AdminOrderService {
             OrderStatus status = (OrderStatus) row[1];
             long count = (Long) row[2];
             long total = row[3] == null ? 0 : ((Number) row[3]).longValue();
+            long refunded = row[4] == null ? 0 : ((Number) row[4]).longValue();
             long[] acc = byEvent.computeIfAbsent(eventId, k -> new long[3]);
             if (status == OrderStatus.PAID) {
                 acc[0] += count;
                 acc[2] += total;
             } else if (status == OrderStatus.CANCELLED) {
                 acc[1] += count;
+            } else if (status == OrderStatus.PARTIALLY_REFUNDED) {
+                // Cancelled, but the cancellation fee stays as revenue.
+                acc[1] += count;
+                acc[2] += total - refunded;
             }
         }
         List<OrderSummaryResponse> result = new ArrayList<>();

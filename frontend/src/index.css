@@ -1112,6 +1112,37 @@ button:disabled {
   color: var(--text);
 }
 
+.pay-method-group {
+  display: flex;
+  gap: 6px;
+}
+
+.pay-method {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.pay-method.selected {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  font-weight: 700;
+}
+
+.pay-method input {
+  display: none;
+}
+
 .reservation-panel .btn-link-inline {
   width: auto;
   padding: 0;
@@ -1326,6 +1357,16 @@ button:disabled {
 
 .modal-confirm h3 {
   margin: 0 0 8px;
+}
+
+/* Confirmation messages can be several short lines (e.g. the refund breakdown). */
+.modal-confirm .modal-subtitle {
+  white-space: pre-line;
+  line-height: 1.6;
+}
+
+.refund-note {
+  color: var(--text-faint);
 }
 
 .modal-confirm-actions {

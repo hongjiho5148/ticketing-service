@@ -29,11 +29,17 @@ public class PortOneClient {
 
     /** Issues a full refund through PortOne. Throws if PortOne rejects it (e.g. already cancelled). */
     public void cancelPayment(String paymentId, String reason) {
+        cancelPayment(paymentId, reason, null);
+    }
+
+    /** Refunds only {@code amount} won (null = everything left). Throws if PortOne rejects it. */
+    public void cancelPayment(String paymentId, String reason, Long amount) {
+        Map<String, Object> body = amount == null ? Map.of("reason", reason) : Map.of("reason", reason, "amount", amount);
         restClient
                 .post()
                 .uri("/payments/{paymentId}/cancel", paymentId)
                 .header("Authorization", "PortOne " + apiSecret)
-                .body(Map.of("reason", reason))
+                .body(body)
                 .retrieve()
                 .toBodilessEntity();
     }

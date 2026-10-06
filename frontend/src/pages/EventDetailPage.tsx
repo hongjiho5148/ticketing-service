@@ -16,7 +16,7 @@ import { SeatGrid } from "../components/SeatGrid";
 import { QueueWaitingRoom } from "../components/QueueWaitingRoom";
 import { dDayLabel, formatDateTime } from "../utils/date";
 import { posterGlyph, posterThemeClass } from "../utils/poster";
-import { requestCardPayment } from "../utils/portone";
+import { availablePayMethods, requestPayment, type PayMethod } from "../utils/portone";
 import type { EventDetail, Order, Reservation, ReviewListResponse, Seat } from "../types";
 
 const GRADE_ORDER = ["VIP", "R", "S"];
@@ -46,6 +46,9 @@ export function EventDetailPage() {
   const [reviewContent, setReviewContent] = useState("");
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+
+  const payMethods = useMemo(() => availablePayMethods(), []);
+  const [payMethod, setPayMethod] = useState<PayMethod>("CARD");
 
   const [pointBalance, setPointBalance] = useState(0);
   const [couponInput, setCouponInput] = useState("");
@@ -226,7 +229,8 @@ export function EventDetailPage() {
       // creating a second one - a reservation can only ever have a single order.
       const currentOrder = await ensureOrder();
 
-      const paymentResult = await requestCardPayment({
+      const paymentResult = await requestPayment({
+        method: payMethod,
         orderName: event.title,
         totalAmount: currentOrder.totalPrice,
         customerName: user.name,
@@ -452,6 +456,23 @@ export function EventDetailPage() {
                 </div>
               )}
 
+              {payMethods.length > 1 && (
+                <div className="pay-method-group" role="radiogroup" aria-label="결제 수단">
+                  {payMethods.map(({ method, label }) => (
+                    <label key={method} className={`pay-method ${payMethod === method ? "selected" : ""}`}>
+                      <input
+                        type="radio"
+                        name="payMethod"
+                        value={method}
+                        checked={payMethod === method}
+                        onChange={() => setPayMethod(method)}
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              )}
+
               <button type="button" onClick={handleCheckout} disabled={isProcessing || isApplyingBenefit}>
                 주문 및 결제하기
               </button>
@@ -466,7 +487,9 @@ export function EventDetailPage() {
             </div>
           )}
 
-          <p className="refund-policy">공연 시작 24시간 전까지 전액 환불 가능합니다.</p>
+          <p className="refund-policy">
+            취소 환불: 공연 7일 전까지 100%, 3일 전까지 70%, 1일 전까지 30%. 공연 24시간 전부터는 취소할 수 없어요.
+          </p>
         </div>
       </div>
 
