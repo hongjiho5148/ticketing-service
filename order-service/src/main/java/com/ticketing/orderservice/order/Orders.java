@@ -52,8 +52,20 @@ public class Orders {
     @Column(name = "reminder_sent_at")
     private LocalDateTime reminderSentAt;
 
+    // What the customer is actually charged. Starts at the seat price; coupon/points shrink it while
+    // couponCode/discountAmount/pointsUsed keep the breakdown (original = total + discount + points).
     @Column(nullable = false)
     private Integer totalPrice;
+
+    @Column(length = 30)
+    private String couponCode;
+
+    // The column default keeps ddl-auto's ALTER TABLE valid for orders that already exist.
+    @Column(nullable = false, columnDefinition = "integer default 0")
+    private Integer discountAmount = 0;
+
+    @Column(nullable = false, columnDefinition = "integer default 0")
+    private Integer pointsUsed = 0;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -72,6 +84,18 @@ public class Orders {
         this.eventId = eventId;
         this.totalPrice = totalPrice;
         this.status = OrderStatus.PENDING;
+    }
+
+    public int originalPrice() {
+        return totalPrice + discountAmount + pointsUsed;
+    }
+
+    public void applyBenefits(String couponCode, int discountAmount, int pointsUsed) {
+        int original = originalPrice();
+        this.couponCode = couponCode;
+        this.discountAmount = discountAmount;
+        this.pointsUsed = pointsUsed;
+        this.totalPrice = original - discountAmount - pointsUsed;
     }
 
     public void markPaid() {

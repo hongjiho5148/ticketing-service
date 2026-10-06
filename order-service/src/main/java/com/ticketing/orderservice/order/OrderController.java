@@ -1,6 +1,8 @@
 package com.ticketing.orderservice.order;
 
 import com.ticketing.orderservice.auth.SecurityUtil;
+import com.ticketing.orderservice.order.dto.ApplyCouponRequest;
+import com.ticketing.orderservice.order.dto.ApplyPointsRequest;
 import com.ticketing.orderservice.order.dto.OrderCreateRequest;
 import com.ticketing.orderservice.order.dto.OrderHistoryListResponse;
 import com.ticketing.orderservice.order.dto.OrderResponse;
@@ -39,6 +41,21 @@ public class OrderController {
     @PostMapping("/{orderId}/payment")
     public ResponseEntity<PaymentResponse> pay(@PathVariable Long orderId, @Valid @RequestBody PaymentRequest request) {
         return ResponseEntity.ok(orderService.pay(SecurityUtil.getCurrentUserId(), orderId, request));
+    }
+
+    @PostMapping("/{orderId}/apply-coupon")
+    public OrderResponse applyCoupon(@PathVariable Long orderId, @Valid @RequestBody ApplyCouponRequest request) {
+        return orderService.applyCoupon(SecurityUtil.getCurrentUserId(), orderId, request.code());
+    }
+
+    @DeleteMapping("/{orderId}/coupon")
+    public OrderResponse removeCoupon(@PathVariable Long orderId) {
+        return orderService.removeCoupon(SecurityUtil.getCurrentUserId(), orderId);
+    }
+
+    @PostMapping("/{orderId}/apply-points")
+    public OrderResponse applyPoints(@PathVariable Long orderId, @Valid @RequestBody ApplyPointsRequest request) {
+        return orderService.applyPoints(SecurityUtil.getCurrentUserId(), orderId, request.points());
     }
 
     @DeleteMapping("/{orderId}")

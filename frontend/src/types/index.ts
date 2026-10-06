@@ -83,8 +83,34 @@ export interface Reservation {
 export interface Order {
   orderId: number;
   reservationId: number;
+  // totalPrice is what's actually charged: originalPrice - discountAmount - pointsUsed.
+  originalPrice: number;
+  couponCode: string | null;
+  discountAmount: number;
+  pointsUsed: number;
   totalPrice: number;
   status: OrderStatus;
+}
+
+export type PointTransactionType = "EARN" | "USE" | "RESTORE" | "CLAWBACK";
+
+export interface PointEntry {
+  delta: number;
+  type: PointTransactionType;
+  orderId: number;
+  createdAt: string;
+}
+
+export interface PointSummary {
+  balance: number;
+  transactions: PointEntry[];
+}
+
+export interface CouponHistoryItem {
+  code: string;
+  discountAmount: number;
+  orderId: number;
+  redeemedAt: string;
 }
 
 export interface PaymentResult {

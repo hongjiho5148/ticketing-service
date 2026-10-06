@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { fetchEventDetail, fetchEventSeats } from "../api/events";
 import { cancelReservation, createReservation } from "../api/reservations";
-import { createOrder, payOrder } from "../api/orders";
+import { applyCoupon, applyPoints, createOrder, payOrder, removeCoupon } from "../api/orders";
+import { fetchPoints } from "../api/points";
 import { createReview, fetchReviews } from "../api/reviews";
 import { addToWishlist, fetchWishlist, removeFromWishlist } from "../api/wishlist";
 import { extractErrorMessage } from "../utils/error";
@@ -45,6 +46,12 @@ export function EventDetailPage() {
   const [reviewContent, setReviewContent] = useState("");
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+
+  const [pointBalance, setPointBalance] = useState(0);
+  const [couponInput, setCouponInput] = useState("");
+  const [pointsInput, setPointsInput] = useState("");
+  const [benefitError, setBenefitError] = useState<string | null>(null);
+  const [isApplyingBenefit, setIsApplyingBenefit] = useState(false);
 
   useDocumentTitle(event ? event.title : "이벤트 상세");
 
@@ -154,6 +161,62 @@ export function EventDetailPage() {
     }
   }
 
+  useEffect(() => {
+    if (!reservation) return;
+    fetchPoints()
+      .then((summary) => setPointBalance(summary.balance))
+      .catch(() => undefined);
+  }, [reservation]);
+
+  // The order is created lazily - at the first coupon/points application or at checkout, whichever
+  // comes first - and reused after that (a reservation can only ever have one order).
+  async function ensureOrder(): Promise<Order> {
+    if (order) return order;
+    if (!reservation) throw new Error("예약 정보가 없어요.");
+    const created = await createOrder(reservation.reservationId);
+    setOrder(created);
+    return created;
+  }
+
+  async function runBenefit(action: (current: Order) => Promise<Order>, successMessage?: string): Promise<boolean> {
+    setBenefitError(null);
+    setIsApplyingBenefit(true);
+    try {
+      const updated = await action(await ensureOrder());
+      setOrder(updated);
+      if (successMessage) showToast(successMessage);
+      return true;
+    } catch (err) {
+      setBenefitError(extractErrorMessage(err));
+      return false;
+    } finally {
+      setIsApplyingBenefit(false);
+    }
+  }
+
+  async function handleApplyCoupon() {
+    const code = couponInput.trim();
+    if (!code) return;
+    if (await runBenefit((current) => applyCoupon(current.orderId, code), "쿠폰이 적용됐어요.")) {
+      setCouponInput("");
+    }
+  }
+
+  function handleApplyPoints() {
+    const points = Number(pointsInput || 0);
+    if (!Number.isInteger(points) || points < 0) {
+      setBenefitError("포인트는 0 이상의 정수로 입력해주세요.");
+      return;
+    }
+    runBenefit((current) => applyPoints(current.orderId, points), points > 0 ? "포인트가 적용됐어요." : undefined);
+  }
+
+  // 100 is the smallest amount the card payment accepts - mirrors the server's own cap.
+  const maxPoints = Math.max(
+    0,
+    Math.min(pointBalance, (order?.originalPrice ?? selectedSeat?.price ?? 0) - (order?.discountAmount ?? 0) - 100),
+  );
+
   async function handleCheckout() {
     if (!reservation || !selectedSeat || !event || !user) return;
     setError(null);
@@ -161,12 +224,11 @@ export function EventDetailPage() {
     try {
       // Re-use the order across retries (e.g. the PG payment window was cancelled) instead of
       // creating a second one - a reservation can only ever have a single order.
-      const currentOrder = order ?? (await createOrder(reservation.reservationId));
-      if (!order) setOrder(currentOrder);
+      const currentOrder = await ensureOrder();
 
       const paymentResult = await requestCardPayment({
         orderName: event.title,
-        totalAmount: selectedSeat.price,
+        totalAmount: currentOrder.totalPrice,
         customerName: user.name,
         customerEmail: user.email,
       });
@@ -321,7 +383,76 @@ export function EventDetailPage() {
               <p>
                 예약 완료 — {new Date(reservation.holdExpireAt).toLocaleTimeString("ko-KR")}까지 결제해주세요.
               </p>
-              <button type="button" onClick={handleCheckout} disabled={isProcessing}>
+
+              <div className="benefit-box">
+                <div className="benefit-row">
+                  <input
+                    placeholder="쿠폰 코드"
+                    value={couponInput}
+                    onChange={(e) => setCouponInput(e.target.value)}
+                    maxLength={30}
+                    disabled={isApplyingBenefit}
+                  />
+                  <button type="button" className="btn-secondary" onClick={handleApplyCoupon} disabled={isApplyingBenefit || !couponInput.trim()}>
+                    적용
+                  </button>
+                </div>
+                <div className="benefit-row">
+                  <input
+                    type="number"
+                    min={0}
+                    max={maxPoints}
+                    placeholder={`포인트 (보유 ${pointBalance.toLocaleString()}P)`}
+                    value={pointsInput}
+                    onChange={(e) => setPointsInput(e.target.value)}
+                    disabled={isApplyingBenefit}
+                  />
+                  <button type="button" className="btn-secondary" onClick={() => setPointsInput(String(maxPoints))} disabled={isApplyingBenefit || maxPoints === 0}>
+                    최대
+                  </button>
+                  <button type="button" className="btn-secondary" onClick={handleApplyPoints} disabled={isApplyingBenefit}>
+                    적용
+                  </button>
+                </div>
+                {benefitError && <p className="form-error">{benefitError}</p>}
+              </div>
+
+              {order && (
+                <div className="price-summary">
+                  <div className="booking-selection-row">
+                    <span>상품 금액</span>
+                    <span>{order.originalPrice.toLocaleString()}원</span>
+                  </div>
+                  {order.couponCode && (
+                    <div className="booking-selection-row">
+                      <span>
+                        쿠폰 ({order.couponCode}){" "}
+                        <button
+                          type="button"
+                          className="btn-link-inline"
+                          onClick={() => runBenefit((current) => removeCoupon(current.orderId))}
+                          disabled={isApplyingBenefit}
+                        >
+                          해제
+                        </button>
+                      </span>
+                      <span>-{order.discountAmount.toLocaleString()}원</span>
+                    </div>
+                  )}
+                  {order.pointsUsed > 0 && (
+                    <div className="booking-selection-row">
+                      <span>포인트</span>
+                      <span>-{order.pointsUsed.toLocaleString()}원</span>
+                    </div>
+                  )}
+                  <div className="booking-selection-row price-summary-total">
+                    <span>결제 금액</span>
+                    <span>{order.totalPrice.toLocaleString()}원</span>
+                  </div>
+                </div>
+              )}
+
+              <button type="button" onClick={handleCheckout} disabled={isProcessing || isApplyingBenefit}>
                 주문 및 결제하기
               </button>
               <button
