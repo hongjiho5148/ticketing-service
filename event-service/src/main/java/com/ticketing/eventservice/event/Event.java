@@ -54,4 +54,30 @@ public class Event {
         this.openAt = openAt;
         this.status = status;
     }
+
+    public Event(
+            String title,
+            String venue,
+            String description,
+            LocalDateTime startAt,
+            LocalDateTime openAt,
+            EventStatus status) {
+        this(title, venue, startAt, openAt, status);
+        this.description = description;
+    }
+
+    public void update(
+            String title,
+            String venue,
+            String description,
+            LocalDateTime startAt,
+            LocalDateTime openAt,
+            EventStatus status) {
+        this.title = title;
+        this.venue = venue;
+        this.description = description;
+        this.startAt = startAt;
+        this.openAt = openAt;
+        this.status = status;
+    }
 }

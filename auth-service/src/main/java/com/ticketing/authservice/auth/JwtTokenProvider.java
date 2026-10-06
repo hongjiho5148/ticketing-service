@@ -16,18 +16,31 @@ public class JwtTokenProvider {
     private final SecretKey key;
     private final long accessTokenExpirationMs;
     private final long refreshTokenExpirationMs;
+    private final long adminAccessTokenExpirationMs;
 
     public JwtTokenProvider(
             @Value("${jwt.secret}") String secret,
             @Value("${jwt.access-token-expiration-ms}") long accessTokenExpirationMs,
-            @Value("${jwt.refresh-token-expiration-ms}") long refreshTokenExpirationMs) {
+            @Value("${jwt.refresh-token-expiration-ms}") long refreshTokenExpirationMs,
+            @Value("${jwt.admin-access-token-expiration-ms}") long adminAccessTokenExpirationMs) {
         this.key = Keys.hmacShaKeyFor(secret.getBytes());
         this.accessTokenExpirationMs = accessTokenExpirationMs;
         this.refreshTokenExpirationMs = refreshTokenExpirationMs;
+        this.adminAccessTokenExpirationMs = adminAccessTokenExpirationMs;
     }
 
     public String createAccessToken(Long userId, String email, Role role) {
         return createToken(userId, email, role, accessTokenExpirationMs);
+    }
+
+    // Admin sessions are deliberately shorter-lived than user ones - a stolen admin token is the
+    // one that matters, and the admin app has no refresh flow, so they just log in again.
+    public String createAdminAccessToken(Long userId, String email, Role role) {
+        return createToken(userId, email, role, adminAccessTokenExpirationMs);
+    }
+
+    public long getAdminAccessTokenExpirationSeconds() {
+        return adminAccessTokenExpirationMs / 1000;
     }
 
     public String createRefreshToken(Long userId, String email, Role role) {

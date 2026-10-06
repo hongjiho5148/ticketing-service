@@ -56,6 +56,7 @@ export interface EventDetail {
   venue: string;
   description: string | null;
   startAt: string;
+  openAt: string;
   status: EventStatus;
   seatSummary: SeatGradeSummary[];
   sectionSummary: SeatSectionSummary[];
@@ -119,13 +120,6 @@ export interface Ticket {
   qrToken: string;
   status: TicketStatus;
   issuedAt: string;
-}
-
-export interface ScanResult {
-  ticketId: number;
-  orderId: number;
-  seatId: number;
-  usedAt: string;
 }
 
 export interface TicketHistoryItem {

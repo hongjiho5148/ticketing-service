@@ -123,7 +123,8 @@ ticketing-service/
 ├─ order-service/         # 주문 · PortOne 결제
 ├─ backend/               # 대기열(Queue), 수평 확장 대상
 ├─ nginx/                 # 외부 진입점 + backend 내부 로드밸런서 설정
-├─ frontend/              # React SPA
+├─ frontend/              # React SPA (일반 사용자용, :5173)
+├─ admin-frontend/        # React SPA (관리자 전용, :5174 — 일반 사이트와 origin/토큰/로그인 분리)
 ├─ loadtest/              # k6 부하테스트 스크립트
 ├─ docs/                  # 요구사항/엔티티/API 기획 문서
 └─ docker-compose.yml     # 로컬 전체 스택 기동
@@ -169,7 +170,17 @@ npm run dev
 
 `http://localhost:5173`에서 확인 가능하며, `frontend/.env`의 `VITE_API_BASE_URL`로 백엔드(nginx) 주소를 지정합니다.
 
-### 4. 부하테스트 (선택)
+### 4. 관리자 앱 실행 (선택)
+
+```bash
+cd admin-frontend
+npm install
+npm run dev
+```
+
+`http://localhost:5174`에서 열립니다. 관리자는 일반 사이트(5173)에 로그인할 수 없고, 이 앱의 전용 로그인(`POST /api/auth/admin/login`, 세션 15분, 소셜 로그인 불가)으로만 들어옵니다. 관리자 계정은 가입 후 DB에서 `UPDATE users SET role='ADMIN' WHERE email='...'`로 승격합니다.
+
+### 5. 부하테스트 (선택)
 
 ```bash
 docker run --network ticketing-service_default --ulimit nofile=200000:200000 \

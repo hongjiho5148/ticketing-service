@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { scanTicket } from "../api/tickets";
+import { scanTicket } from "../api/admin";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import type { ScanResult } from "../types";
 import { extractErrorMessage } from "../utils/error";
@@ -9,7 +9,7 @@ interface ScanLogEntry {
   scannedAt: string;
 }
 
-export function StaffScanPage() {
+export function ScanPage() {
   useDocumentTitle("입장 스캔");
   const [token, setToken] = useState("");
   const [error, setError] = useState<string | null>(null);

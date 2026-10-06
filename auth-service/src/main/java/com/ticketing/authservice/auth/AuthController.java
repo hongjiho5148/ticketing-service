@@ -1,5 +1,6 @@
 package com.ticketing.authservice.auth;
 
+import com.ticketing.authservice.auth.dto.AdminLoginResponse;
 import com.ticketing.authservice.auth.dto.ChangePasswordRequest;
 import com.ticketing.authservice.auth.dto.LoginRequest;
 import com.ticketing.authservice.auth.dto.LoginResponse;
@@ -42,6 +43,11 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    @PostMapping("/admin/login")
+    public ResponseEntity<AdminLoginResponse> adminLogin(@Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.adminLogin(request));
     }
 
     @GetMapping("/verify-email")
