@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { Header } from "./components/Header";
 import { RequireAdmin } from "./components/RequireAdmin";
+import { CouponsPage } from "./pages/CouponsPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { EventFormPage } from "./pages/EventFormPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -34,6 +35,14 @@ function App() {
             element={
               <RequireAdmin>
                 <EventFormPage />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="/coupons"
+            element={
+              <RequireAdmin>
+                <CouponsPage />
               </RequireAdmin>
             }
           />

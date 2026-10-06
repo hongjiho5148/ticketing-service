@@ -1,11 +1,21 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { changePassword, updateProfile } from "../api/auth";
 import { fetchNotificationPreference, updateNotificationPreference } from "../api/notifications";
+import { fetchCouponHistory } from "../api/coupons";
+import { fetchPoints } from "../api/points";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { extractErrorMessage } from "../utils/error";
 import { getPasswordStrength } from "../utils/passwordStrength";
+import type { CouponHistoryItem, PointSummary, PointTransactionType } from "../types";
+
+const POINT_TYPE_LABEL: Record<PointTransactionType, string> = {
+  EARN: "구매 적립",
+  USE: "결제 사용",
+  RESTORE: "취소 환원",
+  CLAWBACK: "적립 회수",
+};
 
 const PROVIDER_LABEL: Record<string, string> = {
   LOCAL: "이메일",
@@ -28,6 +38,14 @@ export function AccountPage() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const passwordStrength = getPasswordStrength(newPassword);
+
+  const [points, setPoints] = useState<PointSummary | null>(null);
+  const [coupons, setCoupons] = useState<CouponHistoryItem[]>([]);
+
+  useEffect(() => {
+    fetchPoints().then(setPoints).catch(() => undefined);
+    fetchCouponHistory().then(setCoupons).catch(() => undefined);
+  }, []);
 
   const [emailOptIn, setEmailOptIn] = useState(true);
   const [isSavingNotificationPref, setIsSavingNotificationPref] = useState(false);
@@ -196,8 +214,48 @@ export function AccountPage() {
       </section>
 
       <section className="account-section">
-        <h2>포인트 · 쿠폰</h2>
-        <p className="form-notice">준비 중이에요. 곧 만나보실 수 있어요.</p>
+        <h2>포인트</h2>
+        <p className="wallet-balance">
+          보유 포인트 <strong>{(points?.balance ?? 0).toLocaleString()}P</strong>
+        </p>
+        <p className="wallet-hint">결제 금액의 1%가 적립되고, 결제할 때 1P = 1원으로 쓸 수 있어요.</p>
+        {points && points.transactions.length > 0 ? (
+          <ul className="wallet-list">
+            {points.transactions.map((tx, index) => (
+              <li key={index}>
+                <span>
+                  {POINT_TYPE_LABEL[tx.type]}
+                  <small> · 주문 #{tx.orderId} · {new Date(tx.createdAt).toLocaleDateString("ko-KR")}</small>
+                </span>
+                <strong className={tx.delta > 0 ? "plus" : "minus"}>
+                  {tx.delta > 0 ? "+" : ""}
+                  {tx.delta.toLocaleString()}P
+                </strong>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="wallet-hint">아직 포인트 내역이 없어요.</p>
+        )}
+      </section>
+
+      <section className="account-section">
+        <h2>쿠폰 사용 내역</h2>
+        {coupons.length > 0 ? (
+          <ul className="wallet-list">
+            {coupons.map((c) => (
+              <li key={`${c.code}-${c.orderId}`}>
+                <span>
+                  {c.code}
+                  <small> · 주문 #{c.orderId} · {new Date(c.redeemedAt).toLocaleDateString("ko-KR")}</small>
+                </span>
+                <strong className="minus">-{c.discountAmount.toLocaleString()}원</strong>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="wallet-hint">사용한 쿠폰이 없어요. 쿠폰 코드는 결제 화면에서 입력해요.</p>
+        )}
       </section>
     </div>
   );

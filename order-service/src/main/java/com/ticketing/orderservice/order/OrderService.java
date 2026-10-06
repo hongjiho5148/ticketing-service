@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -33,6 +35,8 @@ import org.springframework.web.client.RestClientException;
 @Transactional
 public class OrderService {
 
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
+
     private static final Duration REFUND_CUTOFF_BEFORE_EVENT = Duration.ofHours(24);
     private static final String HOLDING_STATUS = "HOLDING";
 
@@ -41,18 +45,50 @@ public class OrderService {
     private final PortOneClient portOneClient;
     private final EventServiceClient eventServiceClient;
     private final ReservationServiceClient reservationServiceClient;
+    private final OrderBenefitService orderBenefitService;
 
     public OrderService(
             OrderRepository orderRepository,
             PaymentRepository paymentRepository,
             PortOneClient portOneClient,
             EventServiceClient eventServiceClient,
-            ReservationServiceClient reservationServiceClient) {
+            ReservationServiceClient reservationServiceClient,
+            OrderBenefitService orderBenefitService) {
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
         this.portOneClient = portOneClient;
         this.eventServiceClient = eventServiceClient;
         this.reservationServiceClient = reservationServiceClient;
+        this.orderBenefitService = orderBenefitService;
+    }
+
+    public OrderResponse applyCoupon(Long userId, Long orderId, String code) {
+        Orders order = loadPendingOrder(userId, orderId);
+        orderBenefitService.applyCoupon(order, code);
+        return OrderResponse.from(order);
+    }
+
+    public OrderResponse removeCoupon(Long userId, Long orderId) {
+        Orders order = loadPendingOrder(userId, orderId);
+        orderBenefitService.removeCoupon(order);
+        return OrderResponse.from(order);
+    }
+
+    public OrderResponse applyPoints(Long userId, Long orderId, int points) {
+        Orders order = loadPendingOrder(userId, orderId);
+        orderBenefitService.applyPoints(order, points);
+        return OrderResponse.from(order);
+    }
+
+    private Orders loadPendingOrder(Long userId, Long orderId) {
+        Orders order = orderRepository.findById(orderId).orElseThrow(() -> new ApiException(ErrorCode.ORDER_NOT_FOUND));
+        if (!order.getUserId().equals(userId)) {
+            throw new ApiException(ErrorCode.FORBIDDEN);
+        }
+        if (order.getStatus() != OrderStatus.PENDING) {
+            throw new ApiException(ErrorCode.ORDER_NOT_PENDING);
+        }
+        return order;
     }
 
     public OrderResponse createOrder(Long userId, OrderCreateRequest request) {
@@ -92,6 +128,17 @@ public class OrderService {
         boolean verified = portOnePayment.isPaid() && portOnePayment.amount().total() == order.getTotalPrice();
 
         if (verified) {
+            try {
+                orderBenefitService.redeem(order);
+            } catch (ApiException e) {
+                // The customer already paid PortOne the discounted amount, but the coupon/points that
+                // justified that price can't be honored any more (spent elsewhere, coupon ran out) -
+                // so the payment gets refunded and the order fails instead of being paid at a price
+                // it no longer qualifies for.
+                log.warn("Benefits no longer valid for order {}: {}", orderId, e.getErrorCode());
+                refundQuietly(request.paymentId());
+                return failPayment(order, request.paymentId());
+            }
             LocalDateTime paidAt = LocalDateTime.now();
             // Confirm on reservation-service (which sells the seat on its end) before committing our
             // own PAID status locally, so a failed confirm never leaves an order marked paid with no
@@ -103,11 +150,23 @@ public class OrderService {
             return new PaymentResponse(order.getId(), PaymentStatus.SUCCESS, paidAt);
         }
 
+        return failPayment(order, request.paymentId());
+    }
+
+    private PaymentResponse failPayment(Orders order, String paymentId) {
         reservationServiceClient.cancel(order.getReservationId());
         order.markFailed();
-        paymentRepository.save(
-                new Payment(order, "CARD", request.paymentId(), PaymentStatus.FAILED, order.getTotalPrice(), null));
+        paymentRepository.save(new Payment(order, "CARD", paymentId, PaymentStatus.FAILED, order.getTotalPrice(), null));
         return new PaymentResponse(order.getId(), PaymentStatus.FAILED, null);
+    }
+
+    private void refundQuietly(String paymentId) {
+        try {
+            portOneClient.cancelPayment(paymentId, "쿠폰/포인트 적용 실패로 자동 환불");
+        } catch (RestClientException e) {
+            // Nothing more to do automatically - needs a manual refund in the PortOne console.
+            log.error("AUTO-REFUND FAILED for PortOne payment {} - refund it manually: {}", paymentId, e.getMessage());
+        }
     }
 
     /**
@@ -137,6 +196,7 @@ public class OrderService {
         }
 
         order.cancel();
+        orderBenefitService.reverse(order);
         reservationServiceClient.cancel(order.getReservationId());
     }
 

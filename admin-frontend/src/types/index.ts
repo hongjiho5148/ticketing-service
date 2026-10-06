@@ -87,3 +87,25 @@ export interface ApiErrorBody {
   message: string;
   timestamp: string;
 }
+
+export type DiscountType = "FLAT" | "PERCENT";
+
+export interface Coupon {
+  id: number;
+  code: string;
+  discountType: DiscountType;
+  discountValue: number;
+  validFrom: string;
+  validTo: string;
+  maxUses: number;
+  usedCount: number;
+}
+
+export interface CouponCreatePayload {
+  code: string;
+  discountType: DiscountType;
+  discountValue: number;
+  validFrom: string;
+  validTo: string;
+  maxUses: number;
+}

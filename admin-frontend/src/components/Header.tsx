@@ -19,6 +19,7 @@ export function Header() {
         <nav className="header-nav">
           <Link to="/">대시보드</Link>
           <Link to="/events/new">공연 등록</Link>
+          <Link to="/coupons">쿠폰 관리</Link>
           <Link to="/scan">입장 스캔</Link>
           <span className="header-user">{user.name}님</span>
           <button type="button" onClick={handleLogout}>

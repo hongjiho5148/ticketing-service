@@ -1083,6 +1083,46 @@ button:disabled {
   width: 100%;
 }
 
+.benefit-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.benefit-row {
+  display: flex;
+  gap: 6px;
+}
+
+.benefit-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.reservation-panel .benefit-row button {
+  width: auto;
+  flex-shrink: 0;
+  padding-inline: 12px;
+}
+
+.price-summary {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.reservation-panel .btn-link-inline {
+  width: auto;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--danger);
+  font-size: 0.78rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 /* ---------- Orders table ---------- */
 
 .order-table {
@@ -1486,6 +1526,53 @@ button:disabled {
 .account-section h2 {
   font-size: 1.05rem;
   margin: 0 0 14px;
+}
+
+.wallet-balance {
+  margin: 0 0 4px;
+  color: var(--text-muted);
+}
+
+.wallet-balance strong {
+  margin-left: 6px;
+  font-size: 1.4rem;
+  color: var(--primary-dark);
+}
+
+.wallet-hint {
+  margin: 0 0 12px;
+  color: var(--text-faint);
+  font-size: 0.82rem;
+}
+
+.wallet-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wallet-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border-soft);
+  font-size: 0.9rem;
+}
+
+.wallet-list small {
+  color: var(--text-faint);
+}
+
+.wallet-list .plus {
+  color: var(--grade-s-dark);
+}
+
+.wallet-list .minus {
+  color: var(--danger);
 }
 
 .notification-pref-row {

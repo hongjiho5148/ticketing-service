@@ -703,3 +703,21 @@ button:disabled {
 .header-nav button {
   white-space: nowrap;
 }
+
+/* ---------- Coupons ---------- */
+
+.coupon-form-card {
+  max-width: 720px;
+  margin: 0 0 28px;
+}
+
+.coupon-form-card h2 {
+  font-size: 1.05rem;
+  margin: 0 0 14px;
+}
+
+.coupon-form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
