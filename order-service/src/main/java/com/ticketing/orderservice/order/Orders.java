@@ -113,4 +113,8 @@ public class Orders {
     public void cancel() {
         this.status = OrderStatus.CANCELLED;
     }
+
+    public void markPartiallyRefunded() {
+        this.status = OrderStatus.PARTIALLY_REFUNDED;
+    }
 }

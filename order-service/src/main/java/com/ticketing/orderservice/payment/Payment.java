@@ -47,6 +47,13 @@ public class Payment {
 
     private LocalDateTime paidAt;
 
+    // Won given back to the customer; less than amount when a late cancellation only gets a partial
+    // refund. The column default keeps ddl-auto's ALTER TABLE valid for payments that already exist.
+    @Column(nullable = false, columnDefinition = "integer default 0")
+    private Integer refundedAmount = 0;
+
+    private LocalDateTime refundedAt;
+
     public Payment(
             Orders order, String method, String portonePaymentId, PaymentStatus status, Integer amount, LocalDateTime paidAt) {
         this.order = order;
@@ -55,5 +62,10 @@ public class Payment {
         this.status = status;
         this.amount = amount;
         this.paidAt = paidAt;
+    }
+
+    public void markRefunded(int refundedAmount) {
+        this.refundedAmount = refundedAmount;
+        this.refundedAt = LocalDateTime.now();
     }
 }

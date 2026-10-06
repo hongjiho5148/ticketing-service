@@ -7,6 +7,7 @@ import com.ticketing.orderservice.order.dto.OrderCreateRequest;
 import com.ticketing.orderservice.order.dto.OrderHistoryListResponse;
 import com.ticketing.orderservice.order.dto.OrderResponse;
 import com.ticketing.orderservice.order.dto.PaymentRequest;
+import com.ticketing.orderservice.order.dto.RefundPreviewResponse;
 import com.ticketing.orderservice.order.dto.PaymentResponse;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.PageRequest;
@@ -58,9 +59,15 @@ public class OrderController {
         return orderService.applyPoints(SecurityUtil.getCurrentUserId(), orderId, request.points());
     }
 
+    @GetMapping("/{orderId}/refund-preview")
+    public RefundPreviewResponse refundPreview(@PathVariable Long orderId) {
+        return RefundPreviewResponse.from(orderService.refundPreview(SecurityUtil.getCurrentUserId(), orderId));
+    }
+
     @DeleteMapping("/{orderId}")
-    public ResponseEntity<Void> cancelOrder(@PathVariable Long orderId) {
-        orderService.cancelOrder(SecurityUtil.getCurrentUserId(), orderId);
+    public ResponseEntity<Void> cancelOrder(
+            @PathVariable Long orderId, @RequestParam(required = false) Integer expectedRefund) {
+        orderService.cancelOrder(SecurityUtil.getCurrentUserId(), orderId, expectedRefund);
         return ResponseEntity.noContent().build();
     }
 

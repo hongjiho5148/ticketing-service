@@ -3,6 +3,7 @@ package com.ticketing.orderservice.order.dto;
 import com.ticketing.orderservice.eventclient.dto.SeatDetailResponse;
 import com.ticketing.orderservice.order.OrderStatus;
 import com.ticketing.orderservice.order.Orders;
+import com.ticketing.orderservice.payment.Payment;
 import java.time.LocalDateTime;
 
 public record OrderHistoryResponse(
@@ -16,10 +17,13 @@ public record OrderHistoryResponse(
         Integer seatNumber,
         String seatNo,
         Integer totalPrice,
+        String paymentMethod,
+        Integer refundedAmount,
         OrderStatus status,
         LocalDateTime createdAt) {
 
-    public static OrderHistoryResponse from(Orders order, SeatDetailResponse seat) {
+    /** payment is null for orders that never reached a payment attempt (still PENDING). */
+    public static OrderHistoryResponse from(Orders order, SeatDetailResponse seat, Payment payment) {
         return new OrderHistoryResponse(
                 order.getId(),
                 seat.eventId(),
@@ -31,6 +35,8 @@ public record OrderHistoryResponse(
                 seat.seatNumber(),
                 seat.seatNo(),
                 order.getTotalPrice(),
+                payment == null ? null : payment.getMethod(),
+                payment == null ? null : payment.getRefundedAmount(),
                 order.getStatus(),
                 order.getCreatedAt());
     }

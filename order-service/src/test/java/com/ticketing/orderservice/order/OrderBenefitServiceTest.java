@@ -181,9 +181,22 @@ class OrderBenefitServiceTest {
         benefits.redeem(order);
         assertThat(balance()).isEqualTo(10_000 - 4_000 + 960);
 
-        benefits.reverse(order);
+        benefits.reverse(order, 100);
 
         assertThat(balance()).isEqualTo(10_000);
+    }
+
+    @Test
+    void aPartialRefundOnlyGivesBackThatShareOfThePointsSpent() {
+        giveBalance(10_000);
+        Orders order = order(100_000);
+        benefits.applyPoints(order, 5_000); // charged 95,000 -> reward 950
+        benefits.redeem(order);
+        assertThat(balance()).isEqualTo(10_000 - 5_000 + 950);
+
+        benefits.reverse(order, 70); // 70% of 5,000 = 3,500 back, reward fully taken back
+
+        assertThat(balance()).isEqualTo(10_000 - 5_000 + 3_500);
     }
 
     @Test
@@ -195,7 +208,7 @@ class OrderBenefitServiceTest {
         // The reward was already spent elsewhere.
         accountRepository.deduct(userId, 900);
         em.clear();
-        benefits.reverse(order);
+        benefits.reverse(order, 100);
 
         assertThat(balance()).isZero();
     }
