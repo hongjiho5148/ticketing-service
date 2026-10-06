@@ -78,6 +78,10 @@ public class Seat {
         this.status = SeatStatus.AVAILABLE;
     }
 
+    public void changePrice(Integer price) {
+        this.price = price;
+    }
+
     public void hold(LocalDateTime holdExpireAt) {
         this.status = SeatStatus.HOLD;
         this.holdExpireAt = holdExpireAt;

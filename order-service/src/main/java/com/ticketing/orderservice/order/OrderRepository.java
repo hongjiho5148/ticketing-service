@@ -5,8 +5,13 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 public interface OrderRepository extends JpaRepository<Orders, Long> {
+
+    /** Rows of [eventId, status, orderCount, totalPriceSum] for the admin sales summary. */
+    @Query("select o.eventId, o.status, count(o), sum(o.totalPrice) from Orders o group by o.eventId, o.status")
+    List<Object[]> aggregateByEventAndStatus();
 
     Page<Orders> findByUserId(Long userId, Pageable pageable);
 

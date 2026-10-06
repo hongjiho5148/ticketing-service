@@ -9,6 +9,8 @@ public enum ErrorCode {
     EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "이벤트를 찾을 수 없습니다."),
     SEAT_NOT_FOUND(HttpStatus.NOT_FOUND, "좌석을 찾을 수 없습니다."),
     SEAT_ALREADY_RESERVED(HttpStatus.CONFLICT, "이미 예약된 좌석입니다."),
+    SEAT_NOT_MODIFIABLE(HttpStatus.CONFLICT, "이미 판매된 좌석은 수정할 수 없습니다."),
+    SECTION_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 등록된 구역입니다."),
     REVIEW_NOT_ELIGIBLE(HttpStatus.FORBIDDEN, "결제 완료한 공연에만 후기를 남길 수 있어요."),
     REVIEW_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 후기를 작성했어요."),
     ORDER_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "주문 정보를 가져올 수 없습니다. 잠시 후 다시 시도해주세요.");

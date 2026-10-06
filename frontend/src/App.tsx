@@ -4,6 +4,8 @@ import { Footer } from "./components/Footer";
 import { Header } from "./components/Header";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AccountPage } from "./pages/AccountPage";
+import { AdminDashboardPage } from "./pages/AdminDashboardPage";
+import { AdminEventFormPage } from "./pages/AdminEventFormPage";
 import { EventDetailPage } from "./pages/EventDetailPage";
 import { EventListPage } from "./pages/EventListPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -56,6 +58,30 @@ function App() {
               <ProtectedRoute>
                 <WishlistPage />
               </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <AdminDashboardPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/events/new"
+            element={
+              <AdminRoute>
+                <AdminEventFormPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/events/:eventId/edit"
+            element={
+              <AdminRoute>
+                <AdminEventFormPage />
+              </AdminRoute>
             }
           />
           <Route

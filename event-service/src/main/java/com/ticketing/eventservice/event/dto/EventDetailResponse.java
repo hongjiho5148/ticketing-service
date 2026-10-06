@@ -11,6 +11,7 @@ public record EventDetailResponse(
         String venue,
         String description,
         LocalDateTime startAt,
+        LocalDateTime openAt,
         EventStatus status,
         List<SeatGradeSummary> seatSummary,
         List<SeatSectionSummary> sectionSummary) {
@@ -23,6 +24,7 @@ public record EventDetailResponse(
                 event.getVenue(),
                 event.getDescription(),
                 event.getStartAt(),
+                event.getOpenAt(),
                 event.getStatus(),
                 seatSummary,
                 sectionSummary);
