@@ -83,3 +83,7 @@ reservation:
 auth:
   service:
     uri: ${AUTH_SERVICE_URI:http://auth-service:8080}
+
+# Where the buttons in notification mails point (the public site).
+app:
+  frontend-url: ${APP_FRONTEND_URL:http://localhost:5173}
