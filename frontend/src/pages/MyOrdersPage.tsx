@@ -100,7 +100,9 @@ export function MyOrdersPage() {
       await cancelOrder(order.orderId, preview.refundAmount);
       const status: OrderStatus = preview.refundPercent === 100 ? "CANCELLED" : "PARTIALLY_REFUNDED";
       setOrders((prev) =>
-        prev.map((o) => (o.orderId === order.orderId ? { ...o, status, refundedAmount: preview.refundAmount } : o)),
+        prev.map((o) =>
+          o.orderId === order.orderId ? { ...o, status, refundedAmount: preview.refundAmount, transferable: false } : o,
+        ),
       );
       showToast(`주문이 취소됐어요. ${preview.refundAmount.toLocaleString()}원이 환불돼요.`);
     } catch (err) {
@@ -208,7 +210,7 @@ export function MyOrdersPage() {
                         {cancellingId === order.orderId ? "취소 중..." : "취소"}
                       </button>
                     )}
-                    {order.transferable && (
+                    {order.status === "PAID" && order.transferable && (
                       <button type="button" className="btn-secondary" onClick={() => setTransferTarget(order)}>
                         양도
                       </button>
