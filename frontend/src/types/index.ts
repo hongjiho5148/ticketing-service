@@ -142,6 +142,9 @@ export interface OrderHistoryItem {
   paymentMethod: string | null;
   refundedAmount: number | null;
   status: OrderStatus;
+  // "PENDING" while a transfer awaits the recipient, "TRANSFERRED" once accepted.
+  transferStatus: "PENDING" | "TRANSFERRED" | null;
+  transferable: boolean;
   createdAt: string;
 }
 
@@ -211,6 +214,24 @@ export interface ApiErrorBody {
   code: string;
   message: string;
   timestamp: string;
+}
+
+export type TransferStatus = "PENDING" | "ACCEPTED" | "DECLINED" | "CANCELLED" | "EXPIRED";
+
+export interface TransferItem {
+  transferId: number;
+  orderId: number;
+  direction: "INCOMING" | "OUTGOING";
+  status: TransferStatus;
+  // The sender's name for incoming transfers, the masked recipient email for outgoing ones.
+  counterpart: string;
+  eventTitle: string;
+  venue: string;
+  eventStartAt: string;
+  grade: string;
+  section: string;
+  seatNo: string;
+  createdAt: string;
 }
 
 export interface AlertStatus {

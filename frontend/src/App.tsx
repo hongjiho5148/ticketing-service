@@ -12,6 +12,7 @@ import { MyTicketsPage } from "./pages/MyTicketsPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { OAuth2RedirectPage } from "./pages/OAuth2RedirectPage";
 import { SignupPage } from "./pages/SignupPage";
+import { TransfersPage } from "./pages/TransfersPage";
 import { WishlistPage } from "./pages/WishlistPage";
 
 function App() {
@@ -47,6 +48,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <MyTicketsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/transfers"
+            element={
+              <ProtectedRoute>
+                <TransfersPage />
               </ProtectedRoute>
             }
           />

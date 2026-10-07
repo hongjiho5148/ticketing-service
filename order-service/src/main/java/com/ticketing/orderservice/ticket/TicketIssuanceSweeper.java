@@ -70,7 +70,7 @@ public class TicketIssuanceSweeper {
 
     private void notifyTicketIssued(Orders order) {
         try {
-            UserInternalResponse user = authServiceClient.getUser(order.getUserId());
+            UserInternalResponse user = authServiceClient.getUser(order.holderId());
             if (!user.emailOptIn()) {
                 return;
             }

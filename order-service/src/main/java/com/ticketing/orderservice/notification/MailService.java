@@ -27,6 +27,16 @@ public class MailService {
         mailSender.send(message);
     }
 
+    public void sendTransferRequestedEmail(
+            String to, String name, String fromName, String eventTitle, LocalDateTime eventStartAt) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(to);
+        message.setSubject("[픽시트] " + fromName + "님이 티켓을 양도했어요");
+        message.setText(name + "님, " + fromName + "님이 \"" + eventTitle + "\" (" + eventStartAt.format(DATE_FORMAT)
+                + ") 티켓을 보내셨어요.\n\n로그인 후 양도함에서 수락하면 내 티켓이 됩니다. 거절하면 보낸 분께 그대로 남아요.");
+        mailSender.send(message);
+    }
+
     public void sendShowReminderEmail(String to, String name, String eventTitle, LocalDateTime eventStartAt) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(to);

@@ -59,7 +59,7 @@ public class ReminderSweeper {
 
         for (Orders order : candidates) {
             try {
-                UserInternalResponse user = authServiceClient.getUser(order.getUserId());
+                UserInternalResponse user = authServiceClient.getUser(order.holderId());
                 if (!user.emailOptIn()) {
                     order.markReminderSent();
                     continue;

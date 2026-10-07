@@ -40,7 +40,7 @@ public class TicketService {
 
     @Transactional(readOnly = true)
     public List<TicketHistoryResponse> listMyTickets(Long userId) {
-        List<Ticket> tickets = ticketRepository.findByOrder_UserIdOrderByIssuedAtDesc(userId);
+        List<Ticket> tickets = ticketRepository.findByHolderOrderByIssuedAtDesc(userId);
         List<Long> seatIds = tickets.stream().map(t -> t.getOrder().getSeatId()).distinct().toList();
         Map<Long, SeatDetailResponse> seatsById = seatIds.isEmpty()
                 ? Map.of()
@@ -54,7 +54,7 @@ public class TicketService {
     @Transactional(readOnly = true)
     public TicketResponse getTicket(Long userId, Long orderId) {
         Orders order = orderRepository.findById(orderId).orElseThrow(() -> new ApiException(ErrorCode.ORDER_NOT_FOUND));
-        if (!order.getUserId().equals(userId)) {
+        if (!order.holderId().equals(userId)) {
             throw new ApiException(ErrorCode.FORBIDDEN);
         }
         Ticket ticket = ticketRepository.findByOrderId(orderId)

@@ -28,7 +28,17 @@ public enum ErrorCode {
     POINTS_INSUFFICIENT(HttpStatus.CONFLICT, "보유 포인트가 부족해요."),
     TICKET_NOT_ISSUED_YET(HttpStatus.NOT_FOUND, "아직 발급되지 않은 입장권입니다. 공연 시작 2시간 전부터 발급됩니다."),
     TICKET_INVALID(HttpStatus.BAD_REQUEST, "유효하지 않은 QR 코드입니다."),
-    TICKET_ALREADY_USED(HttpStatus.CONFLICT, "이미 사용된 입장권입니다.");
+    TICKET_ALREADY_USED(HttpStatus.CONFLICT, "이미 사용된 입장권입니다."),
+    AUTH_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "회원 정보를 확인할 수 없습니다. 잠시 후 다시 시도해주세요."),
+    TRANSFER_NOT_FOUND(HttpStatus.NOT_FOUND, "양도 내역을 찾을 수 없어요."),
+    TRANSFER_RECIPIENT_NOT_FOUND(HttpStatus.NOT_FOUND, "해당 이메일로 가입한 회원을 찾을 수 없어요."),
+    TRANSFER_TO_SELF(HttpStatus.BAD_REQUEST, "본인에게는 양도할 수 없어요."),
+    TRANSFER_NOT_ALLOWED(HttpStatus.CONFLICT, "양도할 수 없는 티켓이에요. 결제 완료된 티켓만, 한 번만 양도할 수 있어요."),
+    TRANSFER_CLOSED(HttpStatus.CONFLICT, "양도 가능 기간이 지났어요. 공연 시작 2시간 전까지만 양도할 수 있어요."),
+    TRANSFER_ALREADY_PENDING(HttpStatus.CONFLICT, "이미 수락 대기 중인 양도가 있어요."),
+    TRANSFER_NOT_PENDING(HttpStatus.CONFLICT, "이미 처리된 양도예요."),
+    ORDER_TRANSFERRED(HttpStatus.CONFLICT, "양도한 티켓은 취소할 수 없어요."),
+    ORDER_TRANSFER_PENDING(HttpStatus.CONFLICT, "양도 대기 중인 티켓이에요. 양도를 먼저 취소해주세요.");
 
     private final HttpStatus status;
     private final String message;

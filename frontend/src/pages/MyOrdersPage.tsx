@@ -1,8 +1,10 @@
 import { isAxiosError } from "axios";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { cancelOrder, fetchOrders, fetchRefundPreview } from "../api/orders";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { SeatLocationModal } from "../components/SeatLocationModal";
+import { TransferDialog } from "../components/TransferDialog";
 import { TextRowsSkeleton } from "../components/Skeleton";
 import { useToast } from "../context/ToastContext";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
@@ -44,6 +46,7 @@ export function MyOrdersPage() {
   const [cancellingId, setCancellingId] = useState<number | null>(null);
   const [viewingOrder, setViewingOrder] = useState<OrderHistoryItem | null>(null);
   const [cancelTarget, setCancelTarget] = useState<CancelTarget | null>(null);
+  const [transferTarget, setTransferTarget] = useState<OrderHistoryItem | null>(null);
 
   useEffect(() => {
     fetchOrders({ page: 0, size: PAGE_SIZE })
@@ -112,6 +115,16 @@ export function MyOrdersPage() {
     }
   }
 
+  function handleTransferSent() {
+    if (!transferTarget) return;
+    const orderId = transferTarget.orderId;
+    setTransferTarget(null);
+    setOrders((prev) =>
+      prev.map((o) => (o.orderId === orderId ? { ...o, transferStatus: "PENDING", transferable: false } : o)),
+    );
+    showToast("양도 요청을 보냈어요. 받는 분이 수락하면 티켓이 넘어가요.");
+  }
+
   function describeRefund({ preview }: CancelTarget) {
     const lines = [
       `환불 ${preview.refundAmount.toLocaleString()}원 (결제금액의 ${preview.refundPercent}%)`,
@@ -173,13 +186,19 @@ export function MyOrdersPage() {
                   <td>{order.paymentMethod ? (PAY_METHOD_LABEL[order.paymentMethod] ?? order.paymentMethod) : "-"}</td>
                   <td>
                     {STATUS_LABEL[order.status]}
+                    {order.transferStatus && (
+                      <small className="refund-note">
+                        {" "}
+                        ({order.transferStatus === "PENDING" ? "양도 수락 대기" : "양도 완료"})
+                      </small>
+                    )}
                     {order.status === "PARTIALLY_REFUNDED" && order.refundedAmount !== null && (
                       <small className="refund-note"> (환불 {order.refundedAmount.toLocaleString()}원)</small>
                     )}
                   </td>
                   <td>{new Date(order.createdAt).toLocaleString()}</td>
                   <td>
-                    {order.status === "PAID" && (
+                    {order.status === "PAID" && !order.transferStatus && (
                       <button
                         type="button"
                         className="btn-secondary"
@@ -188,6 +207,16 @@ export function MyOrdersPage() {
                       >
                         {cancellingId === order.orderId ? "취소 중..." : "취소"}
                       </button>
+                    )}
+                    {order.transferable && (
+                      <button type="button" className="btn-secondary" onClick={() => setTransferTarget(order)}>
+                        양도
+                      </button>
+                    )}
+                    {order.transferStatus === "PENDING" && (
+                      <Link to="/transfers" className="seat-link">
+                        양도함 보기
+                      </Link>
                     )}
                   </td>
                 </tr>
@@ -213,6 +242,16 @@ export function MyOrdersPage() {
           rowNo={viewingOrder.rowNo}
           seatNumber={viewingOrder.seatNumber}
           onClose={() => setViewingOrder(null)}
+        />
+      )}
+
+      {transferTarget && (
+        <TransferDialog
+          orderId={transferTarget.orderId}
+          eventTitle={transferTarget.eventTitle}
+          seatLabel={`${transferTarget.grade}석 · ${transferTarget.section} · ${transferTarget.seatNo}`}
+          onDone={handleTransferSent}
+          onCancel={() => setTransferTarget(null)}
         />
       )}
 

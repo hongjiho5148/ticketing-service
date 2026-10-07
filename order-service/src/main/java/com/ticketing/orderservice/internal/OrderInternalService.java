@@ -16,6 +16,6 @@ public class OrderInternalService {
     }
 
     public boolean hasPaidOrder(Long userId, Long eventId) {
-        return orderRepository.existsByUserIdAndEventIdAndStatus(userId, eventId, OrderStatus.PAID);
+        return orderRepository.existsByHolderAndEventIdAndStatus(userId, eventId, OrderStatus.PAID);
     }
 }

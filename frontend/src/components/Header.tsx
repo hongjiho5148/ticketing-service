@@ -23,6 +23,7 @@ export function Header() {
           <>
             <Link to="/orders">내 주문</Link>
             <Link to="/tickets">내 티켓함</Link>
+            <Link to="/transfers">양도함</Link>
             <Link to="/wishlist">찜한 공연</Link>
             <Link to="/account">마이페이지</Link>
             <span className="header-user">{user.name}님</span>
