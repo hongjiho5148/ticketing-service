@@ -64,7 +64,7 @@ export function SignupPage() {
       <div className="form-page">
         <h1>회원가입</h1>
         <p className="form-notice">
-          <strong>{email}</strong> 으로 인증 메일을 보냈어요. 메일함에서 링크를 눌러 인증을 완료한 뒤 로그인해주세요.
+          <strong>{email}</strong> 으로 인증 메일을 보내고 있어요. 곧 도착하는 메일의 링크를 눌러 인증을 완료한 뒤 로그인해주세요. 메일이 오지 않으면 로그인 화면에서 다시 받을 수 있어요.
         </p>
         <p>
           <Link to="/login">로그인 하러 가기</Link>

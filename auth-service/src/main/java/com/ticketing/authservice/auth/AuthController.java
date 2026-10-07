@@ -5,6 +5,7 @@ import com.ticketing.authservice.auth.dto.ChangePasswordRequest;
 import com.ticketing.authservice.auth.dto.LoginRequest;
 import com.ticketing.authservice.auth.dto.LoginResponse;
 import com.ticketing.authservice.auth.dto.MeResponse;
+import com.ticketing.authservice.auth.dto.ResendVerificationRequest;
 import com.ticketing.authservice.auth.dto.SignupRequest;
 import com.ticketing.authservice.auth.dto.SignupResponse;
 import com.ticketing.authservice.auth.dto.UpdateProfileRequest;
@@ -52,6 +53,13 @@ public class AuthController {
         // Before the password is even looked at, so a bot can't use this endpoint to test credentials without solving it.
         captchaVerifier.verify(captchaToken);
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    // Always 202: whether the address exists (or is already verified) is deliberately not revealed.
+    @PostMapping("/resend-verification")
+    public ResponseEntity<Void> resendVerification(@Valid @RequestBody ResendVerificationRequest request) {
+        authService.resendVerification(request.email());
+        return ResponseEntity.accepted().build();
     }
 
     @PostMapping("/admin/login")
