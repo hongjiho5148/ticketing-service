@@ -74,7 +74,9 @@ app:
   backend-url: ${APP_BACKEND_URL:http://localhost:8080}
 
 jwt:
-  secret: ${JWT_SECRET:local-development-secret-key-change-me-please-32bytes-min}
+  # Deliberately no default: a secret baked into the source is a secret everyone has, and whoever holds it can
+  # forge tokens. The service refuses to start until JWT_SECRET is set (see .env.example).
+  secret: ${JWT_SECRET}
   access-token-expiration-ms: ${JWT_ACCESS_EXPIRATION_MS:1800000}
   refresh-token-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000}
   admin-access-token-expiration-ms: ${JWT_ADMIN_ACCESS_EXPIRATION_MS:900000}

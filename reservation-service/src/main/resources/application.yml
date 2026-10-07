@@ -28,7 +28,9 @@ spring:
 # Verification only here (auth-service is the one that mints tokens) - secret must match
 # auth-service's/backend's exactly since that's what makes a JWT it signs valid here too.
 jwt:
-  secret: ${JWT_SECRET:local-development-secret-key-change-me-please-32bytes-min}
+  # Deliberately no default: a secret baked into the source is a secret everyone has, and whoever holds it can
+  # forge tokens. The service refuses to start until JWT_SECRET is set (see .env.example).
+  secret: ${JWT_SECRET}
 
 reservation:
   hold-expire-sweep-cron: "0 * * * * *"

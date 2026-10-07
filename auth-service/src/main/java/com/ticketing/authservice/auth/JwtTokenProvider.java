@@ -23,6 +23,10 @@ public class JwtTokenProvider {
             @Value("${jwt.access-token-expiration-ms}") long accessTokenExpirationMs,
             @Value("${jwt.refresh-token-expiration-ms}") long refreshTokenExpirationMs,
             @Value("${jwt.admin-access-token-expiration-ms}") long adminAccessTokenExpirationMs) {
+        if (secret == null || secret.getBytes().length < 32) {
+            throw new IllegalStateException(
+                    "JWT_SECRET must be set to a random value of at least 32 bytes. Generate one with: openssl rand -base64 48");
+        }
         this.key = Keys.hmacShaKeyFor(secret.getBytes());
         this.accessTokenExpirationMs = accessTokenExpirationMs;
         this.refreshTokenExpirationMs = refreshTokenExpirationMs;
