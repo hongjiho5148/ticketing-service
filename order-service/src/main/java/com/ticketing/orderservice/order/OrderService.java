@@ -191,7 +191,9 @@ public class OrderService {
     /** What cancelling this order right now would refund - the order page shows this before the user confirms. */
     @Transactional(readOnly = true)
     public RefundQuote refundPreview(Long userId, Long orderId) {
-        return RefundPolicy.quote(loadCancellableOrder(userId, orderId), LocalDateTime.now());
+        // No row lock here: this runs in a read-only transaction, where MySQL refuses SELECT ... FOR UPDATE,
+        // and a preview changes nothing so there is nothing to protect. cancelOrder re-checks everything under the lock.
+        return RefundPolicy.quote(loadCancellableOrder(userId, orderId, false), LocalDateTime.now());
     }
 
     /**
@@ -203,7 +205,7 @@ public class OrderService {
      *     what they agreed to
      */
     public void cancelOrder(Long userId, Long orderId, Integer expectedRefundAmount) {
-        Orders order = loadCancellableOrder(userId, orderId);
+        Orders order = loadCancellableOrder(userId, orderId, true);
 
         RefundQuote quote = RefundPolicy.quote(order, LocalDateTime.now());
         if (!quote.isCancellable()) {
@@ -232,9 +234,13 @@ public class OrderService {
         reservationServiceClient.cancel(order.getReservationId());
     }
 
-    private Orders loadCancellableOrder(Long userId, Long orderId) {
-        // Locked so a transfer being created or accepted at the same moment can't slip past the checks below.
-        Orders order = orderRepository.findByIdForUpdate(orderId).orElseThrow(() -> new ApiException(ErrorCode.ORDER_NOT_FOUND));
+    /**
+     * @param lock true for the real cancellation: the row is locked so a transfer being created or accepted
+     *     at the same moment can't slip past the checks below. The read-only preview passes false.
+     */
+    private Orders loadCancellableOrder(Long userId, Long orderId, boolean lock) {
+        Orders order = (lock ? orderRepository.findByIdForUpdate(orderId) : orderRepository.findById(orderId))
+                .orElseThrow(() -> new ApiException(ErrorCode.ORDER_NOT_FOUND));
         if (!order.getUserId().equals(userId)) {
             throw new ApiException(ErrorCode.FORBIDDEN);
         }
