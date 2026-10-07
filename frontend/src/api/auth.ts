@@ -12,6 +12,11 @@ export function login(payload: { email: string; password: string }, captchaToken
     .then((res) => res.data);
 }
 
+// Always succeeds from the caller's point of view - the server doesn't reveal whether the address is registered.
+export function resendVerification(email: string) {
+  return apiClient.post("/auth/resend-verification", { email }).then(() => undefined);
+}
+
 export function getMe() {
   return apiClient.get<User>("/auth/me").then((res) => res.data);
 }

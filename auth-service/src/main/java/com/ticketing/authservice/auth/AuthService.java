@@ -17,6 +17,7 @@ import com.ticketing.authservice.user.UserRepository;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,21 +27,22 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
 
     private static final Duration VERIFICATION_TOKEN_TTL = Duration.ofHours(24);
+    private static final Duration RESEND_COOLDOWN = Duration.ofMinutes(1);
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
-    private final MailService mailService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public AuthService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             JwtTokenProvider jwtTokenProvider,
-            MailService mailService) {
+            ApplicationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
-        this.mailService = mailService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -53,9 +55,37 @@ public class AuthService {
         user.issueEmailVerificationToken(token, LocalDateTime.now().plus(VERIFICATION_TOKEN_TTL));
         user = userRepository.save(user);
 
-        mailService.sendVerificationEmail(user.getEmail(), user.getName(), token);
+        // Handed to VerificationMailListener, which sends it after this transaction commits - signup
+        // no longer waits on SMTP.
+        eventPublisher.publishEvent(new VerificationMailRequested(user.getEmail(), user.getName(), token));
 
         return SignupResponse.from(user);
+    }
+
+    /**
+     * Sends a fresh verification link. Answers the same whether or not the address belongs to a
+     * pending account (so it can't be used to find out who is registered), and refuses to mail the
+     * same person again within a minute so it can't be used to flood someone's inbox.
+     */
+    @Transactional
+    public void resendVerification(String email) {
+        userRepository.findByProviderAndEmail(AuthProvider.LOCAL, email)
+                .filter(user -> !user.isEmailVerified())
+                .filter(user -> !issuedWithinCooldown(user))
+                .ifPresent(user -> {
+                    String token = UUID.randomUUID().toString();
+                    user.issueEmailVerificationToken(token, LocalDateTime.now().plus(VERIFICATION_TOKEN_TTL));
+                    eventPublisher.publishEvent(new VerificationMailRequested(user.getEmail(), user.getName(), token));
+                });
+    }
+
+    private boolean issuedWithinCooldown(User user) {
+        LocalDateTime expiresAt = user.getEmailVerificationExpiresAt();
+        if (expiresAt == null) {
+            return false;
+        }
+        LocalDateTime issuedAt = expiresAt.minus(VERIFICATION_TOKEN_TTL);
+        return issuedAt.isAfter(LocalDateTime.now().minus(RESEND_COOLDOWN));
     }
 
     public LoginResponse login(LoginRequest request) {

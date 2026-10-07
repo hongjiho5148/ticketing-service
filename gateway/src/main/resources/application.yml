@@ -86,6 +86,12 @@ rate-limit:
       paths: /api/auth/signup
       capacity: 5
       per-minute: 5
+    # Each call can mail someone, so it is kept tight (the server also refuses a repeat within a minute).
+    - name: resend-verification
+      methods: POST
+      paths: /api/auth/resend-verification
+      capacity: 3
+      per-minute: 3
     # Queue and seat grabbing - the endpoints ticket bots hammer.
     - name: queue-enter
       methods: POST
