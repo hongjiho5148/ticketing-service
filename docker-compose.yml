@@ -185,6 +185,9 @@ services:
       - event-service
       - reservation-service
       - order-service
+    environment:
+      # Per-IP throttling is on by default; a load test is one IP, so switch it off for those runs.
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
     expose:
       - "8080"
     # Pinned so nginx can reach gateway by IP instead of by DNS name - see nginx.conf's

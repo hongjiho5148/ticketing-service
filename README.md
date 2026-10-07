@@ -182,10 +182,31 @@ npm run dev
 
 ### 5. 부하테스트 (선택)
 
+게이트웨이는 IP당 요청 수를 제한하므로(아래 "봇 방어" 참고), 부하 생성기 하나가 한 IP로 보이는 부하테스트에서는 먼저 끄고 돌립니다.
+
 ```bash
+RATE_LIMIT_ENABLED=false docker compose up -d gateway
 docker run --network ticketing-service_default --ulimit nofile=200000:200000 \
   -v "$(pwd)/loadtest:/scripts" grafana/k6 run /scripts/reserve_flow.js
 ```
+
+## 봇 방어 (레이트 리미팅)
+
+게이트웨이가 클라이언트 IP별 토큰 버킷으로 요청을 제한합니다(`gateway/.../ratelimit`, 설정은 `application.yml`의 `rate-limit`). 버스트는 허용하고 지속적인 과다 요청만 `429 TOO_MANY_REQUESTS`(+ `Retry-After`)로 막습니다.
+
+| 대상 | 제한 |
+|---|---|
+| 관리자 로그인 | 분당 5회 |
+| 로그인 / 회원가입 | 분당 10회 / 5회 |
+| 대기열 진입 / 좌석 홀드 | 분당 20회 / 20회(버스트 10) |
+| 대기열 상태 조회(2초 폴링) | 분당 120회, 전체 제한과 별도 |
+| 쿠폰 적용 / 티켓 양도 | 분당 10회 / 5회 (코드·이메일 추측 방지) |
+| 그 외 `/api/**` | 분당 600회 |
+
+- IP는 nginx가 덮어쓰는 `X-Real-IP`를 신뢰합니다(게이트웨이는 nginx를 거쳐서만 접근 가능).
+- 버킷은 게이트웨이 메모리에 있어 단일 인스턴스 기준입니다. 게이트웨이를 여러 대로 늘리면 Redis 같은 공유 저장소로 옮겨야 합니다.
+- 학교·회사처럼 한 IP를 여러 명이 쓰는 환경에서는 제한에 걸릴 수 있어 기본값을 넉넉히 잡았습니다.
+- 캡차는 사이트 키가 필요해 아직 연동하지 않았습니다.
 
 ## API 게이트웨이 라우팅
 

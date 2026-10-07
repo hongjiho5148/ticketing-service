@@ -60,6 +60,63 @@ spring:
               predicates:
                 - Path=/api/admin/**
 
+# Per-client (IP) throttling at the edge - see RateLimitFilter. Token buckets: capacity is the burst
+# a client may spend at once, per-minute is how fast it earns tokens back. The first rule matching a
+# request applies, and the request is also charged to the global bucket unless the rule says skip-global.
+# Turn it off for load tests (RATE_LIMIT_ENABLED=false): one load generator is one IP.
+rate-limit:
+  enabled: ${RATE_LIMIT_ENABLED:true}
+  global:
+    capacity: 600
+    per-minute: 600
+  rules:
+    # Password guessing. Admin login is the one worth the most, so it gets the tightest limit.
+    - name: admin-login
+      methods: POST
+      paths: /api/auth/admin/login
+      capacity: 5
+      per-minute: 5
+    - name: login
+      methods: POST
+      paths: /api/auth/login
+      capacity: 10
+      per-minute: 10
+    - name: signup
+      methods: POST
+      paths: /api/auth/signup
+      capacity: 5
+      per-minute: 5
+    # Queue and seat grabbing - the endpoints ticket bots hammer.
+    - name: queue-enter
+      methods: POST
+      paths: /api/queue/enter
+      capacity: 20
+      per-minute: 20
+    # A waiting client polls this every 2 seconds (~30/min), so it gets its own roomy bucket and
+    # doesn't eat into the global one.
+    - name: queue-status
+      methods: GET
+      paths: /api/queue/status
+      capacity: 120
+      per-minute: 120
+      skip-global: true
+    - name: seat-hold
+      methods: POST
+      paths: /api/reservations
+      capacity: 10
+      per-minute: 20
+    # Guessing coupon codes / probing which emails have accounts.
+    - name: coupon-apply
+      methods: POST
+      paths: /api/orders/*/apply-coupon
+      capacity: 10
+      per-minute: 10
+    - name: ticket-transfer
+      methods: POST
+      paths: /api/orders/*/transfer
+      capacity: 5
+      per-minute: 5
+
 cors:
   # 5173 = public site, 5174 = admin app (separate origin on purpose, so the two never share storage).
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174}
