@@ -138,8 +138,16 @@ ticketing-service/
 cp .env.example .env
 ```
 
-`.env`에 Google/Kakao OAuth 클라이언트, Gmail SMTP(이메일 인증용), PortOne 테스트 키, `JWT_SECRET`을 채워주세요.
-전부 비워둬도 회원가입/로그인 자체는 로컬 이메일·비밀번호 방식으로 동작합니다.
+`.env`에 Google/Kakao OAuth 클라이언트, Gmail SMTP(이메일 인증용), PortOne 테스트 키, 그리고 서명용 시크릿 `JWT_SECRET`·`QR_TOKEN_SECRET`을 채워주세요.
+
+시크릿 두 개는 **기본값이 없습니다**. 소스에 박힌 시크릿은 누구나 아는 시크릿이라 토큰(관리자 토큰까지)을 위조할 수 있기 때문에, 비어 있으면 서비스가 기동을 거부합니다. 32바이트 이상 무작위 값으로 만드세요(서로 다른 값 권장).
+
+```bash
+openssl rand -base64 48
+# openssl이 없다면
+node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
+```
+시크릿 두 개를 제외하면 비워둔 항목은 해당 기능만 빠집니다(OAuth 키 → 소셜 로그인, PortOne 키 → 결제, SMTP → 인증 메일 발송).
 
 ### 2. 전체 스택 기동
 

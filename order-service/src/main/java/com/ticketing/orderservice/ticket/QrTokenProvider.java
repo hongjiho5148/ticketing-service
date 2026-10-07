@@ -24,6 +24,10 @@ public class QrTokenProvider {
     public QrTokenProvider(
             @Value("${ticket.qr-token.secret}") String secret,
             @Value("${ticket.qr-token.expiration-ms}") long expirationMs) {
+        if (secret == null || secret.getBytes().length < 32) {
+            throw new IllegalStateException(
+                    "QR_TOKEN_SECRET must be set to a random value of at least 32 bytes. Generate one with: openssl rand -base64 48");
+        }
         this.key = Keys.hmacShaKeyFor(secret.getBytes());
         this.expirationMs = expirationMs;
     }
