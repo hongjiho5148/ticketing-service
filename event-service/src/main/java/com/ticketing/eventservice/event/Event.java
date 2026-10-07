@@ -43,39 +43,45 @@ public class Event {
     @Column(nullable = false, length = 20)
     private EventStatus status;
 
+    // The column default keeps ddl-auto's ALTER TABLE valid for events that already exist - they
+    // were all concerts before genres were introduced.
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20, columnDefinition = "varchar(20) not null default 'CONCERT'")
+    private EventCategory category = EventCategory.CONCERT;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
-
-    public Event(String title, String venue, LocalDateTime startAt, LocalDateTime openAt, EventStatus status) {
-        this.title = title;
-        this.venue = venue;
-        this.startAt = startAt;
-        this.openAt = openAt;
-        this.status = status;
-    }
 
     public Event(
             String title,
             String venue,
             String description,
+            EventCategory category,
             LocalDateTime startAt,
             LocalDateTime openAt,
             EventStatus status) {
-        this(title, venue, startAt, openAt, status);
+        this.title = title;
+        this.venue = venue;
         this.description = description;
+        this.category = category;
+        this.startAt = startAt;
+        this.openAt = openAt;
+        this.status = status;
     }
 
     public void update(
             String title,
             String venue,
             String description,
+            EventCategory category,
             LocalDateTime startAt,
             LocalDateTime openAt,
             EventStatus status) {
         this.title = title;
         this.venue = venue;
         this.description = description;
+        this.category = category;
         this.startAt = startAt;
         this.openAt = openAt;
         this.status = status;

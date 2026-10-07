@@ -1,4 +1,5 @@
 export type EventStatus = "UPCOMING" | "OPEN" | "CLOSED";
+export type EventCategory = "CONCERT" | "MUSICAL" | "SPORTS" | "EXHIBITION" | "FESTIVAL" | "ETC";
 export type SeatStatus = "AVAILABLE" | "HOLD" | "SOLD";
 export type ReservationStatus = "HOLDING" | "CONFIRMED" | "CANCELLED" | "EXPIRED";
 export type OrderStatus = "PENDING" | "PAID" | "FAILED" | "CANCELLED" | "PARTIALLY_REFUNDED";
@@ -26,6 +27,10 @@ export interface EventSummary {
   id: number;
   title: string;
   venue: string;
+  category: EventCategory;
+  // null until the first review is written.
+  averageRating: number | null;
+  reviewCount: number;
   startAt: string;
   openAt: string;
   status: EventStatus;
@@ -54,6 +59,9 @@ export interface EventDetail {
   id: number;
   title: string;
   venue: string;
+  category: EventCategory;
+  averageRating: number | null;
+  reviewCount: number;
   description: string | null;
   startAt: string;
   openAt: string;
