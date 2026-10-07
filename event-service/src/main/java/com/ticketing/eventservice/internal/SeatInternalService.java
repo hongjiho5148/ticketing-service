@@ -1,5 +1,6 @@
 package com.ticketing.eventservice.internal;
 
+import com.ticketing.eventservice.alert.SeatsReleasedEvent;
 import com.ticketing.eventservice.common.ApiException;
 import com.ticketing.eventservice.common.ErrorCode;
 import com.ticketing.eventservice.internal.dto.SeatDetailResponse;
@@ -9,6 +10,7 @@ import com.ticketing.eventservice.seat.SeatRepository;
 import com.ticketing.eventservice.seat.SeatStatus;
 import java.time.LocalDateTime;
 import java.util.List;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,10 +20,13 @@ public class SeatInternalService {
 
     private final SeatRepository seatRepository;
     private final SeatLockService seatLockService;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public SeatInternalService(SeatRepository seatRepository, SeatLockService seatLockService) {
+    public SeatInternalService(
+            SeatRepository seatRepository, SeatLockService seatLockService, ApplicationEventPublisher eventPublisher) {
         this.seatRepository = seatRepository;
         this.seatLockService = seatLockService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional(readOnly = true)
@@ -50,7 +55,13 @@ public class SeatInternalService {
 
     public void release(Long seatId) {
         Seat seat = seatRepository.findById(seatId).orElseThrow(() -> new ApiException(ErrorCode.SEAT_NOT_FOUND));
+        // Both reservation-service and SeatHoldExpirySweeper release expired holds, so the second call
+        // lands on an already-AVAILABLE seat - that must not count as a freshly freed seat for the waitlist.
+        boolean wasUnavailable = seat.getStatus() != SeatStatus.AVAILABLE;
         seat.release();
+        if (wasUnavailable) {
+            eventPublisher.publishEvent(new SeatsReleasedEvent(seat.getEvent().getId(), 1));
+        }
     }
 
     public void sell(Long seatId) {

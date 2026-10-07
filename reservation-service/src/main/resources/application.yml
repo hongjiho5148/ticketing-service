@@ -32,6 +32,8 @@ jwt:
 
 reservation:
   hold-expire-sweep-cron: "0 * * * * *"
+  # Seats one user may hold or own per event - the usual anti-scalping cap on ticketing sites.
+  max-seats-per-event: ${RESERVATION_MAX_SEATS_PER_EVENT:4}
 
 event:
   service:

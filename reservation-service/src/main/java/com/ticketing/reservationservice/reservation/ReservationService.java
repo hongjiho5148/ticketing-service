@@ -11,6 +11,7 @@ import com.ticketing.reservationservice.reservation.dto.ReservationCreateRequest
 import com.ticketing.reservationservice.reservation.dto.ReservationResponse;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,16 +25,19 @@ public class ReservationService {
     private final EventServiceClient eventServiceClient;
     private final QueueServiceClient queueServiceClient;
     private final ReservationEventPublisher reservationEventPublisher;
+    private final int maxSeatsPerEvent;
 
     public ReservationService(
             ReservationRepository reservationRepository,
             EventServiceClient eventServiceClient,
             QueueServiceClient queueServiceClient,
-            ReservationEventPublisher reservationEventPublisher) {
+            ReservationEventPublisher reservationEventPublisher,
+            @Value("${reservation.max-seats-per-event}") int maxSeatsPerEvent) {
         this.reservationRepository = reservationRepository;
         this.eventServiceClient = eventServiceClient;
         this.queueServiceClient = queueServiceClient;
         this.reservationEventPublisher = reservationEventPublisher;
+        this.maxSeatsPerEvent = maxSeatsPerEvent;
     }
 
     public ReservationResponse reserve(Long userId, ReservationCreateRequest request, String passToken) {
@@ -41,13 +45,17 @@ public class ReservationService {
         if (!queueServiceClient.isPassTokenValid(requestedSeat.eventId(), passToken)) {
             throw new ApiException(ErrorCode.PASS_TOKEN_REQUIRED);
         }
+        if (reservationRepository.countActiveSeats(userId, requestedSeat.eventId(), LocalDateTime.now())
+                >= maxSeatsPerEvent) {
+            throw new ApiException(ErrorCode.SEAT_LIMIT_EXCEEDED);
+        }
 
         // event-service holds the same per-seat Redis lock this used to wrap locally, then does
         // the status-check + hold atomically on its side - see EventServiceClient.hold().
         LocalDateTime holdExpireAt = LocalDateTime.now().plus(HOLD_DURATION);
         SeatDetailResponse heldSeat = eventServiceClient.hold(request.seatId(), holdExpireAt);
 
-        Reservation reservation = new Reservation(userId, request.seatId(), holdExpireAt);
+        Reservation reservation = new Reservation(userId, request.seatId(), heldSeat.eventId(), holdExpireAt);
         Reservation saved = reservationRepository.save(reservation);
 
         reservationEventPublisher.publishReservationCreated(new ReservationCreatedEvent(
