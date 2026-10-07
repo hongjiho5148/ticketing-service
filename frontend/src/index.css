@@ -2062,3 +2062,24 @@ button:disabled {
     justify-content: space-between;
   }
 }
+
+.identity-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.identity-check input {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.identity-check small {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+}

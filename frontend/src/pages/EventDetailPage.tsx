@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { fetchEventDetail, fetchEventSeats } from "../api/events";
 import { cancelReservation, createReservation } from "../api/reservations";
-import { applyCoupon, applyPoints, createOrder, payOrder, removeCoupon } from "../api/orders";
+import { applyCoupon, applyPoints, createOrder, payOrder, removeCoupon, verifyIdentity } from "../api/orders";
 import { fetchPoints } from "../api/points";
 import { createReview, fetchReviews } from "../api/reviews";
 import { addToWishlist, fetchWishlist, removeFromWishlist } from "../api/wishlist";
@@ -43,6 +43,8 @@ export function EventDetailPage() {
   // Set when the open countdown reaches zero, so the page moves on without waiting for the
   // server-side UPCOMING -> OPEN status flip (which only lands on the next sweeper tick).
   const [openedByClock, setOpenedByClock] = useState(false);
+  // The buyer-confirmation checkbox; asked again for every new reservation.
+  const [identityConfirmed, setIdentityConfirmed] = useState(false);
 
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [isTogglingWishlist, setIsTogglingWishlist] = useState(false);
@@ -63,6 +65,10 @@ export function EventDetailPage() {
   const [isApplyingBenefit, setIsApplyingBenefit] = useState(false);
 
   useDocumentTitle(event ? event.title : "이벤트 상세");
+
+  useEffect(() => {
+    setIdentityConfirmed(false);
+  }, [reservation?.reservationId]);
 
   useEffect(() => {
     if (!eventId) return;
@@ -268,6 +274,9 @@ export function EventDetailPage() {
       // Re-use the order across retries (e.g. the PG payment window was cancelled) instead of
       // creating a second one - a reservation can only ever have a single order.
       const currentOrder = await ensureOrder();
+
+      // Recorded before the payment window opens - the server won't confirm an order without it.
+      await verifyIdentity(currentOrder.orderId);
 
       const paymentResult = await requestPayment({
         method: payMethod,
@@ -567,7 +576,23 @@ export function EventDetailPage() {
                 </div>
               )}
 
-              <button type="button" onClick={handleCheckout} disabled={isProcessing || isApplyingBenefit}>
+              <label className="identity-check">
+                <input
+                  type="checkbox"
+                  checked={identityConfirmed}
+                  onChange={(e) => setIdentityConfirmed(e.target.checked)}
+                  disabled={isProcessing}
+                />
+                <span>
+                  본인 명의로 직접 결제하며, 재판매·대리 구매 목적이 아님을 확인합니다.
+                  <small>본인인증(PASS 등) 연동 전이라 확인 동의로 대신하고, 동의 내용은 주문에 기록돼요.</small>
+                </span>
+              </label>
+              <button
+                type="button"
+                onClick={handleCheckout}
+                disabled={isProcessing || isApplyingBenefit || !identityConfirmed}
+              >
                 주문 및 결제하기
               </button>
               <button

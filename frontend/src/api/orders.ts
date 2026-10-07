@@ -19,6 +19,11 @@ export function fetchOrders(params: { page?: number; size?: number } = {}) {
   return apiClient.get<OrderHistoryListResponse>("/orders", { params }).then((res) => res.data);
 }
 
+// The buyer's confirmation, recorded server-side before payment; the server refuses to confirm an unverified order.
+export function verifyIdentity(orderId: number) {
+  return apiClient.post(`/orders/${orderId}/verify-identity`, { agreed: true }).then(() => undefined);
+}
+
 export function applyCoupon(orderId: number, code: string) {
   return apiClient.post<Order>(`/orders/${orderId}/apply-coupon`, { code }).then((res) => res.data);
 }
