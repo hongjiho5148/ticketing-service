@@ -19,6 +19,7 @@ import com.ticketing.orderservice.reservationclient.ReservationServiceClient;
 import com.ticketing.orderservice.reservationclient.dto.ReservationDetailResponse;
 import com.ticketing.orderservice.transfer.TicketTransferRepository;
 import com.ticketing.orderservice.transfer.TransferPolicy;
+import com.ticketing.orderservice.verification.IdentityVerificationService;
 import java.util.Set;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -49,6 +50,7 @@ public class OrderService {
     private final OrderBenefitService orderBenefitService;
     private final TicketTransferRepository transferRepository;
     private final TransferPolicy transferPolicy;
+    private final IdentityVerificationService identityVerificationService;
 
     public OrderService(
             OrderRepository orderRepository,
@@ -58,7 +60,8 @@ public class OrderService {
             ReservationServiceClient reservationServiceClient,
             OrderBenefitService orderBenefitService,
             TicketTransferRepository transferRepository,
-            TransferPolicy transferPolicy) {
+            TransferPolicy transferPolicy,
+            IdentityVerificationService identityVerificationService) {
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
         this.portOneClient = portOneClient;
@@ -67,6 +70,7 @@ public class OrderService {
         this.orderBenefitService = orderBenefitService;
         this.transferRepository = transferRepository;
         this.transferPolicy = transferPolicy;
+        this.identityVerificationService = identityVerificationService;
     }
 
     public OrderResponse applyCoupon(Long userId, Long orderId, String code) {
@@ -129,6 +133,12 @@ public class OrderService {
         }
         if (order.getStatus() != OrderStatus.PENDING) {
             throw new ApiException(ErrorCode.ORDER_ALREADY_PAID);
+        }
+        // Checked before PortOne is even consulted. The charge itself already happened client-side, so
+        // this refuses to confirm rather than refunds: the client verifies the buyer and retries pay()
+        // with the same paymentId, and the order stays PENDING in between.
+        if (!identityVerificationService.isSatisfied(orderId)) {
+            throw new ApiException(ErrorCode.IDENTITY_VERIFICATION_REQUIRED);
         }
 
         PortOnePaymentResponse portOnePayment = portOneClient.getPayment(request.paymentId());

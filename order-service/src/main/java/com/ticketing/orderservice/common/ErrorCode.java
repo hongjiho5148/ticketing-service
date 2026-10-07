@@ -38,7 +38,9 @@ public enum ErrorCode {
     TRANSFER_ALREADY_PENDING(HttpStatus.CONFLICT, "이미 수락 대기 중인 양도가 있어요."),
     TRANSFER_NOT_PENDING(HttpStatus.CONFLICT, "이미 처리된 양도예요."),
     ORDER_TRANSFERRED(HttpStatus.CONFLICT, "양도한 티켓은 취소할 수 없어요."),
-    ORDER_TRANSFER_PENDING(HttpStatus.CONFLICT, "양도 대기 중인 티켓이에요. 양도를 먼저 취소해주세요.");
+    ORDER_TRANSFER_PENDING(HttpStatus.CONFLICT, "양도 대기 중인 티켓이에요. 양도를 먼저 취소해주세요."),
+    IDENTITY_NOT_CONFIRMED(HttpStatus.BAD_REQUEST, "구매자 본인 확인에 동의해야 결제할 수 있어요."),
+    IDENTITY_VERIFICATION_REQUIRED(HttpStatus.CONFLICT, "결제 전에 구매자 본인 확인이 필요해요.");
 
     private final HttpStatus status;
     private final String message;
