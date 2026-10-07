@@ -5,8 +5,11 @@ export function signup(payload: { email: string; password: string; name: string 
   return apiClient.post<User>("/auth/signup", payload).then((res) => res.data);
 }
 
-export function login(payload: { email: string; password: string }) {
-  return apiClient.post<LoginResponse>("/auth/login", payload).then((res) => res.data);
+// The captcha token travels as a header so the request body stays the same shape with or without captcha.
+export function login(payload: { email: string; password: string }, captchaToken?: string) {
+  return apiClient
+    .post<LoginResponse>("/auth/login", payload, captchaToken ? { headers: { "X-Captcha-Token": captchaToken } } : undefined)
+    .then((res) => res.data);
 }
 
 export function getMe() {

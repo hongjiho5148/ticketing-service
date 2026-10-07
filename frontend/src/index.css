@@ -2083,3 +2083,10 @@ button:disabled {
   color: var(--text-muted);
   font-size: 0.74rem;
 }
+
+.captcha-box {
+  display: flex;
+  justify-content: center;
+  min-height: 78px;
+  margin-block: 4px;
+}

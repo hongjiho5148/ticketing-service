@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { ReCaptcha } from "../components/ReCaptcha";
 import { SocialLoginButtons } from "../components/SocialLoginButtons";
 import { useAuth } from "../context/AuthContext";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { extractErrorMessage } from "../utils/error";
+import { isCaptchaEnabled } from "../utils/recaptcha";
 
 export function LoginPage() {
   useDocumentTitle("로그인");
@@ -14,6 +16,9 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  // Bumped to get a fresh, unsolved widget: a token is good for one attempt, successful or not.
+  const [captchaKey, setCaptchaKey] = useState(0);
 
   const notice =
     searchParams.get("verified") === "true"
@@ -29,10 +34,14 @@ export function LoginPage() {
     setError(null);
     setIsSubmitting(true);
     try {
-      await login(email, password);
+      await login(email, password, captchaToken ?? undefined);
       navigate("/");
     } catch (err) {
       setError(extractErrorMessage(err));
+      if (isCaptchaEnabled) {
+        setCaptchaToken(null);
+        setCaptchaKey((k) => k + 1);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -51,8 +60,9 @@ export function LoginPage() {
           비밀번호
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </label>
+        {isCaptchaEnabled && <ReCaptcha key={captchaKey} onChange={setCaptchaToken} />}
         {error && <p className="form-error">{error}</p>}
-        <button type="submit" disabled={isSubmitting}>
+        <button type="submit" disabled={isSubmitting || (isCaptchaEnabled && !captchaToken)}>
           {isSubmitting ? "로그인 중..." : "로그인"}
         </button>
       </form>

@@ -13,6 +13,9 @@ public enum ErrorCode {
     EMAIL_NOT_VERIFIED(HttpStatus.FORBIDDEN, "이메일 인증이 필요합니다. 메일함을 확인해주세요."),
     INVALID_VERIFICATION_TOKEN(HttpStatus.BAD_REQUEST, "유효하지 않은 인증 링크입니다."),
     VERIFICATION_TOKEN_EXPIRED(HttpStatus.BAD_REQUEST, "인증 링크가 만료되었습니다. 다시 가입해주세요."),
+    CAPTCHA_REQUIRED(HttpStatus.BAD_REQUEST, "로봇이 아님을 확인해주세요."),
+    CAPTCHA_FAILED(HttpStatus.BAD_REQUEST, "로봇 확인에 실패했어요. 다시 시도해주세요."),
+    CAPTCHA_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "로봇 확인 서비스에 연결할 수 없어요. 잠시 후 다시 시도해주세요."),
     QUEUE_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "대기열 정보를 찾을 수 없습니다. 다시 입장해주세요."),
     EVENT_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "좌석/이벤트 정보를 가져올 수 없습니다. 잠시 후 다시 시도해주세요.");
 
