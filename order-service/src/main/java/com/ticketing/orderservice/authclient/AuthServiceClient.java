@@ -3,6 +3,7 @@ package com.ticketing.orderservice.authclient;
 import com.ticketing.orderservice.authclient.dto.UserInternalResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 /**
@@ -18,6 +19,18 @@ public class AuthServiceClient {
 
     public AuthServiceClient(@Value("${auth.service.uri}") String baseUrl) {
         this.restClient = RestClient.builder().baseUrl(baseUrl).build();
+    }
+
+    /** The user registered under this email, or null when there is none. Other failures still throw. */
+    public UserInternalResponse lookupByEmail(String email) {
+        try {
+            return restClient.get()
+                    .uri(uriBuilder -> uriBuilder.path("/internal/users/lookup").queryParam("email", email).build())
+                    .retrieve()
+                    .body(UserInternalResponse.class);
+        } catch (HttpClientErrorException.NotFound e) {
+            return null;
+        }
     }
 
     public UserInternalResponse getUser(Long userId) {

@@ -4,8 +4,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import jakarta.persistence.LockModeType;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface OrderRepository extends JpaRepository<Orders, Long> {
 
@@ -21,5 +25,17 @@ public interface OrderRepository extends JpaRepository<Orders, Long> {
     List<Orders> findByStatusAndReminderSentAtIsNullAndEventStartAtBetween(
             OrderStatus status, LocalDateTime from, LocalDateTime to);
 
-    boolean existsByUserIdAndEventIdAndStatus(Long userId, Long eventId, OrderStatus status);
+    /** Review eligibility follows the ticket: after a transfer it is the recipient who attended, not the buyer. */
+    @Query("select count(o) > 0 from Orders o where coalesce(o.ownerId, o.userId) = :userId "
+            + "and o.eventId = :eventId and o.status = :status")
+    boolean existsByHolderAndEventIdAndStatus(
+            @Param("userId") Long userId, @Param("eventId") Long eventId, @Param("status") OrderStatus status);
+
+    /**
+     * Row lock for the operations that must not interleave on one order: cancel/refund versus
+     * creating or accepting a transfer. Whichever takes the lock second sees the other's result.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select o from Orders o where o.id = :id")
+    Optional<Orders> findByIdForUpdate(@Param("id") Long id);
 }

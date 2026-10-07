@@ -16,7 +16,9 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
 
     Optional<Ticket> findByTokenJti(String tokenJti);
 
-    List<Ticket> findByOrder_UserIdOrderByIssuedAtDesc(Long userId);
+    /** Tickets the user can use right now - bought by them and never transferred, or transferred to them. */
+    @Query("select t from Ticket t where coalesce(t.order.ownerId, t.order.userId) = :userId order by t.issuedAt desc")
+    List<Ticket> findByHolderOrderByIssuedAtDesc(@Param("userId") Long userId);
 
     /**
      * Atomic ISSUED-&gt;USED transition at the DB level: only one of two concurrent scans of the

@@ -20,10 +20,14 @@ public record OrderHistoryResponse(
         String paymentMethod,
         Integer refundedAmount,
         OrderStatus status,
+        // "PENDING" while a transfer awaits the recipient, "TRANSFERRED" once accepted, else null.
+        String transferStatus,
+        boolean transferable,
         LocalDateTime createdAt) {
 
     /** payment is null for orders that never reached a payment attempt (still PENDING). */
-    public static OrderHistoryResponse from(Orders order, SeatDetailResponse seat, Payment payment) {
+    public static OrderHistoryResponse from(
+            Orders order, SeatDetailResponse seat, Payment payment, String transferStatus, boolean transferable) {
         return new OrderHistoryResponse(
                 order.getId(),
                 seat.eventId(),
@@ -38,6 +42,8 @@ public record OrderHistoryResponse(
                 payment == null ? null : payment.getMethod(),
                 payment == null ? null : payment.getRefundedAmount(),
                 order.getStatus(),
+                transferStatus,
+                transferable,
                 order.getCreatedAt());
     }
 }

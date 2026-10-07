@@ -17,6 +17,9 @@ import com.ticketing.orderservice.payment.portone.PortOneClient;
 import com.ticketing.orderservice.payment.portone.PortOnePaymentResponse;
 import com.ticketing.orderservice.reservationclient.ReservationServiceClient;
 import com.ticketing.orderservice.reservationclient.dto.ReservationDetailResponse;
+import com.ticketing.orderservice.transfer.TicketTransferRepository;
+import com.ticketing.orderservice.transfer.TransferPolicy;
+import java.util.Set;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +47,8 @@ public class OrderService {
     private final EventServiceClient eventServiceClient;
     private final ReservationServiceClient reservationServiceClient;
     private final OrderBenefitService orderBenefitService;
+    private final TicketTransferRepository transferRepository;
+    private final TransferPolicy transferPolicy;
 
     public OrderService(
             OrderRepository orderRepository,
@@ -51,13 +56,17 @@ public class OrderService {
             PortOneClient portOneClient,
             EventServiceClient eventServiceClient,
             ReservationServiceClient reservationServiceClient,
-            OrderBenefitService orderBenefitService) {
+            OrderBenefitService orderBenefitService,
+            TicketTransferRepository transferRepository,
+            TransferPolicy transferPolicy) {
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
         this.portOneClient = portOneClient;
         this.eventServiceClient = eventServiceClient;
         this.reservationServiceClient = reservationServiceClient;
         this.orderBenefitService = orderBenefitService;
+        this.transferRepository = transferRepository;
+        this.transferPolicy = transferPolicy;
     }
 
     public OrderResponse applyCoupon(Long userId, Long orderId, String code) {
@@ -214,12 +223,19 @@ public class OrderService {
     }
 
     private Orders loadCancellableOrder(Long userId, Long orderId) {
-        Orders order = orderRepository.findById(orderId).orElseThrow(() -> new ApiException(ErrorCode.ORDER_NOT_FOUND));
+        // Locked so a transfer being created or accepted at the same moment can't slip past the checks below.
+        Orders order = orderRepository.findByIdForUpdate(orderId).orElseThrow(() -> new ApiException(ErrorCode.ORDER_NOT_FOUND));
         if (!order.getUserId().equals(userId)) {
             throw new ApiException(ErrorCode.FORBIDDEN);
         }
         if (order.getStatus() != OrderStatus.PAID) {
             throw new ApiException(ErrorCode.ORDER_NOT_CANCELLABLE);
+        }
+        if (order.wasTransferred()) {
+            throw new ApiException(ErrorCode.ORDER_TRANSFERRED);
+        }
+        if (transferRepository.existsByPendingOrderId(orderId)) {
+            throw new ApiException(ErrorCode.ORDER_TRANSFER_PENDING);
         }
         return order;
     }
@@ -241,9 +257,16 @@ public class OrderService {
                 : paymentRepository.findByOrderIdIn(orderIds).stream()
                         .collect(Collectors.toMap(p -> p.getOrder().getId(), Function.identity()));
 
+        Set<Long> pendingTransfers = orderIds.isEmpty() ? Set.of() : transferRepository.findPendingOrderIds(orderIds);
+        LocalDateTime now = LocalDateTime.now();
+
         List<OrderHistoryResponse> content = orders.stream()
                 .map(order -> OrderHistoryResponse.from(
-                        order, seatsById.get(order.getSeatId()), paymentsByOrderId.get(order.getId())))
+                        order,
+                        seatsById.get(order.getSeatId()),
+                        paymentsByOrderId.get(order.getId()),
+                        order.wasTransferred() ? "TRANSFERRED" : pendingTransfers.contains(order.getId()) ? "PENDING" : null,
+                        transferPolicy.isTransferable(order, pendingTransfers.contains(order.getId()), now)))
                 .toList();
         return new OrderHistoryListResponse(content, page.getTotalElements());
     }

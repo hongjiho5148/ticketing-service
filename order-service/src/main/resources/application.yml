@@ -52,6 +52,10 @@ ticket:
     secret: ${QR_TOKEN_SECRET:local-development-qr-secret-key-change-me-please-32bytes-min}
     expiration-ms: ${QR_TOKEN_EXPIRATION_MS:21600000}
 
+transfer:
+  # Transfers close at the same moment QR issuance opens, so a QR never has to be re-issued for a new holder.
+  cutoff-hours: ${ticket.issuance-lead-hours}
+
 reminder:
   sweep-cron: "0 * * * * *"
   # D-1 reminder window: orders whose show starts between 24h and (24h + window) from now.

@@ -67,6 +67,11 @@ public class Orders {
     @Column(nullable = false, columnDefinition = "integer default 0")
     private Integer pointsUsed = 0;
 
+    // Who holds the ticket after a transfer; null = never transferred, the buyer (userId) still holds it.
+    // userId always stays the buyer - payment, refund and benefit bookkeeping belong to them.
+    @Column(name = "owner_id")
+    private Long ownerId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private OrderStatus status;
@@ -96,6 +101,19 @@ public class Orders {
         this.discountAmount = discountAmount;
         this.pointsUsed = pointsUsed;
         this.totalPrice = original - discountAmount - pointsUsed;
+    }
+
+    /** The user who may use this ticket: the recipient once it has been transferred, otherwise the buyer. */
+    public Long holderId() {
+        return ownerId != null ? ownerId : userId;
+    }
+
+    public boolean wasTransferred() {
+        return ownerId != null;
+    }
+
+    public void transferTo(Long newHolderId) {
+        this.ownerId = newHolderId;
     }
 
     public void markPaid() {
