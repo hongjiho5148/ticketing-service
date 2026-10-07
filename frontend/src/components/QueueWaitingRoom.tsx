@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { enterQueue, fetchQueueStatus } from "../api/queue";
 import { extractErrorMessage } from "../utils/error";
+import { isCaptchaEnabled } from "../utils/recaptcha";
+import { ReCaptcha } from "./ReCaptcha";
 
 interface QueueWaitingRoomProps {
   eventId: number;
@@ -13,10 +15,15 @@ export function QueueWaitingRoom({ eventId, onPassed }: QueueWaitingRoomProps) {
   const [rankNo, setRankNo] = useState<number | null>(null);
   const [estimatedWaitSeconds, setEstimatedWaitSeconds] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The solved captcha that gets us into the queue. Kept once solved: if the widget later expires,
+  // that must not tear down a queue entry that is already waiting.
+  const [enterToken, setEnterToken] = useState<string | null>(null);
+  const [captchaKey, setCaptchaKey] = useState(0);
   const onPassedRef = useRef(onPassed);
   onPassedRef.current = onPassed;
 
   useEffect(() => {
+    if (isCaptchaEnabled && !enterToken) return;
     let cancelled = false;
     let intervalId: number | undefined;
 
@@ -36,7 +43,7 @@ export function QueueWaitingRoom({ eventId, onPassed }: QueueWaitingRoomProps) {
       }
     }
 
-    enterQueue(eventId)
+    enterQueue(eventId, enterToken ?? undefined)
       .then((entered) => {
         if (cancelled) return;
         setRankNo(entered.rankNo);
@@ -44,14 +51,40 @@ export function QueueWaitingRoom({ eventId, onPassed }: QueueWaitingRoomProps) {
         intervalId = window.setInterval(() => poll(entered.queueToken), POLL_INTERVAL_MS);
       })
       .catch((err) => {
-        if (!cancelled) setError(extractErrorMessage(err));
+        if (cancelled) return;
+        setError(extractErrorMessage(err));
+        if (isCaptchaEnabled) {
+          // The token is spent whatever the outcome, so ask for a fresh one.
+          setEnterToken(null);
+          setCaptchaKey((k) => k + 1);
+        }
       });
 
     return () => {
       cancelled = true;
       if (intervalId) window.clearInterval(intervalId);
     };
-  }, [eventId]);
+  }, [eventId, enterToken]);
+
+  if (isCaptchaEnabled && !enterToken) {
+    return (
+      <div className="queue-room">
+        <div className="queue-card">
+          <h2>대기열 입장 전 확인</h2>
+          <p className="page-status">공정한 예매를 위해 로봇이 아님을 확인해주세요.</p>
+          <ReCaptcha
+            key={captchaKey}
+            onChange={(token) => {
+              if (!token) return;
+              setError(null);
+              setEnterToken(token);
+            }}
+          />
+          {error && <p className="form-error">{error}</p>}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="queue-room">

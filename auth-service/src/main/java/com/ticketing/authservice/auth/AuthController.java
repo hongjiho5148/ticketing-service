@@ -8,6 +8,7 @@ import com.ticketing.authservice.auth.dto.MeResponse;
 import com.ticketing.authservice.auth.dto.SignupRequest;
 import com.ticketing.authservice.auth.dto.SignupResponse;
 import com.ticketing.authservice.auth.dto.UpdateProfileRequest;
+import com.ticketing.authservice.captcha.CaptchaVerifier;
 import com.ticketing.authservice.common.ApiException;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -17,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -28,10 +30,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final CaptchaVerifier captchaVerifier;
     private final String frontendUrl;
 
-    public AuthController(AuthService authService, @Value("${app.frontend-url}") String frontendUrl) {
+    public AuthController(
+            AuthService authService, CaptchaVerifier captchaVerifier, @Value("${app.frontend-url}") String frontendUrl) {
         this.authService = authService;
+        this.captchaVerifier = captchaVerifier;
         this.frontendUrl = frontendUrl;
     }
 
@@ -41,7 +46,11 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<LoginResponse> login(
+            @Valid @RequestBody LoginRequest request,
+            @RequestHeader(value = "X-Captcha-Token", required = false) String captchaToken) {
+        // Before the password is even looked at, so a bot can't use this endpoint to test credentials without solving it.
+        captchaVerifier.verify(captchaToken);
         return ResponseEntity.ok(authService.login(request));
     }
 

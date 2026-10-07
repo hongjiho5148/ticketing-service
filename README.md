@@ -182,10 +182,10 @@ npm run dev
 
 ### 5. 부하테스트 (선택)
 
-게이트웨이는 IP당 요청 수를 제한하므로(아래 "봇 방어" 참고), 부하 생성기 하나가 한 IP로 보이는 부하테스트에서는 먼저 끄고 돌립니다.
+게이트웨이는 IP당 요청 수를 제한하고 대기열 진입에는 캡차가 걸려 있으므로(아래 "봇 방어" 참고), 부하 생성기 하나가 한 IP로 보이고 캡차를 풀 수 없는 부하테스트에서는 둘 다 끄고 돌립니다.
 
 ```bash
-RATE_LIMIT_ENABLED=false docker compose up -d gateway
+RATE_LIMIT_ENABLED=false CAPTCHA_ENABLED=false docker compose up -d gateway auth-service backend
 docker run --network ticketing-service_default --ulimit nofile=200000:200000 \
   -v "$(pwd)/loadtest:/scripts" grafana/k6 run /scripts/reserve_flow.js
 ```
@@ -206,7 +206,8 @@ docker run --network ticketing-service_default --ulimit nofile=200000:200000 \
 - IP는 nginx가 덮어쓰는 `X-Real-IP`를 신뢰합니다(게이트웨이는 nginx를 거쳐서만 접근 가능).
 - 버킷은 게이트웨이 메모리에 있어 단일 인스턴스 기준입니다. 게이트웨이를 여러 대로 늘리면 Redis 같은 공유 저장소로 옮겨야 합니다.
 - 학교·회사처럼 한 IP를 여러 명이 쓰는 환경에서는 제한에 걸릴 수 있어 기본값을 넉넉히 잡았습니다.
-- 캡차는 사이트 키가 필요해 아직 연동하지 않았습니다.
+- 캡차(reCAPTCHA v2 체크박스)는 **로그인**과 **대기열 진입**에 붙어 있습니다. 브라우저가 받은 토큰을 서버(auth-service, backend)가 구글 siteverify로 확인하고, 구글에 연결할 수 없으면 통과시키지 않고 거절합니다(fail closed). 대기열 상태 조회와 이후 좌석 홀드는 이미 대기열을 통과한 사용자라 따로 걸지 않았습니다.
+- 키는 `.env`의 `RECAPTCHA_SECRET_KEY`(서버)와 `frontend/.env`의 `VITE_RECAPTCHA_SITE_KEY`(공개 사이트 키)입니다. 둘 다 비워두면 캡차 없이 동작합니다.
 
 ## API 게이트웨이 라우팅
 

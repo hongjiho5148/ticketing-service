@@ -52,3 +52,10 @@ queue:
   active-capacity: ${QUEUE_ACTIVE_CAPACITY:500}
   admission-interval-ms: ${QUEUE_ADMISSION_INTERVAL_MS:300}
   pass-token-ttl-ms: ${QUEUE_PASS_TOKEN_TTL_MS:600000}
+
+# reCAPTCHA v2 server-side check (see CaptchaVerifier). No secret = captcha off; CAPTCHA_ENABLED=false
+# switches it off even when a secret is set (load tests).
+captcha:
+  enabled: ${CAPTCHA_ENABLED:true}
+  secret: ${RECAPTCHA_SECRET_KEY:}
+  verify-url: https://www.google.com/recaptcha/api/siteverify
