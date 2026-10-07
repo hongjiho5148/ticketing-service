@@ -70,6 +70,11 @@ public class Event {
         this.status = status;
     }
 
+    /** Flipped by OpenAlertSweeper once openAt has passed, so the list/detail pages stop saying "오픈예정". */
+    public void open() {
+        this.status = EventStatus.OPEN;
+    }
+
     public void update(
             String title,
             String venue,

@@ -38,6 +38,9 @@ public class SecurityConfig {
                         // Internal service-to-service calls (reservation-service's hold/release/sell)
                         // never go through the gateway/JWT, same trust model as the other services' /internal/**.
                         .requestMatchers("/internal/**").permitAll()
+                        // Alert subscriptions are per-user, so they need a login even though they sit under the
+                        // public GET /api/events/** tree - must come before that matcher for the same reason as admin.
+                        .requestMatchers("/api/events/*/open-alert", "/api/events/*/waitlist").authenticated()
                         // Must stay above the public GET matcher below - first match wins, and
                         // GET /api/events/admin/stats would otherwise fall under "GET /api/events/**".
                         .requestMatchers("/api/events/admin/**").hasRole("ADMIN")

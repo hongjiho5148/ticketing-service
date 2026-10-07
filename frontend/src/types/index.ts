@@ -213,6 +213,10 @@ export interface ApiErrorBody {
   timestamp: string;
 }
 
+export interface AlertStatus {
+  subscribed: boolean;
+}
+
 export interface RefundPreview {
   cancellable: boolean;
   refundPercent: number;

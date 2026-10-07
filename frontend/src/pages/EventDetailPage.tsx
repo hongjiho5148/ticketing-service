@@ -10,7 +10,9 @@ import { extractErrorMessage } from "../utils/error";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { AlertSubscribeCard } from "../components/AlertSubscribeCard";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { HoldTimer, OpenCountdown } from "../components/Countdown";
 import { VenueSeatMap } from "../components/VenueSeatMap";
 import { SeatGrid } from "../components/SeatGrid";
 import { QueueWaitingRoom } from "../components/QueueWaitingRoom";
@@ -38,6 +40,9 @@ export function EventDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
+  // Set when the open countdown reaches zero, so the page moves on without waiting for the
+  // server-side UPCOMING -> OPEN status flip (which only lands on the next sweeper tick).
+  const [openedByClock, setOpenedByClock] = useState(false);
 
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [isTogglingWishlist, setIsTogglingWishlist] = useState(false);
@@ -188,6 +193,17 @@ export function EventDetailPage() {
     }
   }
 
+  // The seat goes back on sale server-side on its own at this moment; this just brings the screen
+  // in line. A payment already in flight is left alone - that call settles with the server's verdict.
+  function handleHoldExpired() {
+    if (isProcessing) return;
+    setReservation(null);
+    setSelectedSeat(null);
+    setOrder(null);
+    setError("예약 시간이 지나 좌석이 해제됐어요. 좌석을 다시 선택해주세요.");
+    fetchEventSeats(Number(eventId)).then(setSeats).catch(() => undefined);
+  }
+
   useEffect(() => {
     if (!reservation) return;
     fetchPoints()
@@ -303,12 +319,8 @@ export function EventDetailPage() {
     );
   }
 
-  if (!passToken) {
-    return <QueueWaitingRoom eventId={event.id} onPassed={setPassToken} />;
-  }
-
-  return (
-    <div>
+  const header = (
+    <>
       <Link to="/" className="detail-back">
         ← 목록으로
       </Link>
@@ -345,6 +357,52 @@ export function EventDetailPage() {
           </div>
         </div>
       </div>
+    </>
+  );
+
+  // Nothing to book yet / anymore: skip the queue and offer the matching alert instead.
+  const isPreOpen =
+    event.status === "UPCOMING" && !openedByClock && new Date(event.openAt).getTime() > Date.now();
+  const totalSeats = event.sectionSummary.reduce((sum, s) => sum + s.totalCount, 0);
+  const availableSeats = event.sectionSummary.reduce((sum, s) => sum + s.availableCount, 0);
+  const isSoldOut = event.status === "OPEN" && totalSeats > 0 && availableSeats === 0;
+
+  if (isPreOpen) {
+    return (
+      <div>
+        {header}
+        <div className="gate-panel">
+          <OpenCountdown openAt={event.openAt} onOpen={() => setOpenedByClock(true)} />
+          <p className="gate-panel-note">{formatDateTime(event.openAt)}에 예매가 시작돼요.</p>
+          <AlertSubscribeCard eventId={event.id} kind="open-alert" />
+        </div>
+      </div>
+    );
+  }
+
+  if (isSoldOut) {
+    return (
+      <div>
+        {header}
+        <div className="gate-panel">
+          <div className="open-countdown">
+            <span>현재</span>
+            <strong>매진</strong>
+          </div>
+          <p className="gate-panel-note">결제되지 않은 좌석은 5분 뒤 다시 풀려요. 취소표가 나오면 알려드릴게요.</p>
+          <AlertSubscribeCard eventId={event.id} kind="waitlist" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!passToken) {
+    return <QueueWaitingRoom eventId={event.id} onPassed={setPassToken} />;
+  }
+
+  return (
+    <div>
+      {header}
 
       <div className="detail-layout">
         <div>
@@ -422,6 +480,7 @@ export function EventDetailPage() {
               <p>
                 예약 완료 — {new Date(reservation.holdExpireAt).toLocaleTimeString("ko-KR")}까지 결제해주세요.
               </p>
+              <HoldTimer key={reservation.reservationId} expireAt={reservation.holdExpireAt} onExpire={handleHoldExpired} />
 
               <div className="benefit-box">
                 <div className="benefit-row">

@@ -1843,3 +1843,111 @@ button:disabled {
   flex-shrink: 0;
   gap: 6px;
 }
+
+/* ---------- Hold timer / pre-open & sold-out gate / alert cards ---------- */
+.hold-timer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hold-timer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.hold-timer-row strong {
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.hold-timer-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.7);
+  overflow: hidden;
+}
+
+.hold-timer-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--grade-r-dark);
+  transition: width 1s linear;
+}
+
+.hold-timer.urgent {
+  color: var(--danger);
+}
+
+.hold-timer.urgent .hold-timer-bar span {
+  background: var(--danger);
+}
+
+.gate-panel {
+  max-width: 460px;
+  margin: 28px auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.gate-panel-note {
+  margin: 0;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.open-countdown {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 26px 20px;
+  border-radius: var(--radius-lg);
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+}
+
+.open-countdown span {
+  font-size: 0.85rem;
+}
+
+.open-countdown strong {
+  font-size: 2rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.alert-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.alert-card h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.alert-card p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.alert-card button {
+  width: 100%;
+}
+
+.alert-card small {
+  color: var(--text-faint);
+  font-size: 0.76rem;
+}

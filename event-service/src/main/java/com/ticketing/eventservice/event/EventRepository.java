@@ -1,6 +1,7 @@
 package com.ticketing.eventservice.event;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -8,6 +9,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface EventRepository extends JpaRepository<Event, Long> {
+
+    List<Event> findByStatusAndOpenAtLessThanEqual(EventStatus status, LocalDateTime openAt);
 
     /** Every filter is optional (null = don't filter on it); startAt is matched as {@code from <= startAt < to}. */
     @Query("select e from Event e where (:status is null or e.status = :status) "

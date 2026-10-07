@@ -36,6 +36,12 @@ public class Reservation {
     @Column(name = "seat_id", nullable = false)
     private Long seatId;
 
+    // Denormalized from the seat so the per-user purchase limit can be counted without asking
+    // event-service. The column default keeps ddl-auto valid for rows from before this existed
+    // (0 = unknown, never matches a real event, so those old rows simply don't count).
+    @Column(name = "event_id", nullable = false, columnDefinition = "bigint not null default 0")
+    private Long eventId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private ReservationStatus status;
@@ -47,9 +53,10 @@ public class Reservation {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    public Reservation(Long userId, Long seatId, LocalDateTime holdExpireAt) {
+    public Reservation(Long userId, Long seatId, Long eventId, LocalDateTime holdExpireAt) {
         this.userId = userId;
         this.seatId = seatId;
+        this.eventId = eventId;
         this.status = ReservationStatus.HOLDING;
         this.holdExpireAt = holdExpireAt;
     }
