@@ -1,4 +1,5 @@
 export type EventStatus = "UPCOMING" | "OPEN" | "CLOSED";
+export type EventCategory = "CONCERT" | "MUSICAL" | "SPORTS" | "EXHIBITION" | "FESTIVAL" | "ETC";
 export type Role = "USER" | "ADMIN";
 
 export interface AdminUser {
@@ -27,6 +28,7 @@ export interface EventDetail {
   title: string;
   venue: string;
   description: string | null;
+  category: EventCategory;
   startAt: string;
   openAt: string;
   status: EventStatus;
@@ -36,6 +38,7 @@ export interface EventUpsertPayload {
   title: string;
   venue: string;
   description: string;
+  category: EventCategory;
   startAt: string;
   openAt: string;
   status: EventStatus;

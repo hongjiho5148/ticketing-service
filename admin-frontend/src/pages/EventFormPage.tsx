@@ -5,7 +5,16 @@ import { fetchEventDetail } from "../api/events";
 import { useToast } from "../context/ToastContext";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { extractErrorMessage } from "../utils/error";
-import type { EventStatus, EventUpsertPayload, SeatBlockPayload } from "../types";
+import type { EventCategory, EventStatus, EventUpsertPayload, SeatBlockPayload } from "../types";
+
+const CATEGORY_OPTIONS: { value: EventCategory; label: string }[] = [
+  { value: "CONCERT", label: "콘서트" },
+  { value: "MUSICAL", label: "뮤지컬" },
+  { value: "SPORTS", label: "스포츠" },
+  { value: "EXHIBITION", label: "전시" },
+  { value: "FESTIVAL", label: "페스티벌" },
+  { value: "ETC", label: "기타" },
+];
 
 const STATUS_OPTIONS: { value: EventStatus; label: string }[] = [
   { value: "UPCOMING", label: "오픈예정" },
@@ -34,6 +43,7 @@ export function EventFormPage() {
     description: "",
     startAt: "",
     openAt: "",
+    category: "CONCERT",
     status: "UPCOMING",
   });
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +61,7 @@ export function EventFormPage() {
           title: event.title,
           venue: event.venue,
           description: event.description ?? "",
+          category: event.category,
           startAt: toInputValue(event.startAt),
           openAt: toInputValue(event.openAt),
           status: event.status,
@@ -129,6 +140,16 @@ export function EventFormPage() {
             rows={4}
             maxLength={5000}
           />
+        </label>
+        <label>
+          장르
+          <select value={form.category} onChange={(e) => setField("category", e.target.value as EventCategory)}>
+            {CATEGORY_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
         </label>
         <label>
           공연 시작

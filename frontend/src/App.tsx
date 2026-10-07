@@ -3,6 +3,7 @@ import { Footer } from "./components/Footer";
 import { Header } from "./components/Header";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AccountPage } from "./pages/AccountPage";
+import { EventCalendarPage } from "./pages/EventCalendarPage";
 import { EventDetailPage } from "./pages/EventDetailPage";
 import { EventListPage } from "./pages/EventListPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -20,6 +21,7 @@ function App() {
       <main className="main">
         <Routes>
           <Route path="/" element={<EventListPage />} />
+          <Route path="/calendar" element={<EventCalendarPage />} />
           <Route path="/events/:eventId" element={<EventDetailPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />

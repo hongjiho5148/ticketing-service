@@ -40,6 +40,7 @@ public class AdminEventService {
                 request.title(),
                 request.venue(),
                 request.description(),
+                request.category(),
                 request.startAt(),
                 request.openAt(),
                 request.status()));
@@ -53,6 +54,7 @@ public class AdminEventService {
                 request.title(),
                 request.venue(),
                 request.description(),
+                request.category(),
                 request.startAt(),
                 request.openAt(),
                 request.status());

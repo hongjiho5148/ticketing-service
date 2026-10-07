@@ -1,9 +1,13 @@
 import { apiClient } from "./client";
-import type { EventDetail, EventListResponse, EventStatus, Seat } from "../types";
+import type { EventCategory, EventDetail, EventListResponse, EventStatus, Seat } from "../types";
 
 export function fetchEvents(
   params: {
     status?: EventStatus;
+    category?: EventCategory;
+    // ISO dates (YYYY-MM-DD), both inclusive - used for the calendar month window.
+    startDate?: string;
+    endDate?: string;
     keyword?: string;
     sortDir?: "asc" | "desc";
     page?: number;

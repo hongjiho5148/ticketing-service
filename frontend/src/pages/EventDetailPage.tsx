@@ -16,6 +16,7 @@ import { SeatGrid } from "../components/SeatGrid";
 import { QueueWaitingRoom } from "../components/QueueWaitingRoom";
 import { dDayLabel, formatDateTime } from "../utils/date";
 import { posterGlyph, posterThemeClass } from "../utils/poster";
+import { CATEGORY_LABEL } from "../utils/category";
 import { availablePayMethods, requestPayment, type PayMethod } from "../utils/portone";
 import type { EventDetail, Order, Reservation, ReviewListResponse, Seat } from "../types";
 
@@ -75,6 +76,29 @@ export function EventDetailPage() {
       .then((list) => setIsWishlisted(list.some((e) => e.id === Number(eventId))))
       .catch(() => undefined);
   }, [user, eventId]);
+
+  // Native share sheet where the browser has one (phones, Safari, recent Chrome/Edge); otherwise
+  // copy the link. Closing the share sheet rejects with AbortError - that's a choice, not a failure.
+  async function handleShare() {
+    if (!event) return;
+    const url = `${window.location.origin}/events/${event.id}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: event.title, text: `${event.title} - ${event.venue}`, url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      showToast("공연 링크가 복사됐어요.");
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      try {
+        await navigator.clipboard.writeText(url);
+        showToast("공연 링크가 복사됐어요.");
+      } catch {
+        showToast("링크를 복사하지 못했어요. 주소창의 주소를 직접 복사해주세요.", "error");
+      }
+    }
+  }
 
   async function toggleWishlist() {
     if (!event) return;
@@ -295,18 +319,29 @@ export function EventDetailPage() {
           {event.status !== "CLOSED" && <span className="detail-hero-dday">{dDayLabel(event.startAt)}</span>}
           <div className="detail-hero-title-row">
             <h1>{event.title}</h1>
-            <button
-              type="button"
-              className={`wishlist-toggle ${isWishlisted ? "active" : ""}`}
-              onClick={toggleWishlist}
-              disabled={isTogglingWishlist}
-            >
-              {isWishlisted ? "♥ 찜 완료" : "♡ 찜하기"}
-            </button>
+            <div className="detail-hero-actions">
+              <button type="button" className="wishlist-toggle" onClick={handleShare}>
+                ↗ 공유
+              </button>
+              <button
+                type="button"
+                className={`wishlist-toggle ${isWishlisted ? "active" : ""}`}
+                onClick={toggleWishlist}
+                disabled={isTogglingWishlist}
+              >
+                {isWishlisted ? "♥ 찜 완료" : "♡ 찜하기"}
+              </button>
+            </div>
           </div>
           <div className="detail-hero-meta">
+            <span>🎫 {CATEGORY_LABEL[event.category]}</span>
             <span>📍 {event.venue}</span>
             <span>🗓 {formatDateTime(event.startAt)}</span>
+            {event.averageRating !== null && (
+              <span>
+                ★ {event.averageRating.toFixed(1)} ({event.reviewCount})
+              </span>
+            )}
           </div>
         </div>
       </div>

@@ -6,7 +6,8 @@ import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { dDayLabel, formatDateTime } from "../utils/date";
 import { extractErrorMessage } from "../utils/error";
 import { posterGlyph, posterThemeClass } from "../utils/poster";
-import type { EventStatus, EventSummary } from "../types";
+import { CATEGORY_LABEL, CATEGORY_ORDER } from "../utils/category";
+import type { EventCategory, EventStatus, EventSummary } from "../types";
 
 const PAGE_SIZE = 12;
 
@@ -42,6 +43,7 @@ export function EventListPage() {
   const [keywordInput, setKeywordInput] = useState("");
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState<EventStatus | undefined>(undefined);
+  const [category, setCategory] = useState<EventCategory | undefined>(undefined);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -58,7 +60,7 @@ export function EventListPage() {
   useEffect(() => {
     setIsLoading(true);
     setError(null);
-    fetchEvents({ status, keyword: keyword || undefined, sortDir, page: 0, size: PAGE_SIZE })
+    fetchEvents({ status, category, keyword: keyword || undefined, sortDir, page: 0, size: PAGE_SIZE })
       .then((res) => {
         setEvents(res.content);
         setTotalElements(res.totalElements);
@@ -66,12 +68,12 @@ export function EventListPage() {
       })
       .catch((err) => setError(extractErrorMessage(err)))
       .finally(() => setIsLoading(false));
-  }, [status, keyword, sortDir]);
+  }, [status, category, keyword, sortDir]);
 
   function handleLoadMore() {
     const nextPage = page + 1;
     setIsLoadingMore(true);
-    fetchEvents({ status, keyword: keyword || undefined, sortDir, page: nextPage, size: PAGE_SIZE })
+    fetchEvents({ status, category, keyword: keyword || undefined, sortDir, page: nextPage, size: PAGE_SIZE })
       .then((res) => {
         setEvents((prev) => [...prev, ...res.content]);
         setTotalElements(res.totalElements);
@@ -88,6 +90,24 @@ export function EventListPage() {
       <div className="list-header">
         <h1>픽시트</h1>
         <p>지금 예매할 수 있는 공연을 확인해보세요.</p>
+        <Link to="/calendar" className="view-switch">
+          📅 캘린더로 보기
+        </Link>
+      </div>
+
+      <div className="category-tabs" role="tablist" aria-label="장르">
+        {[undefined, ...CATEGORY_ORDER].map((c) => (
+          <button
+            key={c ?? "ALL"}
+            type="button"
+            role="tab"
+            aria-selected={category === c}
+            className={`category-tab ${category === c ? "active" : ""}`}
+            onClick={() => setCategory(c)}
+          >
+            {c ? CATEGORY_LABEL[c] : "전체 장르"}
+          </button>
+        ))}
       </div>
 
       <div className="event-toolbar">
@@ -136,7 +156,15 @@ export function EventListPage() {
                     <h2>{event.title}</h2>
                     <p className="event-card-meta">{event.venue}</p>
                     <p className="event-card-meta">{formatDateTime(event.startAt)}</p>
-                    <span className={`badge ${STATUS_CLASS[event.status]}`}>{STATUS_LABEL[event.status]}</span>
+                    <div className="event-card-tags">
+                      <span className="badge badge-category">{CATEGORY_LABEL[event.category]}</span>
+                      <span className={`badge ${STATUS_CLASS[event.status]}`}>{STATUS_LABEL[event.status]}</span>
+                      {event.averageRating !== null && (
+                        <span className="event-card-rating">
+                          ★ {event.averageRating.toFixed(1)} <small>({event.reviewCount})</small>
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </Link>
               </li>
