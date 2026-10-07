@@ -1,14 +1,15 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { changePassword, updateProfile } from "../api/auth";
 import { fetchNotificationPreference, updateNotificationPreference } from "../api/notifications";
-import { fetchCouponHistory } from "../api/coupons";
+import { fetchAvailableCoupons, fetchCouponHistory } from "../api/coupons";
 import { fetchPoints } from "../api/points";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { couponBenefitLabel, couponExpiryLabel } from "../utils/coupon";
 import { extractErrorMessage } from "../utils/error";
 import { getPasswordStrength } from "../utils/passwordStrength";
-import type { CouponHistoryItem, PointSummary, PointTransactionType } from "../types";
+import type { AvailableCoupon, CouponHistoryItem, PointSummary, PointTransactionType } from "../types";
 
 const POINT_TYPE_LABEL: Record<PointTransactionType, string> = {
   EARN: "구매 적립",
@@ -41,10 +42,12 @@ export function AccountPage() {
 
   const [points, setPoints] = useState<PointSummary | null>(null);
   const [coupons, setCoupons] = useState<CouponHistoryItem[]>([]);
+  const [availableCoupons, setAvailableCoupons] = useState<AvailableCoupon[]>([]);
 
   useEffect(() => {
     fetchPoints().then(setPoints).catch(() => undefined);
     fetchCouponHistory().then(setCoupons).catch(() => undefined);
+    fetchAvailableCoupons().then(setAvailableCoupons).catch(() => undefined);
   }, []);
 
   const [emailOptIn, setEmailOptIn] = useState(true);
@@ -240,6 +243,28 @@ export function AccountPage() {
       </section>
 
       <section className="account-section">
+        <h2>사용 가능한 쿠폰</h2>
+        {availableCoupons.length > 0 ? (
+          <>
+            <ul className="wallet-list">
+              {availableCoupons.map((c) => (
+                <li key={c.code}>
+                  <span>
+                    {c.code}
+                    <small> · {couponExpiryLabel(c.validTo)}</small>
+                  </span>
+                  <strong className="plus">{couponBenefitLabel(c)}</strong>
+                </li>
+              ))}
+            </ul>
+            <p className="wallet-hint">쿠폰은 결제 화면에서 눌러 바로 적용할 수 있어요. 계정당 한 번씩 쓸 수 있어요.</p>
+          </>
+        ) : (
+          <p className="wallet-hint">지금 사용할 수 있는 쿠폰이 없어요.</p>
+        )}
+      </section>
+
+      <section className="account-section">
         <h2>쿠폰 사용 내역</h2>
         {coupons.length > 0 ? (
           <ul className="wallet-list">
@@ -254,7 +279,7 @@ export function AccountPage() {
             ))}
           </ul>
         ) : (
-          <p className="wallet-hint">사용한 쿠폰이 없어요. 쿠폰 코드는 결제 화면에서 입력해요.</p>
+          <p className="wallet-hint">아직 사용한 쿠폰이 없어요.</p>
         )}
       </section>
     </div>

@@ -121,6 +121,14 @@ export interface CouponHistoryItem {
   redeemedAt: string;
 }
 
+// A coupon the signed-in user can still apply: in its validity window, uses left, not yet redeemed by them.
+export interface AvailableCoupon {
+  code: string;
+  discountType: "FLAT" | "PERCENT";
+  discountValue: number;
+  validTo: string;
+}
+
 export interface PaymentResult {
   orderId: number;
   paymentStatus: PaymentStatus;

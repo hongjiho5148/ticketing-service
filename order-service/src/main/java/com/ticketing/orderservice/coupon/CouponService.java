@@ -2,6 +2,7 @@ package com.ticketing.orderservice.coupon;
 
 import com.ticketing.orderservice.common.ApiException;
 import com.ticketing.orderservice.common.ErrorCode;
+import com.ticketing.orderservice.coupon.dto.AvailableCouponResponse;
 import com.ticketing.orderservice.coupon.dto.CouponCreateRequest;
 import com.ticketing.orderservice.coupon.dto.CouponHistoryResponse;
 import com.ticketing.orderservice.coupon.dto.CouponResponse;
@@ -54,6 +55,14 @@ public class CouponService {
     public List<CouponHistoryResponse> history(Long userId) {
         return redemptionRepository.findTop50ByUserIdOrderByIdDesc(userId).stream()
                 .map(CouponHistoryResponse::from)
+                .toList();
+    }
+
+    /** The coupons this user can still use. Every active coupon is public here - there are no coupons issued to one person only. */
+    @Transactional(readOnly = true)
+    public List<AvailableCouponResponse> available(Long userId) {
+        return couponRepository.findAvailableFor(userId, LocalDateTime.now()).stream()
+                .map(AvailableCouponResponse::from)
                 .toList();
     }
 

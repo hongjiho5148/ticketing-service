@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { fetchEventDetail, fetchEventSeats } from "../api/events";
 import { cancelReservation, createReservation } from "../api/reservations";
 import { applyCoupon, applyPoints, createOrder, payOrder, removeCoupon, verifyIdentity } from "../api/orders";
+import { fetchAvailableCoupons } from "../api/coupons";
 import { fetchPoints } from "../api/points";
 import { createReview, fetchReviews } from "../api/reviews";
 import { addToWishlist, fetchWishlist, removeFromWishlist } from "../api/wishlist";
@@ -17,10 +18,11 @@ import { VenueSeatMap } from "../components/VenueSeatMap";
 import { SeatGrid } from "../components/SeatGrid";
 import { QueueWaitingRoom } from "../components/QueueWaitingRoom";
 import { dDayLabel, formatDateTime } from "../utils/date";
+import { couponBenefitLabel } from "../utils/coupon";
 import { posterGlyph, posterThemeClass } from "../utils/poster";
 import { CATEGORY_LABEL } from "../utils/category";
 import { availablePayMethods, requestPayment, type PayMethod } from "../utils/portone";
-import type { EventDetail, Order, Reservation, ReviewListResponse, Seat } from "../types";
+import type { AvailableCoupon, EventDetail, Order, Reservation, ReviewListResponse, Seat } from "../types";
 
 const GRADE_ORDER = ["VIP", "R", "S"];
 
@@ -60,6 +62,7 @@ export function EventDetailPage() {
 
   const [pointBalance, setPointBalance] = useState(0);
   const [couponInput, setCouponInput] = useState("");
+  const [availableCoupons, setAvailableCoupons] = useState<AvailableCoupon[]>([]);
   const [pointsInput, setPointsInput] = useState("");
   const [benefitError, setBenefitError] = useState<string | null>(null);
   const [isApplyingBenefit, setIsApplyingBenefit] = useState(false);
@@ -215,6 +218,9 @@ export function EventDetailPage() {
     fetchPoints()
       .then((summary) => setPointBalance(summary.balance))
       .catch(() => undefined);
+    fetchAvailableCoupons()
+      .then(setAvailableCoupons)
+      .catch(() => undefined);
   }, [reservation]);
 
   // The order is created lazily - at the first coupon/points application or at checkout, whichever
@@ -249,6 +255,11 @@ export function EventDetailPage() {
     if (await runBenefit((current) => applyCoupon(current.orderId, code), "쿠폰이 적용됐어요.")) {
       setCouponInput("");
     }
+  }
+
+  // Picking one of the listed coupons applies it straight away - no retyping the code.
+  async function handleApplyCouponCode(code: string) {
+    await runBenefit((current) => applyCoupon(current.orderId, code), "쿠폰이 적용됐어요.");
   }
 
   function handleApplyPoints() {
@@ -504,6 +515,22 @@ export function EventDetailPage() {
                     적용
                   </button>
                 </div>
+                {availableCoupons.length > 0 && !order?.couponCode && (
+                  <div className="coupon-chips">
+                    {availableCoupons.map((c) => (
+                      <button
+                        key={c.code}
+                        type="button"
+                        className="coupon-chip"
+                        onClick={() => handleApplyCouponCode(c.code)}
+                        disabled={isApplyingBenefit}
+                      >
+                        <strong>{c.code}</strong>
+                        <span>{couponBenefitLabel(c)}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <div className="benefit-row">
                   <input
                     type="number"
