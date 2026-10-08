@@ -1,0 +1,80 @@
+/*
+ * PickSeat design tokens.
+ *
+ * One idea: a printed ticket. Warm paper, ink-black type, a single vermilion accent, and numbers set in a
+ * monospace face like the figures on a stub. Grays are all warm (never mixed with cool ones), and shadows are
+ * tinted brown instead of black so surfaces sit on the paper instead of floating over it.
+ */
+:root {
+  /* Surfaces */
+  --paper: #f4f0e8;
+  --paper-2: #ebe5d8;
+  --paper-3: #e0d8c7;
+  --card: #fffdf8;
+
+  /* Ink (text) - every step passes WCAG AA on --paper except --ink-4, which is for disabled/decorative use */
+  --ink: #16130e;
+  --ink-2: #463f33;
+  --ink-3: #6b6355;
+  --ink-4: #968d7c;
+
+  --line: #ddd4c3;
+  --line-strong: #c4b9a3;
+
+  /* The one accent */
+  --accent: #d2381f;
+  --accent-hover: #b52b14;
+  --accent-soft: #fbe7e1;
+  --accent-ink: #8f2412;
+  --on-accent: #ffffff;
+
+  /* Seat grades: functional colors, deliberately earthy so they don't compete with the accent */
+  --grade-vip: #1f1b16;
+  --grade-vip-soft: #e4ded2;
+  --grade-r: #b97d1f;
+  --grade-r-soft: #f6e5c6;
+  --grade-s: #2f7566;
+  --grade-s-soft: #d5ebe4;
+
+  /* Status */
+  --ok: #2c7249;
+  --ok-soft: #dcefe3;
+  --warn: #9a5c0d;
+  --warn-soft: #f7e4c3;
+  --danger: #b3261e;
+  --danger-soft: #f8dcd8;
+  --sold: #e4ddcd;
+
+  /* Type */
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+    "Noto Sans KR", "Malgun Gothic", sans-serif;
+  /* Hangul has no glyphs in the mono face, so it falls through to the UI face instead of a system fallback */
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, "Pretendard Variable", Pretendard, monospace;
+
+  /* Shape: tighter on small controls, softer on containers */
+  --r-xs: 6px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+
+  /* Warm-tinted shadows, one light source (top-left) */
+  --shadow-1: 0 1px 2px rgb(70 45 20 / 0.07);
+  --shadow-2: 0 1px 2px rgb(70 45 20 / 0.06), 0 12px 28px -16px rgb(70 45 20 / 0.38);
+  --shadow-pop: 0 28px 64px -24px rgb(40 24 10 / 0.5);
+
+  /* Layout */
+  --container: 1240px;
+  --gutter: clamp(16px, 4vw, 40px);
+  --header-h: 64px;
+
+  /* z-index scale */
+  --z-header: 40;
+  --z-dropdown: 50;
+  --z-modal: 100;
+  --z-toast: 200;
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  color-scheme: light;
+}

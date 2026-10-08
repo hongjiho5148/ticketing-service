@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { fetchEvents } from "../api/events";
 import { EventListSkeleton } from "../components/Skeleton";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
-import { dDayLabel, formatDateTime } from "../utils/date";
+import { dDayLabel, formatShortDate } from "../utils/date";
 import { extractErrorMessage } from "../utils/error";
 import { posterGlyph, posterThemeClass } from "../utils/poster";
 import { CATEGORY_LABEL, CATEGORY_ORDER } from "../utils/category";
@@ -87,13 +87,20 @@ export function EventListPage() {
 
   return (
     <div>
-      <div className="list-header">
-        <h1>픽시트</h1>
-        <p>지금 예매할 수 있는 공연을 확인해보세요.</p>
+      <header className="page-head list-head">
+        <div>
+          <p className="eyebrow">PickSeat</p>
+          <h1>공연 둘러보기</h1>
+          <p>
+            {isLoading ? "공연을 불러오는 중이에요" : <span className="list-count">
+                총 <span className="num">{totalElements}</span>개의 공연
+              </span>}
+          </p>
+        </div>
         <Link to="/calendar" className="view-switch">
-          📅 캘린더로 보기
+          월별 캘린더로 보기 →
         </Link>
-      </div>
+      </header>
 
       <div className="category-tabs" role="tablist" aria-label="장르">
         {[undefined, ...CATEGORY_ORDER].map((c) => (
@@ -145,19 +152,28 @@ export function EventListPage() {
       ) : (
         <>
           <ul className="event-list">
-            {events.map((event) => (
-              <li key={event.id} className="event-card">
+            {events.map((event, index) => {
+              const glyph = posterGlyph(event.title);
+              return (
+              <li
+                key={event.id}
+                className={`event-card ${index === 0 && events.length >= 3 ? "featured" : ""}`}
+                style={{ "--i": Math.min(index, 12) } as CSSProperties}
+              >
                 <Link to={`/events/${event.id}`}>
-                  <div className={`event-card-poster ${posterThemeClass(event.id)}`}>
-                    <span className="poster-glyph">{posterGlyph(event.title)}</span>
+                  <div
+                    className={`event-card-poster ${posterThemeClass(event.id)}`}
+                    style={{ "--glyph-len": glyph.length } as CSSProperties}
+                  >
+                    <span className="poster-category">{CATEGORY_LABEL[event.category]}</span>
                     {event.status !== "CLOSED" && <span className="event-card-dday">{dDayLabel(event.startAt)}</span>}
+                    <span className="poster-glyph">{glyph}</span>
                   </div>
                   <div className="event-card-body">
+                    <p className="event-card-date">{formatShortDate(event.startAt)}</p>
                     <h2>{event.title}</h2>
                     <p className="event-card-meta">{event.venue}</p>
-                    <p className="event-card-meta">{formatDateTime(event.startAt)}</p>
                     <div className="event-card-tags">
-                      <span className="badge badge-category">{CATEGORY_LABEL[event.category]}</span>
                       <span className={`badge ${STATUS_CLASS[event.status]}`}>{STATUS_LABEL[event.status]}</span>
                       {event.averageRating !== null && (
                         <span className="event-card-rating">
@@ -168,7 +184,8 @@ export function EventListPage() {
                   </div>
                 </Link>
               </li>
-            ))}
+              );
+            })}
           </ul>
           {hasMore && (
             <div className="load-more-row">

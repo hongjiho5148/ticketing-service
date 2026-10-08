@@ -1,0 +1,627 @@
+/* ---------- My page ---------- */
+
+/* The account page reuses .form-page's markup but is a stack of panels, not one small card */
+.form-page.account-page {
+  max-width: 720px;
+  margin-top: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.account-page h1 {
+  margin-bottom: 28px;
+  font-size: clamp(1.9rem, 1.2rem + 2.6vw, 2.8rem);
+}
+
+.account-section {
+  margin-bottom: 20px;
+  padding: clamp(20px, 3.5vw, 32px);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--card);
+}
+
+.account-section h2 {
+  margin: 0 0 18px;
+  font-size: 1.1rem;
+}
+
+.account-page .form-notice {
+  margin-bottom: 0;
+}
+
+.wallet-balance {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 6px;
+  color: var(--ink-3);
+  font-weight: 600;
+}
+
+.wallet-balance strong {
+  font-size: clamp(1.8rem, 5vw, 2.4rem);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.wallet-hint {
+  margin: 0 0 14px;
+  color: var(--ink-3);
+  font-size: 0.84rem;
+}
+
+.wallet-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+}
+
+.wallet-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 0;
+  border-top: 1px solid var(--line);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.wallet-list small {
+  color: var(--ink-3);
+  font-weight: 450;
+}
+
+.wallet-list strong {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.wallet-list .plus {
+  color: var(--ok);
+}
+
+.wallet-list .minus {
+  color: var(--accent);
+}
+
+.notification-pref-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.92rem;
+  font-weight: 550;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+/* ---------- Orders ---------- */
+
+.order-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--card);
+  overflow: hidden;
+}
+
+.order-table th,
+.order-table td {
+  padding: 16px 16px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: middle;
+  font-size: 0.9rem;
+}
+
+.order-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.order-table th {
+  background: var(--paper-2);
+  color: var(--ink-3);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.order-table tbody tr {
+  transition: background 0.15s;
+}
+
+.order-table tbody tr:hover {
+  background: var(--paper);
+}
+
+.order-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 140px;
+}
+
+.order-table td button {
+  min-height: 38px;
+  padding: 0 14px;
+  font-size: 0.84rem;
+}
+
+.order-table td .seat-link {
+  min-height: 0;
+  padding: 0;
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.order-title {
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.order-table td.num {
+  white-space: nowrap;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.order-table td.date {
+  white-space: nowrap;
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+
+.order-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 650;
+}
+
+.order-status::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-4);
+}
+
+.order-status.is-paid::before {
+  background: var(--ok);
+}
+
+.order-status.is-pending::before {
+  background: var(--grade-r);
+}
+
+.order-status.is-ended::before {
+  background: var(--ink-4);
+}
+
+.order-status.is-problem::before {
+  background: var(--danger);
+}
+
+@media (max-width: 860px) {
+  /* Rows become stacked cards; every cell labels itself from data-label */
+  .order-table,
+  .order-table tbody,
+  .order-table tr,
+  .order-table td {
+    display: block;
+  }
+
+  .order-table {
+    border: none;
+    background: none;
+    overflow: visible;
+  }
+
+  .order-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .order-table tbody tr {
+    margin-bottom: 14px;
+    padding: 6px 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--card);
+  }
+
+  .order-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 16px;
+    padding: 10px 0;
+    border-bottom: 1px dashed var(--line);
+    text-align: right;
+  }
+
+  .order-table td::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    color: var(--ink-3);
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-align: left;
+  }
+
+  .order-table td:last-child {
+    border-bottom: none;
+    padding-top: 14px;
+  }
+
+  .order-actions {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .order-table td:last-child::before {
+    display: none;
+  }
+}
+
+/* ---------- Tickets: each one is a stub with a tear-off side ---------- */
+
+.ticket-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ticket-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  border-radius: var(--r-md);
+  background: var(--card);
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
+}
+
+.ticket-card-main {
+  padding: 22px 24px;
+  min-width: 0;
+}
+
+.ticket-card-main h3 {
+  margin: 0 0 6px;
+  font-size: 1.12rem;
+  letter-spacing: -0.03em;
+}
+
+.ticket-card-meta {
+  margin: 0 0 12px;
+  color: var(--ink-3);
+  font-size: 0.86rem;
+}
+
+.ticket-card-side {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-width: 150px;
+  padding: 22px 24px;
+  border-left: 2px dashed var(--line-strong);
+  background: var(--paper-2);
+}
+
+.ticket-card-side::before,
+.ticket-card-side::after {
+  content: "";
+  position: absolute;
+  left: -11px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--paper);
+}
+
+.ticket-card-side::before {
+  top: -11px;
+}
+
+.ticket-card-side::after {
+  bottom: -11px;
+}
+
+.ticket-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.ticket-qr img {
+  padding: 12px;
+  border-radius: var(--r-md);
+  background: #fff;
+  border: 1px solid var(--line);
+}
+
+@media (max-width: 560px) {
+  .ticket-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ticket-card-side {
+    flex-direction: row;
+    justify-content: space-between;
+    border-left: none;
+    border-top: 2px dashed var(--line-strong);
+  }
+
+  .ticket-card-side::before,
+  .ticket-card-side::after {
+    top: -11px;
+    bottom: auto;
+  }
+
+  .ticket-card-side::before {
+    left: -11px;
+  }
+
+  .ticket-card-side::after {
+    left: auto;
+    right: -11px;
+  }
+}
+
+/* ---------- Transfers ---------- */
+
+.transfer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0 0 32px;
+  padding: 0;
+  list-style: none;
+}
+
+.transfer-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--card);
+}
+
+.transfer-card-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  color: var(--ink-3);
+  font-size: 0.86rem;
+}
+
+.transfer-card-main strong {
+  color: var(--ink);
+  font-size: 1.02rem;
+  letter-spacing: -0.02em;
+}
+
+.transfer-card-who {
+  color: var(--accent);
+  font-weight: 650;
+}
+
+.transfer-card-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.transfer-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.transfer-card button {
+  min-height: 38px;
+  padding: 0 14px;
+  font-size: 0.84rem;
+}
+
+.transfer-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: var(--r-xs);
+  background: var(--paper-2);
+  color: var(--ink-2);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.transfer-status::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.transfer-status-accepted {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.transfer-status-pending {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.transfer-status-declined,
+.transfer-status-cancelled,
+.transfer-status-expired {
+  background: var(--paper-3);
+  color: var(--ink-3);
+}
+
+.transfer-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: left;
+}
+
+.transfer-dialog .modal-subtitle {
+  white-space: pre-line;
+}
+
+.transfer-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--ink-3);
+  font-size: 0.82rem;
+}
+
+@media (max-width: 560px) {
+  .transfer-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .transfer-card-side {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+/* ---------- Sign in / sign up: poster panel + form ---------- */
+
+.auth-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  max-width: 980px;
+  margin: clamp(0px, 3vh, 32px) auto 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  background: var(--card);
+  box-shadow: var(--shadow-2);
+  overflow: hidden;
+}
+
+.auth-layout .form-page {
+  max-width: none;
+  margin: 0;
+  padding: clamp(28px, 5vw, 56px);
+  border: none;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.auth-aside {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 40px;
+  min-height: 520px;
+  padding: clamp(28px, 4vw, 48px);
+  color: var(--poster-fg);
+  overflow: hidden;
+}
+
+.auth-aside-eyebrow {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  opacity: 0.85;
+}
+
+.auth-aside-title {
+  margin: 0;
+  font-size: clamp(2.4rem, 1.4rem + 3.4vw, 4rem);
+  font-weight: 900;
+  line-height: 1.04;
+  letter-spacing: -0.06em;
+}
+
+.auth-aside-points {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.auth-aside-points li {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgb(255 255 255 / 0.28);
+}
+
+.auth-aside-points .num {
+  font-size: 0.78rem;
+  opacity: 0.8;
+}
+
+@media (max-width: 860px) {
+  .auth-layout {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 480px;
+  }
+
+  .auth-aside {
+    min-height: 0;
+    gap: 14px;
+  }
+
+  .auth-aside-title {
+    font-size: 2rem;
+  }
+
+  .auth-aside-title br {
+    display: none;
+  }
+
+  .auth-aside-points {
+    display: none;
+  }
+}

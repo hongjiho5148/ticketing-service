@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { fetchWishlist, removeFromWishlist } from "../api/wishlist";
 import { EventListSkeleton } from "../components/Skeleton";
 import { useToast } from "../context/ToastContext";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
-import { dDayLabel, formatDateTime } from "../utils/date";
+import { CATEGORY_LABEL } from "../utils/category";
+import { dDayLabel, formatShortDate } from "../utils/date";
 import { extractErrorMessage } from "../utils/error";
 import { posterGlyph, posterThemeClass } from "../utils/poster";
 import type { EventStatus, EventSummary } from "../types";
@@ -51,7 +52,12 @@ export function WishlistPage() {
 
   return (
     <div>
-      <h1>찜한 공연</h1>
+      <header className="page-head">
+        <div>
+          <p className="eyebrow">Wishlist</p>
+          <h1>찜한 공연</h1>
+        </div>
+      </header>
       {isLoading ? (
         <EventListSkeleton />
       ) : error ? (
@@ -60,18 +66,24 @@ export function WishlistPage() {
         <p className="page-status">찜한 공연이 없어요. 관심 있는 공연의 ♡ 버튼을 눌러보세요.</p>
       ) : (
         <ul className="event-list">
-          {events.map((event) => (
-            <li key={event.id} className="event-card">
+          {events.map((event, index) => (
+            <li key={event.id} className="event-card" style={{ "--i": Math.min(index, 12) } as CSSProperties}>
               <Link to={`/events/${event.id}`}>
-                <div className={`event-card-poster ${posterThemeClass(event.id)}`}>
-                  <span className="poster-glyph">{posterGlyph(event.title)}</span>
+                <div
+                  className={`event-card-poster ${posterThemeClass(event.id)}`}
+                  style={{ "--glyph-len": posterGlyph(event.title).length } as CSSProperties}
+                >
+                  <span className="poster-category">{CATEGORY_LABEL[event.category]}</span>
                   {event.status !== "CLOSED" && <span className="event-card-dday">{dDayLabel(event.startAt)}</span>}
+                  <span className="poster-glyph">{posterGlyph(event.title)}</span>
                 </div>
                 <div className="event-card-body">
+                  <p className="event-card-date">{formatShortDate(event.startAt)}</p>
                   <h2>{event.title}</h2>
                   <p className="event-card-meta">{event.venue}</p>
-                  <p className="event-card-meta">{formatDateTime(event.startAt)}</p>
-                  <span className={`badge ${STATUS_CLASS[event.status]}`}>{STATUS_LABEL[event.status]}</span>
+                  <div className="event-card-tags">
+                    <span className={`badge ${STATUS_CLASS[event.status]}`}>{STATUS_LABEL[event.status]}</span>
+                  </div>
                 </div>
               </Link>
               <button

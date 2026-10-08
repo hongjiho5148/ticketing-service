@@ -1,0 +1,506 @@
+/* ---------- Reset & document ---------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--ink);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "tnum" 0;
+}
+
+/* A whisper of paper grain so the flat color doesn't read as a screen. Fixed + click-through. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.35  0 0 0 0 0.28  0 0 0 0 0.18  0 0 0 0.09 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+a {
+  color: inherit;
+}
+
+img {
+  max-width: 100%;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-xs);
+}
+
+.skip-link {
+  position: absolute;
+  left: 16px;
+  top: -64px;
+  z-index: calc(var(--z-toast) + 1);
+  padding: 10px 16px;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: var(--r-sm);
+  text-decoration: none;
+  font-weight: 600;
+  transition: top 0.2s var(--ease);
+}
+
+.skip-link:focus {
+  top: 12px;
+}
+
+/* ---------- Typography ---------- */
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 750;
+  letter-spacing: -0.025em;
+  line-height: 1.22;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+h1 {
+  font-size: clamp(1.75rem, 1.2rem + 2.2vw, 2.6rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+}
+
+h2 {
+  font-size: 1.2rem;
+}
+
+h3 {
+  font-size: 1.02rem;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+.page-status {
+  color: var(--ink-3);
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+/* Figures the way a ticket prints them. Apply to any run of numbers that should line up. */
+.num,
+.order-table td.num,
+.price-summary strong,
+.wallet-balance strong {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* ---------- Buttons ---------- */
+
+button {
+  min-height: 44px;
+  padding: 0 20px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.18s var(--ease), border-color 0.18s var(--ease), color 0.18s var(--ease),
+    transform 0.12s var(--ease), box-shadow 0.18s var(--ease);
+}
+
+button:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px) scale(0.985);
+}
+
+button:disabled {
+  background: var(--paper-3);
+  color: var(--ink-4);
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: var(--card);
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--paper-2);
+  border-color: var(--ink-3);
+}
+
+.btn-secondary:disabled {
+  background: transparent;
+  border-color: var(--line);
+}
+
+.btn-danger {
+  background: var(--danger);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #8f1d17;
+}
+
+/* Quiet text-link style for tertiary actions */
+.btn-link,
+.seat-link {
+  min-height: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ink);
+  font-weight: 600;
+  font-size: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+
+.btn-link:hover:not(:disabled),
+.seat-link:hover:not(:disabled) {
+  background: none;
+  color: var(--accent);
+  text-decoration-color: var(--accent);
+}
+
+/* ---------- Forms ---------- */
+
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+.form-page {
+  max-width: 440px;
+  margin: clamp(8px, 4vh, 40px) auto 0;
+  padding: clamp(24px, 5vw, 40px);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-2);
+}
+
+.form-page h1 {
+  font-size: 1.7rem;
+  margin: 0 0 22px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.form input,
+.form select,
+.review-form textarea,
+.review-form select,
+.event-search,
+.event-sort,
+.benefit-row input,
+.transfer-dialog input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--card);
+  color: var(--ink);
+  font-size: 0.95rem;
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+
+.review-form textarea {
+  min-height: 96px;
+  padding: 12px 14px;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--ink-4);
+}
+
+.form input:hover,
+.form select:hover,
+.event-search:hover,
+.event-sort:hover {
+  border-color: var(--ink-3);
+}
+
+.form input:focus,
+.form select:focus,
+.review-form textarea:focus,
+.review-form select:focus,
+.event-search:focus,
+.event-sort:focus,
+.benefit-row input:focus,
+.transfer-dialog input:focus {
+  outline: none;
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px var(--accent-soft), 0 0 0 4px var(--accent);
+}
+
+input:disabled {
+  background: var(--paper-2);
+  color: var(--ink-4);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  padding: 0;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+
+.email-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.email-field-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.email-field-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.email-at {
+  color: var(--ink-4);
+  font-weight: 600;
+}
+
+.password-strength {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: -6px;
+}
+
+.password-strength-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--paper-3);
+  overflow: hidden;
+}
+
+.password-strength-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.2s var(--ease), background-color 0.2s var(--ease);
+}
+
+.password-strength-bar.level-weak .password-strength-bar-fill {
+  background: var(--danger);
+}
+
+.password-strength-bar.level-fair .password-strength-bar-fill {
+  background: var(--grade-r);
+}
+
+.password-strength-bar.level-good .password-strength-bar-fill {
+  background: var(--ok);
+}
+
+.password-strength-label {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.password-strength-label.level-weak {
+  color: var(--danger);
+}
+
+.password-strength-label.level-fair {
+  color: var(--warn);
+}
+
+.password-strength-label.level-good {
+  color: var(--ok);
+}
+
+.password-requirements {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.78rem;
+  color: var(--ink-3);
+}
+
+.password-requirements li::before {
+  content: "○ ";
+  color: var(--ink-4);
+}
+
+.password-requirements li.met {
+  color: var(--ok);
+}
+
+.password-requirements li.met::before {
+  content: "● ";
+  color: var(--ok);
+}
+
+.form-error {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--r-sm);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 0.86rem;
+  font-weight: 550;
+}
+
+.form-notice {
+  margin: 0 0 18px;
+  padding: 12px 16px;
+  border-radius: var(--r-sm);
+  background: var(--paper-2);
+  border-left: 3px solid var(--accent);
+  color: var(--ink-2);
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+
+.form-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0;
+  color: var(--ink-3);
+  font-size: 0.8rem;
+}
+
+.form-divider::before,
+.form-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.social-login {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.social-button {
+  width: 100%;
+  border: 1px solid var(--line-strong);
+}
+
+.social-google {
+  background: var(--card);
+  color: var(--ink);
+}
+
+.social-google:hover:not(:disabled) {
+  background: var(--paper-2);
+}
+
+.social-kakao {
+  background: #fee500;
+  color: #191600;
+  border-color: #e6cf00;
+}
+
+.social-kakao:hover:not(:disabled) {
+  background: #f5db00;
+}
+
+.captcha-box {
+  display: flex;
+  justify-content: center;
+  min-height: 78px;
+  margin-block: 4px;
+  line-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}

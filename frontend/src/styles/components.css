@@ -1,0 +1,508 @@
+/* ---------- Badges ----------
+ * Square-ish tags, not pills. Status badges carry a dot so state never depends on color alone.
+ */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: var(--r-xs);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  line-height: 1.4;
+  background: var(--paper-2);
+  color: var(--ink-2);
+  border: 1px solid var(--line);
+}
+
+.badge-open,
+.badge-upcoming,
+.badge-closed {
+  border-color: transparent;
+}
+
+.badge-open::before,
+.badge-upcoming::before,
+.badge-closed::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.badge-open {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.badge-upcoming {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.badge-closed {
+  background: var(--paper-3);
+  color: var(--ink-3);
+}
+
+.badge-category {
+  background: transparent;
+  color: var(--ink-2);
+  border-color: var(--line-strong);
+}
+
+.ticket-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: var(--r-xs);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.ticket-status-badge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.ticket-status-badge.status-issued {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.ticket-status-badge.status-used {
+  background: var(--paper-3);
+  color: var(--ink-3);
+}
+
+/* ---------- Modal & confirm dialog ---------- */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgb(22 19 14 / 0.55);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  animation: fade-in 0.18s ease;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.modal-content {
+  width: 100%;
+  max-width: 640px;
+  max-height: min(88dvh, 860px);
+  overflow-y: auto;
+  padding: clamp(22px, 4vw, 32px);
+  border-radius: var(--r-lg);
+  background: var(--card);
+  box-shadow: var(--shadow-pop);
+  animation: modal-in 0.26s var(--ease);
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.modal-header h3 {
+  margin: 0 0 4px;
+  font-size: 1.15rem;
+}
+
+.modal-subtitle {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 0.86rem;
+}
+
+.modal-confirm {
+  max-width: 400px;
+}
+
+.modal-confirm h3 {
+  margin: 0 0 10px;
+  font-size: 1.15rem;
+}
+
+/* Confirmation text can be several short lines (the refund breakdown). */
+.modal-confirm .modal-subtitle {
+  white-space: pre-line;
+  line-height: 1.7;
+  color: var(--ink-2);
+  font-size: 0.92rem;
+}
+
+.modal-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+/* ---------- Toast ---------- */
+
+.toast-container {
+  position: fixed;
+  right: clamp(12px, 3vw, 28px);
+  bottom: clamp(12px, 3vw, 28px);
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: calc(100vw - 24px);
+}
+
+.toast {
+  max-width: 360px;
+  padding: 13px 18px 13px 16px;
+  border-radius: var(--r-sm);
+  border-left: 4px solid var(--ok);
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: var(--shadow-pop);
+  font-size: 0.9rem;
+  font-weight: 550;
+  line-height: 1.5;
+  animation: toast-in 0.3s var(--ease);
+}
+
+.toast-error {
+  border-left-color: var(--accent);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+@media (max-width: 560px) {
+  .toast-container {
+    left: 12px;
+    right: 12px;
+  }
+  .toast {
+    max-width: none;
+  }
+}
+
+/* ---------- Skeleton ---------- */
+
+.skeleton {
+  border-radius: var(--r-sm);
+  background: linear-gradient(90deg, var(--paper-2) 25%, var(--paper-3) 37%, var(--paper-2) 63%);
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.5s ease infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+.event-card-skeleton {
+  pointer-events: none;
+}
+
+.skeleton-poster {
+  aspect-ratio: 4 / 3;
+  border-radius: 0;
+}
+
+.skeleton-line {
+  height: 14px;
+  margin: 12px 0;
+}
+
+.skeleton-line-lg {
+  height: 22px;
+  width: 70%;
+}
+
+.skeleton-line-sm {
+  width: 40%;
+}
+
+.skeleton-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ---------- Error boundary / 404 ---------- */
+
+.error-boundary,
+.not-found {
+  max-width: 520px;
+  margin: clamp(48px, 12vh, 120px) auto;
+  text-align: center;
+}
+
+.not-found-code {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: clamp(4rem, 14vw, 7rem);
+  font-weight: 700;
+  letter-spacing: -0.06em;
+  line-height: 1;
+  color: var(--accent);
+}
+
+.error-boundary p,
+.not-found p {
+  margin: 14px 0 26px;
+  color: var(--ink-3);
+}
+
+/* ---------- Lists, toolbars, small shared bits ---------- */
+
+.load-more-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 36px;
+}
+
+.refund-note {
+  color: var(--ink-3);
+}
+
+.refund-policy {
+  margin: 14px 0 0;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--ink-3);
+}
+
+.wishlist-remove {
+  width: 100%;
+  border-radius: 0 0 var(--r-lg) var(--r-lg);
+}
+
+/* ---------- Hold timer / countdowns ---------- */
+
+.hold-timer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hold-timer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.hold-timer-row strong {
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.hold-timer-bar {
+  height: 5px;
+  border-radius: 3px;
+  background: var(--paper-3);
+  overflow: hidden;
+}
+
+.hold-timer-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--ink);
+  transform-origin: left;
+  transition: width 1s linear, background 0.3s;
+}
+
+.hold-timer.urgent .hold-timer-row strong,
+.hold-timer.urgent .hold-timer-row {
+  color: var(--danger);
+}
+
+.hold-timer.urgent .hold-timer-bar span {
+  background: var(--danger);
+}
+
+.hold-remaining {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--warn);
+}
+
+.hold-remaining.urgent {
+  color: var(--danger);
+}
+
+/* A departure-board style countdown: ink panel, big monospace digits */
+.open-countdown {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 32px 20px;
+  border-radius: var(--r-lg);
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.open-countdown span {
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--paper-3);
+}
+
+.open-countdown strong {
+  font-family: var(--font-mono);
+  font-size: clamp(2.1rem, 8vw, 3.2rem);
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Gates (pre-open / sold-out) and alert cards ---------- */
+
+.gate-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 480px;
+  margin: 32px auto 0;
+}
+
+.gate-panel-note {
+  margin: 0;
+  text-align: center;
+  color: var(--ink-3);
+  font-size: 0.9rem;
+}
+
+.alert-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--card);
+}
+
+.alert-card h3 {
+  margin: 0;
+}
+
+.alert-card p {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 0.9rem;
+}
+
+.alert-card button {
+  width: 100%;
+}
+
+.alert-card small {
+  color: var(--ink-3);
+  font-size: 0.78rem;
+}
+
+/* ---------- Coupon chips, identity check, pay methods (checkout pieces used in a few places) ---------- */
+
+.coupon-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.coupon-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 0;
+  padding: 9px 14px;
+  border: 1px dashed var(--accent);
+  border-radius: var(--r-sm);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-size: 0.78rem;
+  line-height: 1.3;
+  text-align: left;
+}
+
+.coupon-chip strong {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  letter-spacing: -0.02em;
+}
+
+.coupon-chip:hover:not(:disabled) {
+  background: #f6d5cc;
+}
+
+.coupon-chip:disabled {
+  opacity: 0.55;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+.identity-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.identity-check input {
+  margin-top: 2px;
+}
+
+.identity-check small {
+  display: block;
+  margin-top: 3px;
+  color: var(--ink-3);
+  font-size: 0.76rem;
+}

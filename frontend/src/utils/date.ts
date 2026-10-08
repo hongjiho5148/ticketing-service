@@ -9,6 +9,14 @@ export function formatDateTime(iso: string): string {
   });
 }
 
+/** "10.10 토 17:00" - the compact date used on cards and tickets */
+export function formatShortDate(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const weekday = ["일", "월", "화", "수", "목", "금", "토"][d.getDay()];
+  return `${d.getMonth() + 1}.${pad(d.getDate())} ${weekday} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export function dDayLabel(iso: string): string {
   const target = new Date(iso);
   const today = new Date();

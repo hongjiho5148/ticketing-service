@@ -56,11 +56,11 @@ export function SeatGrid({ section, seats, selectedSeatId, onSelectSeat, onClose
           선택 가능
         </span>
         <span>
-          <span className="seat-legend-swatch" style={{ background: "var(--primary)" }} />
+          <span className="seat-legend-swatch swatch-selected" />
           선택됨
         </span>
         <span>
-          <span className="seat-legend-swatch" style={{ background: "var(--sold-bg)" }} />
+          <span className="seat-legend-swatch swatch-unavailable" />
           선택 불가
         </span>
       </div>

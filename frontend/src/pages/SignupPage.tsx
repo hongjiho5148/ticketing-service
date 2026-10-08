@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
+import { AuthAside } from "../components/AuthAside";
 import { SocialLoginButtons } from "../components/SocialLoginButtons";
 import { useAuth } from "../context/AuthContext";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
@@ -74,7 +75,9 @@ export function SignupPage() {
   }
 
   return (
-    <div className="form-page">
+    <div className="auth-layout">
+      <AuthAside />
+      <div className="form-page">
       <h1>회원가입</h1>
       <form onSubmit={handleSubmit} className="form">
         <label>
@@ -159,6 +162,7 @@ export function SignupPage() {
       <p>
         이미 계정이 있으신가요? <Link to="/login">로그인</Link>
       </p>
+      </div>
     </div>
   );
 }

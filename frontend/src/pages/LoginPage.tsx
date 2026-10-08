@@ -1,6 +1,7 @@
 import { isAxiosError } from "axios";
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { AuthAside } from "../components/AuthAside";
 import { ReCaptcha } from "../components/ReCaptcha";
 import { resendVerification } from "../api/auth";
 import { SocialLoginButtons } from "../components/SocialLoginButtons";
@@ -68,7 +69,9 @@ export function LoginPage() {
   }
 
   return (
-    <div className="form-page">
+    <div className="auth-layout">
+      <AuthAside />
+      <div className="form-page">
       <h1>로그인</h1>
       {notice && <p className="form-notice">{notice}</p>}
       <form onSubmit={handleSubmit} className="form">
@@ -102,6 +105,7 @@ export function LoginPage() {
       <p>
         계정이 없으신가요? <Link to="/signup">회원가입</Link>
       </p>
+      </div>
     </div>
   );
 }

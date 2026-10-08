@@ -22,6 +22,14 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   PARTIALLY_REFUNDED: "부분환불",
 };
 
+// Colors the dot in front of the status text: paid = green, waiting = amber, ended = gray, failed/expired = red.
+function statusTone(order: OrderHistoryItem): string {
+  if (order.status === "PAID" || order.status === "PARTIALLY_REFUNDED") return "is-paid";
+  if (order.status === "PENDING") return order.holdExpireAt ? "is-pending" : "is-problem";
+  if (order.status === "FAILED") return "is-problem";
+  return "is-ended";
+}
+
 const PAY_METHOD_LABEL: Record<string, string> = {
   CARD: "카드",
   KAKAOPAY: "카카오페이",
@@ -190,16 +198,24 @@ export function MyOrdersPage() {
             <tbody>
               {orders.map((order) => (
                 <tr key={order.orderId}>
-                  <td>{order.eventTitle}</td>
-                  <td>
+                  <td data-label="이벤트" className="order-title">
+                    {order.eventTitle}
+                  </td>
+                  <td data-label="좌석">
                     <button type="button" className="seat-link" onClick={() => setViewingOrder(order)}>
                       {order.grade}석 · {order.section} · {order.seatNo}
                     </button>
                   </td>
-                  <td>{order.totalPrice.toLocaleString()}원</td>
-                  <td>{order.paymentMethod ? (PAY_METHOD_LABEL[order.paymentMethod] ?? order.paymentMethod) : "-"}</td>
-                  <td>
+                  <td data-label="결제금액" className="num">
+                    {order.totalPrice.toLocaleString()}원
+                  </td>
+                  <td data-label="결제수단">
+                    {order.paymentMethod ? (PAY_METHOD_LABEL[order.paymentMethod] ?? order.paymentMethod) : "-"}
+                  </td>
+                  <td data-label="상태">
+                    <span className={`order-status ${statusTone(order)}`}>
                     {order.status === "PENDING" && !order.holdExpireAt ? "결제 시간 만료" : STATUS_LABEL[order.status]}
+                    </span>
                     {order.status === "PENDING" && order.holdExpireAt && (
                       <>
                         {" "}
@@ -216,8 +232,11 @@ export function MyOrdersPage() {
                       <small className="refund-note"> (환불 {order.refundedAmount.toLocaleString()}원)</small>
                     )}
                   </td>
-                  <td>{new Date(order.createdAt).toLocaleString()}</td>
-                  <td>
+                  <td data-label="주문일시" className="date">
+                    {new Date(order.createdAt).toLocaleString("ko-KR", { dateStyle: "short", timeStyle: "short" })}
+                  </td>
+                  <td data-label="">
+                    <div className="order-actions">
                     {order.status === "PENDING" && order.holdExpireAt && (
                       <button type="button" onClick={() => navigate(`/events/${order.eventId}?resume=${order.orderId}`)}>
                         결제하기
@@ -243,6 +262,7 @@ export function MyOrdersPage() {
                         양도함 보기
                       </Link>
                     )}
+                    </div>
                   </td>
                 </tr>
               ))}
