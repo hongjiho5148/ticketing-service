@@ -1,6 +1,7 @@
 package com.ticketing.orderservice.coupon;
 
 import com.ticketing.orderservice.auth.SecurityUtil;
+import com.ticketing.orderservice.coupon.dto.AvailableCouponResponse;
 import com.ticketing.orderservice.coupon.dto.CouponHistoryResponse;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,5 +22,10 @@ public class CouponController {
     @GetMapping
     public List<CouponHistoryResponse> history() {
         return couponService.history(SecurityUtil.getCurrentUserId());
+    }
+
+    @GetMapping("/available")
+    public List<AvailableCouponResponse> available() {
+        return couponService.available(SecurityUtil.getCurrentUserId());
     }
 }

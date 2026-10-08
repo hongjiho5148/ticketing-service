@@ -99,7 +99,8 @@ public class OrderBenefitService {
      * Undoes the point side of a cancelled order: the reward it earned is taken back in full, and
      * the points spent come back in the same proportion as the cash refund (a 70% refund returns
      * 70% of the points) - otherwise paying with points would be a way around the cancellation fee.
-     * The coupon is deliberately not restored - it stays spent once used.
+     * The coupon comes back only with a full refund (see RefundPolicy.restoresCoupon) - with a partial refund
+     * a cancellation fee was kept and the coupon stays spent.
      */
     public void reverse(Orders order, int refundPercent) {
         Long userId = order.getUserId();
@@ -109,5 +110,8 @@ public class OrderBenefitService {
             pointService.record(userId, restored, PointTransactionType.RESTORE, order.getId());
         }
         pointService.clawbackEarned(userId, order.getId());
+        if (RefundPolicy.restoresCoupon(refundPercent)) {
+            couponService.restore(order);
+        }
     }
 }

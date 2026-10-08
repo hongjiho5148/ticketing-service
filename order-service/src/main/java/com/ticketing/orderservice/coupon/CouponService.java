@@ -2,6 +2,7 @@ package com.ticketing.orderservice.coupon;
 
 import com.ticketing.orderservice.common.ApiException;
 import com.ticketing.orderservice.common.ErrorCode;
+import com.ticketing.orderservice.coupon.dto.AvailableCouponResponse;
 import com.ticketing.orderservice.coupon.dto.CouponCreateRequest;
 import com.ticketing.orderservice.coupon.dto.CouponHistoryResponse;
 import com.ticketing.orderservice.coupon.dto.CouponResponse;
@@ -57,6 +58,14 @@ public class CouponService {
                 .toList();
     }
 
+    /** The coupons this user can still use. Every active coupon is public here - there are no coupons issued to one person only. */
+    @Transactional(readOnly = true)
+    public List<AvailableCouponResponse> available(Long userId) {
+        return couponRepository.findAvailableFor(userId, LocalDateTime.now()).stream()
+                .map(AvailableCouponResponse::from)
+                .toList();
+    }
+
     /** Checks a code can be applied by this user right now. Nothing is consumed until the order is paid (see redeem). */
     @Transactional(readOnly = true)
     public Coupon findUsable(String rawCode, Long userId) {
@@ -86,6 +95,23 @@ public class CouponService {
         }
         redemptionRepository.save(new CouponRedemption(
                 coupon.getId(), coupon.getCode(), order.getUserId(), order.getId(), order.getDiscountAmount()));
+    }
+
+    /**
+     * Undoes redeem() for a fully refunded order: the user can use the coupon again and the use goes back
+     * to the coupon's limit. Idempotent - the use is only given back if this order's redemption row was
+     * really there to delete, so calling it twice never frees up a use that belongs to someone else.
+     */
+    public void restore(Orders order) {
+        if (order.getCouponCode() == null) {
+            return;
+        }
+        couponRepository.findByCode(order.getCouponCode()).ifPresent(coupon -> {
+            if (redemptionRepository.deleteByCouponIdAndUserIdAndOrderId(
+                            coupon.getId(), order.getUserId(), order.getId()) > 0) {
+                couponRepository.markUnused(coupon.getId());
+            }
+        });
     }
 
     private String normalize(String code) {

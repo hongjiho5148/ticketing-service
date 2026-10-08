@@ -144,6 +144,73 @@ class OrderBenefitServiceTest {
         assertThat(redemptionRepository.existsByCouponIdAndUserId(coupon.getId(), userId)).isTrue();
     }
 
+    private int usedCount(Coupon coupon) {
+        em.flush();
+        em.clear();
+        return couponRepository.findById(coupon.getId()).orElseThrow().getUsedCount();
+    }
+
+    @Test
+    void aFullRefundGivesTheCouponBackSoItCanBeUsedAgain() {
+        Orders order = order(100_000);
+        Coupon coupon = coupon(DiscountType.FLAT, 5_000, 5);
+        benefits.applyCoupon(order, coupon.getCode());
+        benefits.redeem(order);
+        assertThat(usedCount(coupon)).isEqualTo(1);
+
+        benefits.reverse(order, 100);
+
+        assertThat(usedCount(coupon)).isZero();
+        assertThat(redemptionRepository.existsByCouponIdAndUserId(coupon.getId(), userId)).isFalse();
+        Orders again = order(100_000);
+        benefits.applyCoupon(again, coupon.getCode()); // would throw COUPON_ALREADY_USED if it hadn't come back
+        assertThat(again.getDiscountAmount()).isEqualTo(5_000);
+    }
+
+    @Test
+    void aPartialRefundKeepsTheCouponSpent() {
+        Orders order = order(100_000);
+        Coupon coupon = coupon(DiscountType.FLAT, 5_000, 5);
+        benefits.applyCoupon(order, coupon.getCode());
+        benefits.redeem(order);
+
+        benefits.reverse(order, 70);
+
+        assertThat(usedCount(coupon)).isEqualTo(1);
+        assertThat(redemptionRepository.existsByCouponIdAndUserId(coupon.getId(), userId)).isTrue();
+        Orders again = order(100_000);
+        assertThatThrownBy(() -> benefits.applyCoupon(again, coupon.getCode()))
+                .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.COUPON_ALREADY_USED));
+    }
+
+    @Test
+    void givingACouponBackTwiceNeverFreesAnotherUsersUse() {
+        Coupon coupon = coupon(DiscountType.FLAT, 5_000, 5);
+        Orders mine = order(100_000);
+        benefits.applyCoupon(mine, coupon.getCode());
+        benefits.redeem(mine);
+
+        long id = SEQ.incrementAndGet();
+        Orders someoneElses = orderRepository.save(new Orders(userId + 1, id, id, LocalDateTime.now().plusDays(3), 1L, 100_000));
+        benefits.applyCoupon(someoneElses, coupon.getCode());
+        benefits.redeem(someoneElses);
+        assertThat(usedCount(coupon)).isEqualTo(2);
+
+        benefits.reverse(mine, 100);
+        benefits.reverse(mine, 100); // a repeated reversal finds no redemption row left and gives nothing back
+
+        assertThat(usedCount(coupon)).isEqualTo(1);
+        assertThat(redemptionRepository.existsByCouponIdAndUserId(coupon.getId(), userId + 1)).isTrue();
+    }
+
+    @Test
+    void reversingAnOrderWithoutACouponLeavesCouponsAlone() {
+        Orders order = order(100_000);
+        benefits.redeem(order); // no coupon, no points
+
+        benefits.reverse(order, 100); // must not fail on the missing coupon
+    }
+
     @Test
     void aCouponCanOnlyBeUsedOncePerUser() {
         Orders first = order(100_000);

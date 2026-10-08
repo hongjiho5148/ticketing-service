@@ -135,6 +135,11 @@ export function MyOrdersPage() {
     if (preview.pointsRestored > 0) {
       lines.push(`사용한 포인트 ${preview.pointsRestored.toLocaleString()}P 환원`);
     }
+    if (preview.couponRestored) {
+      lines.push("사용한 쿠폰은 다시 쓸 수 있어요");
+    } else if (preview.couponForfeited) {
+      lines.push("사용한 쿠폰은 복원되지 않아요 (전액 환불일 때만 돌려드려요)");
+    }
     lines.push("취소하면 되돌릴 수 없어요.");
     return lines.join("\n");
   }

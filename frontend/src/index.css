@@ -2090,3 +2090,33 @@ button:disabled {
   min-height: 78px;
   margin-block: 4px;
 }
+
+.coupon-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.coupon-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 7px 12px;
+  border: 1px dashed var(--primary);
+  border-radius: var(--radius-sm);
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  font-size: 0.74rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.coupon-chip strong {
+  font-size: 0.82rem;
+}
+
+.coupon-chip:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
