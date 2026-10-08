@@ -210,7 +210,7 @@ export function EventDetailPage() {
       setSelectedSeat(null);
       setOrder(null);
       showToast("예약이 취소됐어요.");
-      if (resumed) navigate("/orders");
+      if (resumed) navigate("/tickets?tab=orders");
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
@@ -258,7 +258,7 @@ export function EventDetailPage() {
     if (isProcessing) return;
     if (resumed) {
       showToast("결제 가능 시간이 지나 좌석이 해제됐어요.", "error");
-      navigate("/orders");
+      navigate("/tickets?tab=orders");
       return;
     }
     setReservation(null);
@@ -361,13 +361,13 @@ export function EventDetailPage() {
       // re-checks with PortOne's server before trusting it.
       const verified = await payOrder(currentOrder.orderId, paymentResult.paymentId);
       if (verified.paymentStatus === "SUCCESS") {
-        navigate("/orders");
+        navigate("/tickets?tab=orders");
         return;
       }
 
       if (resumed) {
         showToast("결제가 거절됐어요. 좌석이 해제됐어요.", "error");
-        navigate("/orders");
+        navigate("/tickets?tab=orders");
         return;
       }
       setError("결제가 거절됐어요. 좌석이 해제됐으니 다시 예약해주세요.");
@@ -409,7 +409,7 @@ export function EventDetailPage() {
         <h1>결제를 이어갈 수 없어요</h1>
         <p className="form-error">{error}</p>
         <p>
-          <Link to="/orders">내 주문으로 돌아가기</Link>
+          <Link to="/tickets?tab=orders">내 주문으로 돌아가기</Link>
         </p>
       </div>
     );

@@ -1,19 +1,65 @@
-/* ---------- My page ---------- */
+/* ---------- My page: side menu + one panel at a time ---------- */
 
-/* The account page reuses .form-page's markup but is a stack of panels, not one small card */
-.form-page.account-page {
-  max-width: 720px;
-  margin-top: 0;
-  padding: 0;
-  border: none;
-  border-radius: 0;
-  background: none;
-  box-shadow: none;
+.account-page {
+  max-width: 980px;
 }
 
-.account-page h1 {
-  margin-bottom: 28px;
-  font-size: clamp(1.9rem, 1.2rem + 2.6vw, 2.8rem);
+.account-layout {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: clamp(20px, 3.5vw, 44px);
+  align-items: start;
+}
+
+.account-nav {
+  position: sticky;
+  top: calc(var(--header-h) + 20px);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--card);
+}
+
+.account-nav a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: var(--r-sm);
+  color: var(--ink-2);
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.account-nav a:hover {
+  background: var(--paper-2);
+  color: var(--ink);
+}
+
+.account-nav a.active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.account-nav small {
+  color: var(--ink-3);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.account-nav a.active small {
+  color: var(--paper-3);
+}
+
+.account-panel {
+  min-width: 0;
+  max-width: 640px;
 }
 
 .account-section {
@@ -31,6 +77,28 @@
 
 .account-page .form-notice {
   margin-bottom: 0;
+}
+
+@media (max-width: 760px) {
+  .account-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  /* The side menu becomes a swipeable tab row */
+  .account-nav {
+    position: static;
+    flex-direction: row;
+    gap: 6px;
+    padding: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .account-nav a {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
 }
 
 .wallet-balance {
@@ -102,46 +170,163 @@
   cursor: pointer;
 }
 
-/* ---------- Orders ---------- */
+/* ---------- Page tabs (e.g. tickets / orders) ---------- */
 
-.order-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--card);
-  overflow: hidden;
-}
-
-.order-table th,
-.order-table td {
-  padding: 16px 16px;
+.page-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 22px;
   border-bottom: 1px solid var(--line);
-  text-align: left;
-  vertical-align: middle;
-  font-size: 0.9rem;
 }
 
-.order-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.order-table th {
-  background: var(--paper-2);
+.page-tabs a {
+  position: relative;
+  padding: 12px 18px;
   color: var(--ink-3);
+  font-size: 0.96rem;
+  font-weight: 650;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.page-tabs a:hover {
+  color: var(--ink);
+}
+
+.page-tabs a.active {
+  color: var(--ink);
+}
+
+.page-tabs a.active::after {
+  content: "";
+  position: absolute;
+  inset: auto 12px -1px;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--accent);
+}
+
+/* ---------- Orders: one card per order, status color on the left edge ---------- */
+
+.order-filters {
+  margin-bottom: 18px;
+}
+
+.order-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.order-card {
+  --tone: var(--ink-4);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px 28px;
+  padding: 20px 24px 20px 26px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--tone);
+  border-radius: var(--r-md);
+  background: var(--card);
+  transition: box-shadow 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+
+.order-card:hover {
+  box-shadow: var(--shadow-2);
+}
+
+.order-card.is-paid {
+  --tone: var(--ok);
+}
+
+.order-card.is-pending {
+  --tone: var(--grade-r);
+}
+
+.order-card.is-problem {
+  --tone: var(--danger);
+}
+
+.order-card-body {
+  min-width: 0;
+}
+
+.order-card-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-bottom: 8px;
+  font-size: 0.84rem;
+}
+
+.order-date {
+  margin-left: auto;
+  color: var(--ink-3);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.order-tag {
+  padding: 2px 8px;
+  border-radius: var(--r-xs);
+  background: var(--paper-2);
+  color: var(--ink-2);
   font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.order-title {
+  margin: 0 0 12px;
+  font-size: 1.12rem;
   font-weight: 700;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
+  letter-spacing: -0.025em;
+  line-height: 1.35;
+  text-wrap: balance;
 }
 
-.order-table tbody tr {
-  transition: background 0.15s;
+.order-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 32px;
+  margin: 0;
 }
 
-.order-table tbody tr:hover {
-  background: var(--paper);
+.order-meta > div {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.order-meta dt {
+  flex-shrink: 0;
+  color: var(--ink-3);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.order-meta dd {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 550;
+}
+
+.order-meta dd small {
+  color: var(--ink-3);
+  font-size: 0.84rem;
+  font-weight: 450;
+}
+
+.order-meta .seat-link {
+  min-height: 0;
+  padding: 0;
+  font-size: inherit;
+  text-align: left;
 }
 
 .order-actions {
@@ -150,51 +335,25 @@
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
-  min-width: 140px;
 }
 
-.order-table td button {
-  min-height: 38px;
-  padding: 0 14px;
-  font-size: 0.84rem;
-}
-
-.order-table td .seat-link {
-  min-height: 0;
-  padding: 0;
-  font-size: 0.9rem;
-  text-align: left;
-}
-
-.order-title {
-  font-weight: 650;
-  letter-spacing: -0.02em;
-}
-
-.order-table td.num {
-  white-space: nowrap;
-  font-size: 0.88rem;
-  font-weight: 600;
-}
-
-.order-table td.date {
-  white-space: nowrap;
+.order-actions button {
+  min-height: 40px;
+  padding: 0 16px;
   font-size: 0.86rem;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-2);
 }
 
 .order-status {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-weight: 650;
+  gap: 7px;
+  font-weight: 700;
 }
 
 .order-status::before {
   content: "";
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--ink-4);
 }
@@ -215,68 +374,23 @@
   background: var(--danger);
 }
 
-@media (max-width: 860px) {
-  /* Rows become stacked cards; every cell labels itself from data-label */
-  .order-table,
-  .order-table tbody,
-  .order-table tr,
-  .order-table td {
-    display: block;
-  }
-
-  .order-table {
-    border: none;
-    background: none;
-    overflow: visible;
-  }
-
-  .order-table thead {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-  }
-
-  .order-table tbody tr {
-    margin-bottom: 14px;
-    padding: 6px 16px;
-    border: 1px solid var(--line);
-    border-radius: var(--r-md);
-    background: var(--card);
-  }
-
-  .order-table td {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 16px;
-    padding: 10px 0;
-    border-bottom: 1px dashed var(--line);
-    text-align: right;
-  }
-
-  .order-table td::before {
-    content: attr(data-label);
-    flex-shrink: 0;
-    color: var(--ink-3);
-    font-size: 0.78rem;
-    font-weight: 600;
-    text-align: left;
-  }
-
-  .order-table td:last-child {
-    border-bottom: none;
-    padding-top: 14px;
+@media (max-width: 640px) {
+  .order-card {
+    grid-template-columns: 1fr;
+    padding: 18px 18px 18px 20px;
   }
 
   .order-actions {
-    min-width: 0;
-    width: 100%;
+    justify-content: stretch;
   }
 
-  .order-table td:last-child::before {
-    display: none;
+  .order-actions button {
+    flex: 1;
+  }
+
+  .order-date {
+    margin-left: 0;
+    flex-basis: 100%;
   }
 }
 

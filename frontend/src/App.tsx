@@ -1,4 +1,4 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { Footer } from "./components/Footer";
 import { Header } from "./components/Header";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -7,7 +7,6 @@ import { EventCalendarPage } from "./pages/EventCalendarPage";
 import { EventDetailPage } from "./pages/EventDetailPage";
 import { EventListPage } from "./pages/EventListPage";
 import { LoginPage } from "./pages/LoginPage";
-import { MyOrdersPage } from "./pages/MyOrdersPage";
 import { MyTicketsPage } from "./pages/MyTicketsPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { OAuth2RedirectPage } from "./pages/OAuth2RedirectPage";
@@ -27,14 +26,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/oauth2/redirect" element={<OAuth2RedirectPage />} />
-          <Route
-            path="/orders"
-            element={
-              <ProtectedRoute>
-                <MyOrdersPage />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/orders" element={<Navigate to="/tickets?tab=orders" replace />} />
           <Route
             path="/account"
             element={
