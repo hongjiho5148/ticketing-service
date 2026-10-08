@@ -23,6 +23,11 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
             + "order by c.validTo asc, c.id asc")
     List<Coupon> findAvailableFor(@Param("userId") Long userId, @Param("now") LocalDateTime now);
 
+    /** Gives one use back atomically, never below zero. Only called after the redemption row it belongs to was deleted. */
+    @Modifying
+    @Query("UPDATE Coupon c SET c.usedCount = c.usedCount - 1 WHERE c.id = :id AND c.usedCount > 0")
+    int markUnused(@Param("id") Long id);
+
     /** Takes one use atomically; 0 rows updated means the coupon was already fully used. */
     @Modifying
     @Query("UPDATE Coupon c SET c.usedCount = c.usedCount + 1 WHERE c.id = :id AND c.usedCount < c.maxUses")

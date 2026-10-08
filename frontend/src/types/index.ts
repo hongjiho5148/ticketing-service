@@ -252,4 +252,7 @@ export interface RefundPreview {
   refundAmount: number;
   feeAmount: number;
   pointsRestored: number;
+  // A coupon comes back only with a full refund; with a partial refund it stays spent.
+  couponRestored: boolean;
+  couponForfeited: boolean;
 }

@@ -19,6 +19,15 @@ public final class RefundPolicy {
     private RefundPolicy() {
     }
 
+    /**
+     * A coupon is given back only with a full refund - no fee was kept, so the customer ends up exactly where
+     * they started. With a partial refund they paid a cancellation fee and the coupon stays spent, otherwise
+     * a coupon would be a way to offset the fee. The quote and the actual reversal both ask here.
+     */
+    public static boolean restoresCoupon(int refundPercent) {
+        return refundPercent == 100;
+    }
+
     /** What cancelling {@code order} at {@code now} would give back. refundPercent 0 means "too late - no cancellation". */
     public static RefundQuote quote(Orders order, LocalDateTime now) {
         Duration untilShow = Duration.between(now, order.getEventStartAt());
@@ -31,7 +40,9 @@ public final class RefundPolicy {
         int paid = order.getTotalPrice();
         int refund = (int) ((long) paid * percent / 100);
         int pointsBack = (int) ((long) order.getPointsUsed() * percent / 100);
-        return new RefundQuote(percent, refund, paid - refund, pointsBack);
+        boolean usedCoupon = order.getCouponCode() != null && percent > 0;
+        return new RefundQuote(
+                percent, refund, paid - refund, pointsBack, usedCoupon && restoresCoupon(percent), usedCoupon && !restoresCoupon(percent));
     }
 
     private record Tier(Duration minimumLead, int percent) {

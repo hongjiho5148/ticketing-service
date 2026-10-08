@@ -21,6 +21,31 @@ class RefundPolicyTest {
     }
 
     @Test
+    void aCouponIsGivenBackOnlyWithAFullRefund() {
+        Orders full = orderStartingIn(Duration.ofDays(30), 100_000, 0);
+        full.applyBenefits("WELCOME10", 10_000, 0);
+        RefundQuote fullQuote = RefundPolicy.quote(full, NOW);
+        assertThat(fullQuote.couponRestored()).isTrue();
+        assertThat(fullQuote.couponForfeited()).isFalse();
+
+        Orders partial = orderStartingIn(Duration.ofDays(2), 100_000, 0);
+        partial.applyBenefits("WELCOME10", 10_000, 0);
+        RefundQuote partialQuote = RefundPolicy.quote(partial, NOW);
+        assertThat(partialQuote.couponRestored()).isFalse();
+        assertThat(partialQuote.couponForfeited()).isTrue();
+
+        RefundQuote noCoupon = quote(Duration.ofDays(30));
+        assertThat(noCoupon.couponRestored()).isFalse();
+        assertThat(noCoupon.couponForfeited()).isFalse();
+
+        Orders tooLate = orderStartingIn(Duration.ofHours(5), 100_000, 0);
+        tooLate.applyBenefits("WELCOME10", 10_000, 0);
+        RefundQuote lateQuote = RefundPolicy.quote(tooLate, NOW);
+        assertThat(lateQuote.couponRestored()).isFalse();
+        assertThat(lateQuote.couponForfeited()).isFalse(); // nothing is cancelled, so nothing is forfeited
+    }
+
+    @Test
     void fullRefundAWeekOrMoreAhead() {
         assertThat(quote(Duration.ofDays(30)).refundPercent()).isEqualTo(100);
         assertThat(quote(Duration.ofDays(7)).refundPercent()).isEqualTo(100);

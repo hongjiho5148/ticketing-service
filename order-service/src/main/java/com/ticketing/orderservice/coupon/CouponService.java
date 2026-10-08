@@ -97,6 +97,23 @@ public class CouponService {
                 coupon.getId(), coupon.getCode(), order.getUserId(), order.getId(), order.getDiscountAmount()));
     }
 
+    /**
+     * Undoes redeem() for a fully refunded order: the user can use the coupon again and the use goes back
+     * to the coupon's limit. Idempotent - the use is only given back if this order's redemption row was
+     * really there to delete, so calling it twice never frees up a use that belongs to someone else.
+     */
+    public void restore(Orders order) {
+        if (order.getCouponCode() == null) {
+            return;
+        }
+        couponRepository.findByCode(order.getCouponCode()).ifPresent(coupon -> {
+            if (redemptionRepository.deleteByCouponIdAndUserIdAndOrderId(
+                            coupon.getId(), order.getUserId(), order.getId()) > 0) {
+                couponRepository.markUnused(coupon.getId());
+            }
+        });
+    }
+
     private String normalize(String code) {
         return code.trim().toUpperCase(Locale.ROOT);
     }
