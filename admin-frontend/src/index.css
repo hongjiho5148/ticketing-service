@@ -787,3 +787,42 @@ button:disabled {
   margin: 14px 0 26px;
   color: var(--ink-3);
 }
+
+/* KOPIS import result */
+.import-result {
+  margin-bottom: 32px;
+}
+
+.import-result .wallet-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+}
+
+.import-result .wallet-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 0;
+  border-top: 1px solid var(--line);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.import-result .wallet-list strong {
+  font-family: var(--font-mono);
+}
+
+.import-result .plus {
+  color: var(--ok);
+}
+
+.import-titles {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--ink-2);
+  font-size: 0.88rem;
+  line-height: 1.7;
+}

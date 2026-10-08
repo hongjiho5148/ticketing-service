@@ -10,6 +10,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface EventRepository extends JpaRepository<Event, Long> {
 
+    boolean existsByExternalId(String externalId);
+
     List<Event> findByStatusAndOpenAtLessThanEqual(EventStatus status, LocalDateTime openAt);
 
     /** Every filter is optional (null = don't filter on it); startAt is matched as {@code from <= startAt < to}. */

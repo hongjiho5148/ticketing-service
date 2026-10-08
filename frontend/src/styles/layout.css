@@ -404,3 +404,13 @@
     padding: 0 10px 0 6px;
   }
 }
+
+/* Credit for the public data some shows come from (KOPIS terms require naming the source) */
+.footer-credit {
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 0 var(--gutter) 32px;
+  color: var(--ink-3);
+  font-size: 0.78rem;
+  line-height: 1.6;
+}

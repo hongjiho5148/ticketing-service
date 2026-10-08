@@ -15,6 +15,8 @@ public enum ErrorCode {
     SECTION_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 등록된 구역입니다."),
     REVIEW_NOT_ELIGIBLE(HttpStatus.FORBIDDEN, "결제 완료한 공연에만 후기를 남길 수 있어요."),
     REVIEW_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 후기를 작성했어요."),
+    KOPIS_NOT_CONFIGURED(HttpStatus.SERVICE_UNAVAILABLE, "KOPIS 서비스키가 설정되지 않았어요. KOPIS_SERVICE_KEY 환경변수를 확인해주세요."),
+    KOPIS_UNAVAILABLE(HttpStatus.BAD_GATEWAY, "KOPIS에서 데이터를 가져오지 못했어요. 서비스키와 네트워크를 확인해주세요."),
     ORDER_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "주문 정보를 가져올 수 없습니다. 잠시 후 다시 시도해주세요.");
 
     private final HttpStatus status;

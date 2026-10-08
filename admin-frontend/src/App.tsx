@@ -4,6 +4,7 @@ import { RequireAdmin } from "./components/RequireAdmin";
 import { CouponsPage } from "./pages/CouponsPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { EventFormPage } from "./pages/EventFormPage";
+import { ImportPage } from "./pages/ImportPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ScanPage } from "./pages/ScanPage";
 
@@ -43,6 +44,14 @@ function App() {
             element={
               <RequireAdmin>
                 <CouponsPage />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="/import"
+            element={
+              <RequireAdmin>
+                <ImportPage />
               </RequireAdmin>
             }
           />

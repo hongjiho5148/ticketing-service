@@ -17,6 +17,9 @@ export function Footer() {
           <a href="#">문의하기</a>
         </nav>
       </div>
+      <p className="footer-credit">
+        일부 공연 정보는 (재)예술경영지원센터 공연예술통합전산망(www.kopis.or.kr)의 공개 데이터에 의거하며, 예매와 결제는 데모용이에요.
+      </p>
     </footer>
   );
 }

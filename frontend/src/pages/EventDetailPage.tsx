@@ -506,6 +506,14 @@ export function EventDetailPage() {
             <>
               <h2 className="detail-section-title">공연 소개</h2>
               <p className="detail-description">{event.description}</p>
+              {event.sourceUrl && (
+                <p className="detail-source">
+                  출처:{" "}
+                  <a href={event.sourceUrl} target="_blank" rel="noreferrer noopener">
+                    (재)예술경영지원센터 공연예술통합전산망, www.kopis.or.kr
+                  </a>
+                </p>
+              )}
             </>
           )}
 

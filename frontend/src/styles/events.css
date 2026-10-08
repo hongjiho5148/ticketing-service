@@ -762,3 +762,16 @@
   font-family: var(--font-mono);
   font-size: 0.76rem;
 }
+
+/* "출처" line under an imported show's description: tucked up against the text it credits */
+.detail-description + .detail-source {
+  margin: calc(-1 * clamp(14px, 2.4vw, 28px)) 0 clamp(28px, 4vw, 44px);
+  color: var(--ink-3);
+  font-size: 0.84rem;
+}
+
+.detail-source a {
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

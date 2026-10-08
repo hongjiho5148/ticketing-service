@@ -66,5 +66,10 @@ alert:
   # doesn't mail the whole waitlist for a single seat.
   waitlist-notify-per-seat: 3
 
+kopis:
+  # 공연예술통합전산망(KOPIS) open API - the key is issued to you at kopis.or.kr; leave empty to disable importing.
+  base-url: ${KOPIS_BASE_URL:https://kopis.or.kr/openApi/restful}
+  service-key: ${KOPIS_SERVICE_KEY:}
+
 app:
   frontend-url: ${APP_FRONTEND_URL:http://localhost:5173}
