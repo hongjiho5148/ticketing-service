@@ -37,7 +37,8 @@ public class KopisImportService {
     private static final Logger log = LoggerFactory.getLogger(KopisImportService.class);
 
     static final String SOURCE_NOTE =
-            "※ 공연 정보는 공연예술통합전산망(KOPIS) 공개 데이터예요. 좌석 배치와 판매는 데모용으로 구성된 것이며 실제 예매가 아니에요.";
+            "※ 출처: (재)예술경영지원센터 공연예술통합전산망(KOPIS), www.kopis.or.kr\n"
+                    + "이 공연 정보는 KOPIS 공개 데이터에 의거해요. 좌석 배치와 판매는 데모용으로 구성된 것이며 실제 예매가 아니에요.";
     private static final int DEFAULT_LIMIT = 10;
     private static final int DEFAULT_WINDOW_DAYS = 90;
     private static final int MAX_PAGES = 3;

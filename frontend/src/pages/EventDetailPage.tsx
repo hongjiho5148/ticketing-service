@@ -510,7 +510,7 @@ export function EventDetailPage() {
                 <p className="detail-source">
                   출처:{" "}
                   <a href={event.sourceUrl} target="_blank" rel="noreferrer noopener">
-                    공연예술통합전산망(KOPIS)
+                    (재)예술경영지원센터 공연예술통합전산망, www.kopis.or.kr
                   </a>
                 </p>
               )}

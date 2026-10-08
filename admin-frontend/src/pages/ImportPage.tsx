@@ -52,7 +52,7 @@ export function ImportPage() {
       <div className="form-page admin-form-page coupon-form-card">
         <p className="form-notice">
           공연예술통합전산망(KOPIS) 공개 데이터에서 앞으로 90일 안에 열리는 공연을 가져와요. 제목·장소·기간·출연진·줄거리·가격
-          안내는 실제 데이터이고, 좌석 배치는 가격대에 맞춰 자동으로 만들어요(데모용). 이미 가져온 공연은 건너뛰어요.
+          안내는 실제 데이터이고, 좌석 배치는 가격대에 맞춰 자동으로 만들어요(데모용). 이미 가져온 공연은 건너뛰어요. KOPIS 이용 조건에 맞춰 초당 5회 이하로 천천히 호출하고, 화면에는 출처를 표시해요.
         </p>
         <form onSubmit={handleSubmit} className="form">
           <label>

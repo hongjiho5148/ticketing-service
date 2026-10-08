@@ -20,6 +20,9 @@ public class KopisClient {
 
     private static final DateTimeFormatter PARAM_DATE = DateTimeFormatter.ofPattern("yyyyMMdd");
 
+    // KOPIS suspends keys that exceed 10 calls per second; staying at ~5/s leaves a wide margin.
+    private static final long MIN_INTERVAL_MS = 200;
+
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
     private final String baseUrl;
     private final String serviceKey;
@@ -54,7 +57,23 @@ public class KopisClient {
         return parsed.get(0);
     }
 
+    private long lastCallAt;
+
+    private synchronized void throttle() {
+        long wait = lastCallAt + MIN_INTERVAL_MS - System.currentTimeMillis();
+        if (wait > 0) {
+            try {
+                Thread.sleep(wait);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new KopisException("KOPIS 호출이 중단됐어요.");
+            }
+        }
+        lastCallAt = System.currentTimeMillis();
+    }
+
     private String get(String pathAndQuery) {
+        throttle();
         HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl + pathAndQuery))
                 .timeout(Duration.ofSeconds(10))
                 .GET()
