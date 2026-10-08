@@ -67,6 +67,12 @@ export function HoldTimer({ expireAt, onExpire }: HoldTimerProps) {
   );
 }
 
+/** "03:12 남음" as inline text, for tight spaces like a table cell. */
+export function HoldRemaining({ expireAt, onExpire }: HoldTimerProps) {
+  const remaining = useRemaining(expireAt, onExpire);
+  return <small className={`hold-remaining ${remaining < 60_000 ? "urgent" : ""}`}>{formatRemaining(remaining)} 남음</small>;
+}
+
 interface OpenCountdownProps {
   openAt: string;
   onOpen: () => void;

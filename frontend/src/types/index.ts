@@ -153,7 +153,16 @@ export interface OrderHistoryItem {
   // "PENDING" while a transfer awaits the recipient, "TRANSFERRED" once accepted.
   transferStatus: "PENDING" | "TRANSFERRED" | null;
   transferable: boolean;
+  // Set only for a PENDING order whose seat is still held - payment can be picked back up until then.
+  holdExpireAt: string | null;
   createdAt: string;
+}
+
+export interface Checkout {
+  order: Order;
+  seatId: number;
+  eventId: number;
+  holdExpireAt: string;
 }
 
 export interface OrderHistoryListResponse {

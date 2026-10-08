@@ -23,11 +23,18 @@ public record OrderHistoryResponse(
         // "PENDING" while a transfer awaits the recipient, "TRANSFERRED" once accepted, else null.
         String transferStatus,
         boolean transferable,
+        // Set only for a PENDING order whose seat is still held: until then payment can be picked back up.
+        LocalDateTime holdExpireAt,
         LocalDateTime createdAt) {
 
     /** payment is null for orders that never reached a payment attempt (still PENDING). */
     public static OrderHistoryResponse from(
-            Orders order, SeatDetailResponse seat, Payment payment, String transferStatus, boolean transferable) {
+            Orders order,
+            SeatDetailResponse seat,
+            Payment payment,
+            String transferStatus,
+            boolean transferable,
+            LocalDateTime holdExpireAt) {
         return new OrderHistoryResponse(
                 order.getId(),
                 seat.eventId(),
@@ -44,6 +51,7 @@ public record OrderHistoryResponse(
                 order.getStatus(),
                 transferStatus,
                 transferable,
+                holdExpireAt,
                 order.getCreatedAt());
     }
 }

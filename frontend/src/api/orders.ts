@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import type { Order, OrderHistoryListResponse, PaymentResult, RefundPreview } from "../types";
+import type { Checkout, Order, OrderHistoryListResponse, PaymentResult, RefundPreview } from "../types";
 
 export function createOrder(reservationId: number) {
   return apiClient.post<Order>("/orders", { reservationId }).then((res) => res.data);
@@ -13,6 +13,11 @@ export function cancelOrder(orderId: number, expectedRefund?: number) {
   return apiClient
     .delete(`/orders/${orderId}`, { params: expectedRefund === undefined ? {} : { expectedRefund } })
     .then(() => undefined);
+}
+
+// The pending order to finish paying for - refused (409) once its seat hold has lapsed.
+export function fetchCheckout(orderId: number) {
+  return apiClient.get<Checkout>(`/orders/${orderId}/checkout`).then((res) => res.data);
 }
 
 export function fetchOrders(params: { page?: number; size?: number } = {}) {

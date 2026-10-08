@@ -2120,3 +2120,12 @@ button:disabled {
   opacity: 0.6;
   cursor: default;
 }
+
+.hold-remaining {
+  color: var(--grade-r-dark);
+  font-variant-numeric: tabular-nums;
+}
+
+.hold-remaining.urgent {
+  color: var(--danger);
+}

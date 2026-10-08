@@ -1,8 +1,9 @@
 import { isAxiosError } from "axios";
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { cancelOrder, fetchOrders, fetchRefundPreview } from "../api/orders";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { HoldRemaining } from "../components/Countdown";
 import { SeatLocationModal } from "../components/SeatLocationModal";
 import { TransferDialog } from "../components/TransferDialog";
 import { TextRowsSkeleton } from "../components/Skeleton";
@@ -36,6 +37,7 @@ interface CancelTarget {
 export function MyOrdersPage() {
   useDocumentTitle("내 주문 내역");
   const { showToast } = useToast();
+  const navigate = useNavigate();
 
   const [orders, setOrders] = useState<OrderHistoryItem[]>([]);
   const [totalElements, setTotalElements] = useState(0);
@@ -117,6 +119,11 @@ export function MyOrdersPage() {
     }
   }
 
+  // The seat hold ran out while the list was open: the order can no longer be paid.
+  function handleHoldExpired(orderId: number) {
+    setOrders((prev) => prev.map((o) => (o.orderId === orderId ? { ...o, holdExpireAt: null } : o)));
+  }
+
   function handleTransferSent() {
     if (!transferTarget) return;
     const orderId = transferTarget.orderId;
@@ -192,7 +199,13 @@ export function MyOrdersPage() {
                   <td>{order.totalPrice.toLocaleString()}원</td>
                   <td>{order.paymentMethod ? (PAY_METHOD_LABEL[order.paymentMethod] ?? order.paymentMethod) : "-"}</td>
                   <td>
-                    {STATUS_LABEL[order.status]}
+                    {order.status === "PENDING" && !order.holdExpireAt ? "결제 시간 만료" : STATUS_LABEL[order.status]}
+                    {order.status === "PENDING" && order.holdExpireAt && (
+                      <>
+                        {" "}
+                        <HoldRemaining expireAt={order.holdExpireAt} onExpire={() => handleHoldExpired(order.orderId)} />
+                      </>
+                    )}
                     {order.transferStatus && (
                       <small className="refund-note">
                         {" "}
@@ -205,6 +218,11 @@ export function MyOrdersPage() {
                   </td>
                   <td>{new Date(order.createdAt).toLocaleString()}</td>
                   <td>
+                    {order.status === "PENDING" && order.holdExpireAt && (
+                      <button type="button" onClick={() => navigate(`/events/${order.eventId}?resume=${order.orderId}`)}>
+                        결제하기
+                      </button>
+                    )}
                     {order.status === "PAID" && !order.transferStatus && (
                       <button
                         type="button"
