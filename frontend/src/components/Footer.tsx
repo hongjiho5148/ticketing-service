@@ -12,9 +12,9 @@ export function Footer() {
         <nav className="footer-links" aria-label="안내">
           <Link to="/">공연</Link>
           <Link to="/calendar">캘린더</Link>
-          <a href="#">이용약관</a>
-          <a href="#">개인정보처리방침</a>
-          <a href="#">문의하기</a>
+          <Link to="/terms">이용약관</Link>
+          <Link to="/privacy">개인정보처리방침</Link>
+          <Link to="/contact">문의하기</Link>
         </nav>
       </div>
       <p className="footer-credit">

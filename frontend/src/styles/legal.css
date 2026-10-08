@@ -1,0 +1,144 @@
+/* ---------- Terms / privacy / contact ---------- */
+
+.legal {
+  max-width: 760px;
+}
+
+.legal-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 28px;
+}
+
+.legal-nav a {
+  padding: 8px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--card);
+  color: var(--ink-2);
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.legal-nav a:hover {
+  background: var(--paper-2);
+}
+
+.legal-body section {
+  margin-bottom: 34px;
+}
+
+.legal-body h2 {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+  letter-spacing: -0.02em;
+}
+
+.legal-body p,
+.legal-body li {
+  color: var(--ink-2);
+  line-height: 1.8;
+}
+
+.legal-body p {
+  margin: 0 0 12px;
+  max-width: 68ch;
+}
+
+.legal-body ul {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+
+.legal-body li {
+  margin-bottom: 6px;
+}
+
+.legal-body a:not(.legal-mail) {
+  color: var(--accent-ink);
+  text-underline-offset: 3px;
+}
+
+.legal-table {
+  width: 100%;
+  margin: 4px 0 14px;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--card);
+  overflow: hidden;
+  font-size: 0.9rem;
+}
+
+.legal-table th,
+.legal-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+  line-height: 1.6;
+}
+
+.legal-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.legal-table th {
+  background: var(--paper-2);
+  color: var(--ink-3);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.legal-mail {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.legal-note {
+  color: var(--ink-3);
+  font-size: 0.88rem;
+}
+
+.legal-faq {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.legal-faq > div {
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+}
+
+.legal-faq dt {
+  margin: 0 0 6px;
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.legal-faq dd {
+  margin: 0;
+  color: var(--ink-2);
+  line-height: 1.7;
+}
+
+
+/* Consent line under the signup button's form */
+.form-agree {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.form-agree a {
+  color: var(--ink-2);
+  text-underline-offset: 3px;
+}

@@ -153,6 +153,9 @@ export function SignupPage() {
           />
         </label>
         {error && <p className="form-error">{error}</p>}
+        <p className="form-agree">
+          가입하면 <Link to="/terms">이용약관</Link>과 <Link to="/privacy">개인정보처리방침</Link>에 동의한 것으로 봅니다.
+        </p>
         <button type="submit" disabled={isSubmitting}>
           {isSubmitting ? "가입 중..." : "회원가입"}
         </button>
