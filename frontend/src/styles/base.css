@@ -138,7 +138,6 @@ p {
 
 /* Figures the way a ticket prints them. Apply to any run of numbers that should line up. */
 .num,
-.order-table td.num,
 .price-summary strong,
 .wallet-balance strong {
   font-family: var(--font-mono);

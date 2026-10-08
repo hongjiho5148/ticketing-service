@@ -4,7 +4,6 @@ import { useAuth } from "../context/AuthContext";
 import { ConfirmDialog } from "./ConfirmDialog";
 
 const MENU_LINKS = [
-  { to: "/orders", label: "내 주문" },
   { to: "/transfers", label: "양도함" },
   { to: "/wishlist", label: "찜한 공연" },
   { to: "/account", label: "마이페이지" },
