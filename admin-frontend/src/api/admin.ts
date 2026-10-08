@@ -1,5 +1,7 @@
 import { apiClient } from "./client";
 import type {
+  AdminOrderList,
+  AdminOrderStatus,
   Coupon,
   CouponCreatePayload,
   EventStats,
@@ -28,6 +30,10 @@ export function createSeats(eventId: number, blocks: SeatBlockPayload[]) {
 
 export function importFromKopis(payload: KopisImportPayload) {
   return apiClient.post<KopisImportResult>("/events/admin/import/kopis", payload).then((res) => res.data);
+}
+
+export function fetchAdminOrders(params: { status?: AdminOrderStatus; page: number; size: number }) {
+  return apiClient.get<AdminOrderList>("/admin/orders", { params }).then((res) => res.data);
 }
 
 export function fetchEventStats() {

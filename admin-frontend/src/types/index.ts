@@ -86,6 +86,30 @@ export interface EventStats {
   grades: GradeStats[];
 }
 
+export type AdminOrderStatus = "PENDING" | "PAID" | "FAILED" | "CANCELLED" | "PARTIALLY_REFUNDED";
+
+export interface AdminOrder {
+  orderId: number;
+  eventId: number;
+  eventTitle: string | null;
+  grade: string | null;
+  section: string | null;
+  seatNo: string | null;
+  totalPrice: number;
+  refundedAmount: number | null;
+  status: AdminOrderStatus;
+  paymentMethod: string | null;
+  buyerId: number;
+  buyerName: string | null;
+  buyerEmail: string | null;
+  createdAt: string;
+}
+
+export interface AdminOrderList {
+  content: AdminOrder[];
+  totalElements: number;
+}
+
 export interface OrderSummary {
   eventId: number;
   paidCount: number;

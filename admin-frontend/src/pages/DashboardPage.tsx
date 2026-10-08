@@ -56,20 +56,30 @@ export function DashboardPage() {
       </div>
 
       <div className="admin-summary">
-        <div className="admin-summary-item">
+        <Link to="/orders?status=PAID" className="admin-summary-item is-link">
           <span>총 매출</span>
           <strong>{totalRevenue.toLocaleString()}원</strong>
-        </div>
-        <div className="admin-summary-item">
+          <em>주문 보기 →</em>
+        </Link>
+        <Link to="/orders?status=PAID" className="admin-summary-item is-link">
           <span>결제 완료 주문</span>
           <strong>{totalPaid.toLocaleString()}건</strong>
-        </div>
-        <div className="admin-summary-item">
+          <em>주문 보기 →</em>
+        </Link>
+        <button
+          type="button"
+          className="admin-summary-item is-link"
+          onClick={() => document.getElementById("events")?.scrollIntoView({ block: "start" })}
+        >
           <span>등록된 공연</span>
           <strong>{stats.length}개</strong>
-        </div>
+          <em>목록 보기 ↓</em>
+        </button>
       </div>
 
+      <h2 id="events" className="admin-section-title">
+        등록된 공연
+      </h2>
       <div className="order-table-wrap">
       <table className="order-table admin-table">
         <thead>
@@ -89,7 +99,9 @@ export function DashboardPage() {
             return (
               <tr key={event.eventId}>
                 <td>
-                  <div className="event-name">{event.title}</div>
+                  <Link to={`/events/${event.eventId}/edit`} className="event-name">
+                    {event.title}
+                  </Link>
                   <div className="admin-grade-line">
                     {event.grades.map((g) => `${g.grade} ${g.sold}/${g.total}`).join(" · ") || "좌석 미등록"}
                   </div>

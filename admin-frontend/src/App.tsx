@@ -6,6 +6,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { EventFormPage } from "./pages/EventFormPage";
 import { ImportPage } from "./pages/ImportPage";
 import { LoginPage } from "./pages/LoginPage";
+import { OrdersPage } from "./pages/OrdersPage";
 import { ScanPage } from "./pages/ScanPage";
 
 function App() {
@@ -44,6 +45,14 @@ function App() {
             element={
               <RequireAdmin>
                 <CouponsPage />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="/orders"
+            element={
+              <RequireAdmin>
+                <OrdersPage />
               </RequireAdmin>
             }
           />
