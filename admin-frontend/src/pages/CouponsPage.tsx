@@ -62,7 +62,12 @@ export function CouponsPage() {
 
   return (
     <div>
-      <h1>쿠폰 관리</h1>
+      <div className="admin-header">
+        <div>
+          <p className="eyebrow">Coupons</p>
+          <h1>쿠폰 관리</h1>
+        </div>
+      </div>
 
       <div className="form-page admin-form-page coupon-form-card">
         <h2>새 쿠폰 만들기</h2>
@@ -126,6 +131,7 @@ export function CouponsPage() {
       ) : coupons.length === 0 ? (
         <p className="page-status">아직 만든 쿠폰이 없어요.</p>
       ) : (
+        <div className="order-table-wrap">
         <table className="order-table admin-table">
           <thead>
             <tr>
@@ -138,18 +144,19 @@ export function CouponsPage() {
           <tbody>
             {coupons.map((coupon) => (
               <tr key={coupon.id}>
-                <td>{coupon.code}</td>
+                <td className="num">{coupon.code}</td>
                 <td>{describeDiscount(coupon)}</td>
                 <td>
                   {new Date(coupon.validFrom).toLocaleDateString("ko-KR")} ~ {new Date(coupon.validTo).toLocaleDateString("ko-KR")}
                 </td>
-                <td>
+                <td className="num">
                   {coupon.usedCount} / {coupon.maxUses}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );

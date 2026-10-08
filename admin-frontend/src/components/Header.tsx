@@ -1,5 +1,12 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+
+const LINKS = [
+  { to: "/", label: "대시보드", end: true },
+  { to: "/events/new", label: "공연 등록", end: false },
+  { to: "/coupons", label: "쿠폰 관리", end: false },
+  { to: "/scan", label: "입장 스캔", end: false },
+];
 
 export function Header() {
   const { user, logout } = useAuth();
@@ -12,21 +19,34 @@ export function Header() {
 
   return (
     <header className="header">
-      <Link to="/" className="header-logo">
-        픽시트 관리자
-      </Link>
-      {user && (
-        <nav className="header-nav">
-          <Link to="/">대시보드</Link>
-          <Link to="/events/new">공연 등록</Link>
-          <Link to="/coupons">쿠폰 관리</Link>
-          <Link to="/scan">입장 스캔</Link>
-          <span className="header-user">{user.name}님</span>
-          <button type="button" onClick={handleLogout}>
-            로그아웃
-          </button>
-        </nav>
-      )}
+      <div className="header-inner">
+        <Link to="/" className="header-logo">
+          픽시트
+          <span className="header-badge">ADMIN</span>
+        </Link>
+        {user && (
+          <>
+            <nav className="header-nav" aria-label="관리 메뉴">
+              {LINKS.map((link) => (
+                <NavLink
+                  key={link.to}
+                  to={link.to}
+                  end={link.end}
+                  className={({ isActive }) => (isActive ? "active" : undefined)}
+                >
+                  {link.label}
+                </NavLink>
+              ))}
+            </nav>
+            <div className="header-user">
+              <span>{user.name}님</span>
+              <button type="button" onClick={handleLogout}>
+                로그아웃
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </header>
   );
 }

@@ -46,8 +46,11 @@ export function DashboardPage() {
   return (
     <div>
       <div className="admin-header">
-        <h1>관리자 대시보드</h1>
-        <Link to="/events/new" className="btn-link">
+        <div>
+          <p className="eyebrow">Overview</p>
+          <h1>대시보드</h1>
+        </div>
+        <Link to="/events/new" className="btn-link primary">
           + 새 공연 등록
         </Link>
       </div>
@@ -67,6 +70,7 @@ export function DashboardPage() {
         </div>
       </div>
 
+      <div className="order-table-wrap">
       <table className="order-table admin-table">
         <thead>
           <tr>
@@ -85,19 +89,26 @@ export function DashboardPage() {
             return (
               <tr key={event.eventId}>
                 <td>
-                  <div>{event.title}</div>
+                  <div className="event-name">{event.title}</div>
                   <div className="admin-grade-line">
                     {event.grades.map((g) => `${g.grade} ${g.sold}/${g.total}`).join(" · ") || "좌석 미등록"}
                   </div>
                 </td>
-                <td>{soldRate}%</td>
                 <td>
+                  <div className="sell-rate">
+                    <div className={`sell-rate-bar ${soldRate >= 80 ? "is-high" : ""}`}>
+                      <span style={{ width: `${soldRate}%` }} />
+                    </div>
+                    <strong>{soldRate}%</strong>
+                  </div>
+                </td>
+                <td className="num">
                   {event.availableSeats} / {event.holdSeats} / {event.soldSeats}
                 </td>
-                <td>
+                <td className="num">
                   {summary?.paidCount ?? 0} / {summary?.cancelledCount ?? 0}
                 </td>
-                <td>{(summary?.revenue ?? 0).toLocaleString()}원</td>
+                <td className="num">{(summary?.revenue ?? 0).toLocaleString()}원</td>
                 <td>
                   <Link to={`/events/${event.eventId}/edit`} className="btn-link">
                     수정
@@ -108,6 +119,7 @@ export function DashboardPage() {
           })}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

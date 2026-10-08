@@ -33,7 +33,9 @@ export function LoginPage() {
 
   return (
     <div className="form-page">
+      <p className="eyebrow">Admin console</p>
       <h1>관리자 로그인</h1>
+      <p className="form-notice">관리자 전용 화면이에요. 일반 사이트와 로그인이 분리돼 있고, 세션은 15분 뒤 만료돼요.</p>
       <form onSubmit={handleSubmit} className="form">
         <label>
           이메일
