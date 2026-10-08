@@ -1,5 +1,5 @@
 export type EventStatus = "UPCOMING" | "OPEN" | "CLOSED";
-export type EventCategory = "CONCERT" | "MUSICAL" | "SPORTS" | "EXHIBITION" | "FESTIVAL" | "ETC";
+export type EventCategory = "CONCERT" | "MUSICAL" | "PLAY" | "CLASSIC" | "SPORTS" | "EXHIBITION" | "FESTIVAL" | "ETC";
 export type SeatStatus = "AVAILABLE" | "HOLD" | "SOLD";
 export type ReservationStatus = "HOLDING" | "CONFIRMED" | "CANCELLED" | "EXPIRED";
 export type OrderStatus = "PENDING" | "PAID" | "FAILED" | "CANCELLED" | "PARTIALLY_REFUNDED";
@@ -66,6 +66,7 @@ export interface EventDetail {
   startAt: string;
   openAt: string;
   status: EventStatus;
+  sourceUrl: string | null;
   seatSummary: SeatGradeSummary[];
   sectionSummary: SeatSectionSummary[];
 }

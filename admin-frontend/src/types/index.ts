@@ -1,5 +1,20 @@
 export type EventStatus = "UPCOMING" | "OPEN" | "CLOSED";
-export type EventCategory = "CONCERT" | "MUSICAL" | "SPORTS" | "EXHIBITION" | "FESTIVAL" | "ETC";
+export type EventCategory = "CONCERT" | "MUSICAL" | "PLAY" | "CLASSIC" | "SPORTS" | "EXHIBITION" | "FESTIVAL" | "ETC";
+
+export type KopisGenre = "PLAY" | "MUSICAL" | "CLASSIC" | "KOREAN_MUSIC" | "POPULAR_MUSIC" | "DANCE";
+
+export interface KopisImportPayload {
+  genre: KopisGenre;
+  limit: number;
+}
+
+export interface KopisImportResult {
+  created: number;
+  alreadyImported: number;
+  notUpcoming: number;
+  failed: number;
+  createdTitles: string[];
+}
 export type Role = "USER" | "ADMIN";
 
 export interface AdminUser {

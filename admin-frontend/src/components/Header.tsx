@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 const LINKS = [
   { to: "/", label: "대시보드", end: true },
   { to: "/events/new", label: "공연 등록", end: false },
+  { to: "/import", label: "공연 가져오기", end: false },
   { to: "/coupons", label: "쿠폰 관리", end: false },
   { to: "/scan", label: "입장 스캔", end: false },
 ];

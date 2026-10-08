@@ -5,6 +5,8 @@ import type {
   EventStats,
   EventSummary,
   EventUpsertPayload,
+  KopisImportPayload,
+  KopisImportResult,
   OrderSummary,
   ScanResult,
   SeatBlockPayload,
@@ -22,6 +24,10 @@ export function createSeats(eventId: number, blocks: SeatBlockPayload[]) {
   return apiClient
     .post<{ createdCount: number }>(`/events/admin/${eventId}/seats`, { blocks })
     .then((res) => res.data);
+}
+
+export function importFromKopis(payload: KopisImportPayload) {
+  return apiClient.post<KopisImportResult>("/events/admin/import/kopis", payload).then((res) => res.data);
 }
 
 export function fetchEventStats() {

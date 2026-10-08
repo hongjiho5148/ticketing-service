@@ -8,6 +8,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -15,7 +16,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
-@Table(name = "event")
+@Table(name = "event", uniqueConstraints = @UniqueConstraint(name = "uk_event_external_id", columnNames = "externalId"))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Event {
@@ -49,6 +50,10 @@ public class Event {
     @Column(nullable = false, length = 20, columnDefinition = "varchar(20) not null default 'CONCERT'")
     private EventCategory category = EventCategory.CONCERT;
 
+    /** KOPIS performance id (mt20id) for events imported from the public performing-arts data; null for hand-made ones. */
+    @Column(length = 40)
+    private String externalId;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -68,6 +73,17 @@ public class Event {
         this.startAt = startAt;
         this.openAt = openAt;
         this.status = status;
+    }
+
+    public void importedFrom(String externalId) {
+        this.externalId = externalId;
+    }
+
+    /** Where the show's data came from, for the "출처" link on the detail page; null for events we created ourselves. */
+    public String getSourceUrl() {
+        return externalId == null
+                ? null
+                : "https://www.kopis.or.kr/por/db/pblprfr/pblprfrView.do?menuId=MNU_00020&mt20Id=" + externalId;
     }
 
     /** Flipped by OpenAlertSweeper once openAt has passed, so the list/detail pages stop saying "오픈예정". */

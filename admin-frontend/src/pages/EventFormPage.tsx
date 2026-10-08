@@ -10,6 +10,8 @@ import type { EventCategory, EventStatus, EventUpsertPayload, SeatBlockPayload }
 const CATEGORY_OPTIONS: { value: EventCategory; label: string }[] = [
   { value: "CONCERT", label: "콘서트" },
   { value: "MUSICAL", label: "뮤지컬" },
+  { value: "PLAY", label: "연극" },
+  { value: "CLASSIC", label: "클래식" },
   { value: "SPORTS", label: "스포츠" },
   { value: "EXHIBITION", label: "전시" },
   { value: "FESTIVAL", label: "페스티벌" },
