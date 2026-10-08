@@ -1,8 +1,16 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { fetchEventDetail, fetchEventSeats } from "../api/events";
 import { cancelReservation, createReservation } from "../api/reservations";
-import { applyCoupon, applyPoints, createOrder, payOrder, removeCoupon, verifyIdentity } from "../api/orders";
+import {
+  applyCoupon,
+  applyPoints,
+  createOrder,
+  fetchCheckout,
+  payOrder,
+  removeCoupon,
+  verifyIdentity,
+} from "../api/orders";
 import { fetchAvailableCoupons } from "../api/coupons";
 import { fetchPoints } from "../api/points";
 import { createReview, fetchReviews } from "../api/reviews";
@@ -31,6 +39,13 @@ export function EventDetailPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
+  // /events/:id?resume=<orderId> - arriving from "내 주문" to finish paying for a seat that is still held.
+  const [searchParams] = useSearchParams();
+  const resumeOrderId = searchParams.get("resume");
+  const [resumeState, setResumeState] = useState<"none" | "loading" | "error">(resumeOrderId ? "loading" : "none");
+  // True once a held seat was restored from a pending order. Such a visit never went through the queue (the hold
+  // itself is the proof), so the queue/pre-open/sold-out gates below must not apply to it.
+  const [resumed, setResumed] = useState(false);
 
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [seats, setSeats] = useState<Seat[]>([]);
@@ -195,6 +210,7 @@ export function EventDetailPage() {
       setSelectedSeat(null);
       setOrder(null);
       showToast("예약이 취소됐어요.");
+      if (resumed) navigate("/orders");
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
@@ -202,10 +218,49 @@ export function EventDetailPage() {
     }
   }
 
+  useEffect(() => {
+    if (!resumeOrderId || !event || seats.length === 0 || !user || resumeState !== "loading") return;
+    let cancelled = false;
+    fetchCheckout(Number(resumeOrderId))
+      .then((checkout) => {
+        if (cancelled) return;
+        const seat = seats.find((s) => s.id === checkout.seatId);
+        if (!seat || checkout.eventId !== event.id) {
+          setError("이 공연의 주문이 아니에요.");
+          setResumeState("error");
+          return;
+        }
+        setSelectedSeat(seat);
+        setSelectedSection(seat.section);
+        setReservation({
+          reservationId: checkout.order.reservationId,
+          seatId: checkout.seatId,
+          status: "HOLDING",
+          holdExpireAt: checkout.holdExpireAt,
+        });
+        setOrder(checkout.order);
+        setResumed(true);
+        setResumeState("none");
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(extractErrorMessage(err));
+        setResumeState("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [resumeOrderId, event, seats, user, resumeState]);
+
   // The seat goes back on sale server-side on its own at this moment; this just brings the screen
   // in line. A payment already in flight is left alone - that call settles with the server's verdict.
   function handleHoldExpired() {
     if (isProcessing) return;
+    if (resumed) {
+      showToast("결제 가능 시간이 지나 좌석이 해제됐어요.", "error");
+      navigate("/orders");
+      return;
+    }
     setReservation(null);
     setSelectedSeat(null);
     setOrder(null);
@@ -310,6 +365,11 @@ export function EventDetailPage() {
         return;
       }
 
+      if (resumed) {
+        showToast("결제가 거절됐어요. 좌석이 해제됐어요.", "error");
+        navigate("/orders");
+        return;
+      }
       setError("결제가 거절됐어요. 좌석이 해제됐으니 다시 예약해주세요.");
       setReservation(null);
       setSelectedSeat(null);
@@ -335,6 +395,22 @@ export function EventDetailPage() {
             로그인하러 가기
           </button>
         </div>
+      </div>
+    );
+  }
+
+  if (resumeOrderId && resumeState === "loading") {
+    return <p className="page-status">결제 정보를 불러오는 중...</p>;
+  }
+
+  if (resumeOrderId && resumeState === "error") {
+    return (
+      <div className="form-page">
+        <h1>결제를 이어갈 수 없어요</h1>
+        <p className="form-error">{error}</p>
+        <p>
+          <Link to="/orders">내 주문으로 돌아가기</Link>
+        </p>
       </div>
     );
   }
@@ -387,7 +463,7 @@ export function EventDetailPage() {
   const availableSeats = event.sectionSummary.reduce((sum, s) => sum + s.availableCount, 0);
   const isSoldOut = event.status === "OPEN" && totalSeats > 0 && availableSeats === 0;
 
-  if (isPreOpen) {
+  if (isPreOpen && !resumed) {
     return (
       <div>
         {header}
@@ -400,7 +476,7 @@ export function EventDetailPage() {
     );
   }
 
-  if (isSoldOut) {
+  if (isSoldOut && !resumed) {
     return (
       <div>
         {header}
@@ -416,7 +492,7 @@ export function EventDetailPage() {
     );
   }
 
-  if (!passToken) {
+  if (!passToken && !resumed) {
     return <QueueWaitingRoom eventId={event.id} onPassed={setPassToken} />;
   }
 

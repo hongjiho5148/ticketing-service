@@ -4,6 +4,7 @@ import com.ticketing.orderservice.common.ApiException;
 import com.ticketing.orderservice.common.ErrorCode;
 import com.ticketing.orderservice.eventclient.EventServiceClient;
 import com.ticketing.orderservice.eventclient.dto.SeatDetailResponse;
+import com.ticketing.orderservice.order.dto.CheckoutResponse;
 import com.ticketing.orderservice.order.dto.OrderCreateRequest;
 import com.ticketing.orderservice.order.dto.OrderHistoryListResponse;
 import com.ticketing.orderservice.order.dto.OrderHistoryResponse;
@@ -21,6 +22,7 @@ import com.ticketing.orderservice.transfer.TicketTransferRepository;
 import com.ticketing.orderservice.transfer.TransferPolicy;
 import com.ticketing.orderservice.verification.IdentityVerificationService;
 import java.util.Set;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +43,9 @@ public class OrderService {
     private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
     private static final String HOLDING_STATUS = "HOLDING";
+
+    // reservation-service holds a seat for 5 minutes; the extra minute is slack for clock differences.
+    private static final Duration MAX_HOLD_AGE = Duration.ofMinutes(6);
 
     private final OrderRepository orderRepository;
     private final PaymentRepository paymentRepository;
@@ -256,6 +261,46 @@ public class OrderService {
         return order;
     }
 
+    /**
+     * The checkout of a pending order, so a payment the user walked away from (closed the popup, navigated
+     * off, refreshed) can be finished while the seat is still held. Refused once the hold has lapsed - the seat is
+     * back on sale by then and paying for it would charge the customer for something they no longer have.
+     */
+    @Transactional(readOnly = true)
+    public CheckoutResponse resumeCheckout(Long userId, Long orderId) {
+        Orders order = orderRepository.findById(orderId).orElseThrow(() -> new ApiException(ErrorCode.ORDER_NOT_FOUND));
+        if (!order.getUserId().equals(userId)) {
+            throw new ApiException(ErrorCode.FORBIDDEN);
+        }
+        if (order.getStatus() != OrderStatus.PENDING) {
+            throw new ApiException(ErrorCode.ORDER_NOT_PENDING);
+        }
+        LocalDateTime holdExpireAt = liveHoldExpiry(order, LocalDateTime.now());
+        if (holdExpireAt == null) {
+            throw new ApiException(ErrorCode.ORDER_NOT_RESUMABLE);
+        }
+        return new CheckoutResponse(OrderResponse.from(order), order.getSeatId(), order.getEventId(), holdExpireAt);
+    }
+
+    /**
+     * When the held seat of a pending order runs out, or null if the order can no longer be paid. An order is
+     * created after its reservation, so one older than the hold itself cannot still be holding anything - that
+     * check keeps old abandoned orders from each costing a call to reservation-service on every list load.
+     */
+    private LocalDateTime liveHoldExpiry(Orders order, LocalDateTime now) {
+        if (order.getStatus() != OrderStatus.PENDING || order.getCreatedAt().isBefore(now.minus(MAX_HOLD_AGE))) {
+            return null;
+        }
+        try {
+            ReservationDetailResponse reservation = reservationServiceClient.getReservation(order.getReservationId());
+            boolean live = HOLDING_STATUS.equals(reservation.status()) && reservation.holdExpireAt().isAfter(now);
+            return live ? reservation.holdExpireAt() : null;
+        } catch (RuntimeException e) {
+            // reservation-service unreachable: better to show "expired" than to offer a payment we can't vouch for.
+            return null;
+        }
+    }
+
     @Transactional(readOnly = true)
     public OrderHistoryListResponse getOrders(Long userId, Pageable pageable) {
         Page<Orders> page = orderRepository.findByUserId(userId, pageable);
@@ -282,7 +327,8 @@ public class OrderService {
                         seatsById.get(order.getSeatId()),
                         paymentsByOrderId.get(order.getId()),
                         order.wasTransferred() ? "TRANSFERRED" : pendingTransfers.contains(order.getId()) ? "PENDING" : null,
-                        transferPolicy.isTransferable(order, pendingTransfers.contains(order.getId()), now)))
+                        transferPolicy.isTransferable(order, pendingTransfers.contains(order.getId()), now),
+                        liveHoldExpiry(order, now)))
                 .toList();
         return new OrderHistoryListResponse(content, page.getTotalElements());
     }

@@ -3,6 +3,7 @@ package com.ticketing.orderservice.order;
 import com.ticketing.orderservice.auth.SecurityUtil;
 import com.ticketing.orderservice.order.dto.ApplyCouponRequest;
 import com.ticketing.orderservice.order.dto.ApplyPointsRequest;
+import com.ticketing.orderservice.order.dto.CheckoutResponse;
 import com.ticketing.orderservice.order.dto.OrderCreateRequest;
 import com.ticketing.orderservice.order.dto.OrderHistoryListResponse;
 import com.ticketing.orderservice.order.dto.OrderResponse;
@@ -57,6 +58,11 @@ public class OrderController {
     @PostMapping("/{orderId}/apply-points")
     public OrderResponse applyPoints(@PathVariable Long orderId, @Valid @RequestBody ApplyPointsRequest request) {
         return orderService.applyPoints(SecurityUtil.getCurrentUserId(), orderId, request.points());
+    }
+
+    @GetMapping("/{orderId}/checkout")
+    public CheckoutResponse resumeCheckout(@PathVariable Long orderId) {
+        return orderService.resumeCheckout(SecurityUtil.getCurrentUserId(), orderId);
     }
 
     @GetMapping("/{orderId}/refund-preview")
