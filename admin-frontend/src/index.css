@@ -533,7 +533,7 @@ button:disabled {
   background: var(--card);
 }
 
-.admin-summary-item:first-child {
+.admin-summary-item.active {
   background: var(--ink);
   border-color: var(--ink);
   color: var(--paper);
@@ -545,7 +545,7 @@ button:disabled {
   color: var(--ink-3);
 }
 
-.admin-summary-item:first-child span {
+.admin-summary-item.active span {
   color: rgb(244 240 232 / 0.7);
 }
 
@@ -825,4 +825,129 @@ button:disabled {
   color: var(--ink-2);
   font-size: 0.88rem;
   line-height: 1.7;
+}
+
+/* Dashboard tiles that lead somewhere */
+.admin-summary-item {
+  position: relative;
+  align-items: flex-start;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: transform 0.18s var(--ease), box-shadow 0.18s var(--ease), background 0.18s, border-color 0.18s;
+}
+
+
+.admin-summary-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-2);
+}
+
+.admin-summary-item em {
+  margin-top: 2px;
+  color: var(--ink-3);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.admin-summary-item.active em {
+  color: rgb(244 240 232 / 0.7);
+}
+
+.admin-section-title {
+  margin: 0 0 14px;
+  font-size: 1.15rem;
+}
+
+.admin-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 14px;
+}
+
+.admin-section-head .admin-section-title {
+  margin: 0;
+}
+
+a.event-name {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+a.event-name:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Orders page */
+.admin-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.admin-filter-chip {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--card);
+  color: var(--ink-2);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.admin-filter-chip:hover {
+  background: var(--paper-2);
+}
+
+.admin-filter-chip.active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+
+.admin-count {
+  margin: 0 0 10px;
+  color: var(--ink-3);
+  font-size: 0.86rem;
+}
+
+.admin-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+}
+
+.order-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 700;
+}
+
+.order-status::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ink-4);
+}
+
+.order-status.is-paid::before {
+  background: var(--ok);
+}
+
+.order-status.is-pending::before {
+  background: #b97d1f;
+}
+
+.order-status.is-problem::before {
+  background: var(--danger);
 }

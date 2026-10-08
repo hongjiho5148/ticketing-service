@@ -20,6 +20,10 @@ public interface OrderRepository extends JpaRepository<Orders, Long> {
 
     Page<Orders> findByUserId(Long userId, Pageable pageable);
 
+    /** Admin list: every order, or only those in one status (null = no filter). */
+    @Query("select o from Orders o where (:status is null or o.status = :status)")
+    Page<Orders> findAllByOptionalStatus(@Param("status") OrderStatus status, Pageable pageable);
+
     List<Orders> findByStatusAndEventStartAtBetween(OrderStatus status, LocalDateTime from, LocalDateTime to);
 
     List<Orders> findByStatusAndReminderSentAtIsNullAndEventStartAtBetween(

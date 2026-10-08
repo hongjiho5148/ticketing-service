@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 
 const LINKS = [
   { to: "/", label: "대시보드", end: true },
+  { to: "/orders", label: "주문 내역", end: false },
   { to: "/events/new", label: "공연 등록", end: false },
   { to: "/import", label: "공연 가져오기", end: false },
   { to: "/coupons", label: "쿠폰 관리", end: false },
