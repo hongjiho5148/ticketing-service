@@ -68,7 +68,7 @@ alert:
 
 kopis:
   # 공연예술통합전산망(KOPIS) open API - the key is issued to you at kopis.or.kr; leave empty to disable importing.
-  base-url: ${KOPIS_BASE_URL:https://www.kopis.or.kr/openApi/restful}
+  base-url: ${KOPIS_BASE_URL:https://kopis.or.kr/openApi/restful}
   service-key: ${KOPIS_SERVICE_KEY:}
 
 app:

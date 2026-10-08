@@ -23,7 +23,10 @@ public class KopisClient {
     // KOPIS suspends keys that exceed 10 calls per second; staying at ~5/s leaves a wide margin.
     private static final long MIN_INTERVAL_MS = 200;
 
-    private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
+    private final HttpClient http = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(5))
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build();
     private final String baseUrl;
     private final String serviceKey;
 
