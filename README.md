@@ -1,404 +1,290 @@
 # 픽시트 (PickSeat)
 
-콘서트·연극·뮤지컬 등 한정 좌석에 다수 사용자가 한꺼번에 몰리는 상황을 가정한 **선착순 이벤트 티켓팅 서비스**입니다.
-MSA·트래픽 처리 경험을 쌓기 위한 개인 프로젝트로, 단일 모놀리스로 시작해 **동시성 제어 → 수평 확장 → 5단계
-마이크로서비스 분리**까지 직접 겪으며 확장했습니다. 모든 설계 변경은 추측이 아니라 k6 부하테스트로 전후 수치를
-비교해 검증했습니다.
+> 먼저 잡는 사람이 앉는 자리 — **선착순 공연 티켓팅 서비스**
 
-이후에는 "예매가 되는 서비스"에서 **"실제로 운영할 수 있는 서비스"** 로 넓혔습니다. 입장 QR, 쿠폰·포인트, 단계별 환불,
-티켓 양도, 알림, 관리자 도구, 봇 방어를 기능 단위 브랜치와 PR로 하나씩 더하고, 동시성이 걸리는 부분은 통합 테스트로
-검증했습니다. 마지막으로 공공데이터(KOPIS)로 실제 공연 정보를 가져오고, 화면 전체를 "인쇄된 티켓" 컨셉으로 다시
-디자인했습니다.
-
-> 이 프로젝트가 어떤 과정을 거쳐 지금 구조에 이르렀는지는 [`docs/`](./docs) 폴더의 기획 문서를 참고하세요.
+![Java](https://img.shields.io/badge/Java-17-007396?style=flat&logo=openjdk&logoColor=white&labelColor=555555)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.1-6DB33F?style=flat&logo=springboot&logoColor=white&labelColor=555555)
+![React](https://img.shields.io/badge/React-19-61DAFB?style=flat&logo=react&logoColor=white&labelColor=555555)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat&logo=docker&logoColor=white&labelColor=555555)
 
 ## 목차
 
-[아키텍처](#아키텍처) · [서비스 구성](#서비스-구성) · [핵심 기능](#핵심-기능) · [공공데이터 연동](#공공데이터-연동-kopis) ·
-[디자인](#디자인) · [설계 포인트](#설계-포인트) ·
-[부하테스트](#부하테스트로-검증한-것들) · [테스트](#테스트) · [기술 스택](#기술-스택) · [프로젝트 구조](#프로젝트-구조) ·
-[로컬 실행](#로컬-실행-방법) · [봇 방어](#봇-방어-레이트-리미팅) · [게이트웨이 라우팅](#api-게이트웨이-라우팅) ·
-[알려진 한계](#알려진-한계)
+1. [개요](#1-개요)
+2. [기술 스택](#2-기술-스택)
+3. [화면](#3-화면)
+4. [중요 기술 및 기능](#4-중요-기술-및-기능)
+5. [도메인](#5-도메인)
+6. [프로젝트 구조](#6-프로젝트-구조)
+7. [실행 방법](#7-실행-방법)
+8. [환경변수](#8-환경변수)
+9. [문서](#9-문서)
 
-## 아키텍처
+## 1. 개요
+
+콘서트·연극·뮤지컬처럼 한정된 좌석에 사용자가 한꺼번에 몰리는 상황을 가정한 티켓팅 서비스입니다. 단일 모놀리스로 시작해
+**동시성 제어 → 수평 확장 → 마이크로서비스 분리**를 단계적으로 겪으며 확장했고, 설계를 바꿀 때마다 k6 부하테스트로 전후 수치를 비교했습니다.
+이후 "예매가 되는 서비스"에서 **"운영할 수 있는 서비스"** 로 넓혀 QR 입장권, 쿠폰·포인트, 단계별 환불, 티켓 양도, 알림, 관리자 도구,
+봇 방어를 기능 단위 브랜치와 PR로 하나씩 더했습니다. 공연 정보는 공공데이터(KOPIS)에서 가져오고, 화면은 "인쇄된 티켓" 컨셉으로 디자인했습니다.
+
+- **개인 프로젝트**로 기획, 설계, 개발, 테스트까지 진행했습니다.
+- 가져온 공연은 **데모 예매**입니다. 결제는 PortOne 테스트 환경이라 실제 금액이 청구되지 않습니다.
+
+## 2. 기술 스택
+
+### Frontend
+![React](https://img.shields.io/badge/React-19-61DAFB?style=flat&logo=react&logoColor=white&labelColor=555555)
+![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?style=flat&logo=typescript&logoColor=white&labelColor=555555)
+![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=flat&logo=vite&logoColor=white&labelColor=555555)
+![React Router](https://img.shields.io/badge/React_Router-7-CA4245?style=flat&logo=reactrouter&logoColor=white&labelColor=555555)
+![Axios](https://img.shields.io/badge/Axios-1.x-5A29E4?style=flat&logo=axios&logoColor=white&labelColor=555555)
+
+### Backend
+![Java](https://img.shields.io/badge/Java-17-007396?style=flat&logo=openjdk&logoColor=white&labelColor=555555)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.1-6DB33F?style=flat&logo=springboot&logoColor=white&labelColor=555555)
+![Spring Security](https://img.shields.io/badge/Spring_Security-6DB33F?style=flat&logo=springsecurity&logoColor=white)
+![Spring Cloud Gateway](https://img.shields.io/badge/Spring_Cloud_Gateway-6DB33F?style=flat&logo=spring&logoColor=white)
+![JPA](https://img.shields.io/badge/JPA-Hibernate-59666C?style=flat&logo=hibernate&logoColor=white&labelColor=555555)
+![JWT](https://img.shields.io/badge/JWT-000000?style=flat&logo=jsonwebtokens&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=flat&logo=redis&logoColor=white&labelColor=555555)
+![Kafka](https://img.shields.io/badge/Kafka-3.8-231F20?style=flat&logo=apachekafka&logoColor=white&labelColor=555555)
+![MySQL](https://img.shields.io/badge/MySQL-8-4479A1?style=flat&logo=mysql&logoColor=white&labelColor=555555)
+![JUnit5](https://img.shields.io/badge/JUnit5-25A162?style=flat&logo=junit5&logoColor=white)
+
+### Infra / DevOps
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white)
+![Docker Compose](https://img.shields.io/badge/Docker_Compose-2496ED?style=flat&logo=docker&logoColor=white)
+![nginx](https://img.shields.io/badge/nginx-1.27-009639?style=flat&logo=nginx&logoColor=white&labelColor=555555)
+![k6](https://img.shields.io/badge/k6-부하테스트-7D64FF?style=flat&logo=k6&logoColor=white)
+![GitHub](https://img.shields.io/badge/GitHub-PR_기반_개발-181717?style=flat&logo=github&logoColor=white)
+
+### 외부 연동
+![PortOne](https://img.shields.io/badge/PortOne-결제·환불-FC6B2D?style=flat)
+![Google](https://img.shields.io/badge/Google-OAuth2·reCAPTCHA·SMTP-4285F4?style=flat&logo=google&logoColor=white)
+![Kakao](https://img.shields.io/badge/Kakao-OAuth2-FFCD00?style=flat&logo=kakaotalk&logoColor=black)
+![KOPIS](https://img.shields.io/badge/KOPIS-공연예술통합전산망-1F3A93?style=flat)
+
+## 3. 화면
+
+| 공연 목록 (장르 탭 · 포스터 카드) | 공연 상세 (KOPIS 출처 표기) |
+|:---:|:---:|
+| <img src="docs/images/01-events.png" alt="공연 목록"> | <img src="docs/images/02-event-detail.png" alt="공연 상세"> |
+| **좌석 선택 (구역 → 좌석)** | **좌석 홀드 5분 타이머 · 쿠폰 · 포인트** |
+| <img src="docs/images/03-seat-select.png" alt="좌석 선택"> | <img src="docs/images/04-hold-timer.png" alt="좌석 홀드"> |
+| **관리자 대시보드** | **모바일** |
+| <img src="docs/images/05-admin-dashboard.png" alt="관리자 대시보드"> | <img src="docs/images/07-mobile.png" alt="모바일 공연 목록" width="50%"> |
+
+관리자 앱의 [KOPIS 공연 가져오기](docs/images/06-admin-import.png) 화면도 있습니다.
+
+## 4. 중요 기술 및 기능
+
+### 아키텍처
 
 ```mermaid
 flowchart TB
-    Client["브라우저\n사용자 SPA · 관리자 SPA"]
-    Nginx["nginx :8080\n정적 업스트림 + keepalive"]
-    Gateway["Gateway\nSpring Cloud Gateway\nCORS 단일 소유 · 레이트 리미팅"]
+    Client["브라우저\n사용자 SPA · 관리자 SPA"] --> Nginx["nginx"]
+    Nginx --> Gateway["Gateway\nCORS · 레이트 리미팅"]
+    Nginx -. "동적 로드밸런서" .-> Backend["backend\n대기열 (3 레플리카로 확장)"]
 
-    Client --> Nginx
-    Nginx --> Gateway
-    Nginx -. "backend 전용 동적\n로드밸런서 :8081" .-> Backend
+    Gateway --> Auth["auth-service\n인증 · OAuth2 · JWT"]
+    Gateway --> Event["event-service\n공연 · 좌석 · 분산락 · KOPIS"]
+    Gateway --> Reservation["reservation-service\n예약 · 매수 제한"]
+    Gateway --> Order["order-service\n주문 · 결제 · QR · 양도"]
+    Gateway -. "/api/queue/**" .-> Backend
 
-    Gateway --> Auth["auth-service\n인증 · OAuth2 · JWT 발급"]
-    Gateway --> Event["event-service\n이벤트 · 좌석 · 후기 · 알림 · 분산락"]
-    Gateway --> Reservation["reservation-service\n예약 · 매수 제한 · 자가치유 스윕"]
-    Gateway --> Order["order-service\n주문 · 결제 · 쿠폰/포인트 · QR · 양도"]
-    Gateway -. "/api/queue/**" .-> Backend["backend\n대기열(Queue)"]
-
-    Order -->|좌석 정보 조회| Event
-    Order -->|예약 확정/취소| Reservation
-    Order -->|회원 조회| Auth
-    Event -->|후기 자격 확인| Order
-    Event -->|알림 수신자 조회| Auth
-    Reservation -->|좌석 홀드/해제| Event
+    Order --> PortOne["PortOne"]
+    Event --> KOPIS["KOPIS 오픈API"]
+    Auth --> MySQL[("MySQL\n서비스별 스키마")]
+    Event --> Redis[("Redis\n분산락")]
     Reservation -. Kafka .-> Backend
-
-    Order --> PortOne["PortOne\n결제 · 환불"]
-    Auth --> SMTP["Gmail SMTP"]
-    Order --> SMTP
-    Event --> SMTP
-    Auth --> Captcha["reCAPTCHA"]
-    Backend --> Captcha
-
-    Auth --> MySQL[("MySQL\n서비스별 스키마 분리")]
-    Event --> MySQL
-    Event --> Redis[("Redis\n분산락 · 캐시")]
-    Reservation --> MySQL
-    Order --> MySQL
-    Backend --> MySQL
-    Backend --> Redis
 ```
 
-**입구는 nginx 하나뿐입니다.** nginx가 Gateway로 가는 경로는 고정 IP + 커넥션 풀링(`keepalive`)으로 연결하고,
-수평 확장되는 `backend`로 가는 경로만 별도 포트(8081)에서 동적 DNS resolver로 매 요청마다 살아있는 레플리카를
-다시 찾습니다 — 이렇게 나눈 이유는 [부하테스트 결과](#부하테스트로-검증한-것들)에 있습니다. CORS는 Gateway
-한 곳에서만 처리합니다(개별 서비스가 각자 CORS를 설정하면 헤더가 중복으로 붙어 브라우저가 응답을 거부합니다).
+서비스별 역할과 라우팅, 봇 방어 설정은 [`docs/architecture.md`](docs/architecture.md)에 있습니다.
 
-## 서비스 구성
-
-| 서비스 | 역할 | 비고 |
-|---|---|---|
-| `gateway` | 단일 진입점, 라우팅, CORS, IP별 레이트 리미팅 | Spring Cloud Gateway (함수형 `RouterFunction` 기반) |
-| `auth-service` | 회원가입/로그인, 이메일 인증, OAuth2(Google/Kakao), 관리자 로그인, 알림 수신 설정, JWT 발급 | JWT를 **발급**하는 유일한 서비스 |
-| `event-service` | 이벤트/좌석, 장르·캘린더 조회, 찜·후기, 오픈/취소표 알림, 관리자 공연·좌석 관리, KOPIS 공연 가져오기 | Redis(Redisson) 분산락으로 동시 홀드 방지 |
-| `reservation-service` | 좌석 예약, 예약 확정/취소, 공연당 매수 제한 | 홀드 만료를 스스로 정리하는 자가치유 스윕 보유 |
-| `order-service` | 주문, PortOne 결제/단계별 환불, 쿠폰·포인트, QR 입장권, 티켓 양도, 구매자 확인, 관리자 매출 집계·주문 조회 | 결제 실패 시 예약 자동 취소(saga) |
-| `backend` | 대기열(Queue) 입장/상태 조회 | 3개 레플리카로 수평 확장되는 유일한 서비스 |
-| `nginx` | 외부 진입점, 내부 로드밸런서 | `backend` 전용 동적 로드밸런싱 포트(8081) 별도 운영 |
-| `mysql` / `redis` / `kafka` | 데이터 저장소 · 메시징 | 서비스마다 스키마(`ticketing_auth`, `ticketing_event` 등) 분리 |
-
-각 서비스는 자신의 DB 스키마만 소유하며, 서비스 간 참조는 전부 `Long` id + 전용 REST 클라이언트로 이뤄집니다.
-JWT는 auth-service만 발급하고(`sub`, `email`, `role` 클레임), 나머지 서비스는 같은 시크릿으로 검증만 하며 `role`을
-`ROLE_USER` / `ROLE_ADMIN` 권한으로 바꿉니다. 권한 검사는 서비스별 `SecurityConfig`의 URL 매처(`hasRole("ADMIN")`)로 합니다.
-
-## 핵심 기능
-
-**인증 · 계정**
-- 이메일 회원가입(비밀번호 대/소문자·숫자·특수문자 포함 정책 + 실시간 강도 표시) + 이메일 인증
-  - 인증 메일은 가입 트랜잭션이 커밋된 뒤 비동기로 발송(가입 응답 약 4.8초 → 0.1초 이내, 첫 호출 제외), 안 왔을 때는 로그인 화면에서 재발송
-- Google / Kakao OAuth2 소셜 로그인
-- JWT 액세스/리프레시 토큰, 프로필 수정, 비밀번호 변경(소셜 로그인 계정은 차단)
-- 알림 메일 수신 on/off 설정
-
-**탐색**
-- 이벤트 목록 검색(제목) · 상태 필터 · **장르 필터(콘서트/뮤지컬/연극/클래식/스포츠/전시/페스티벌/기타)** · 공연일 정렬 · 페이지네이션
-- **월별 공연 캘린더**, 목록/상세 평균 평점, 공유(Web Share API, 없으면 링크 복사)
-- 찜하기, 후기·별점(결제 완료한 공연에만 작성 가능)
-
-**예매 흐름**
-- 선착순 입장 **대기열**(수평 확장된 `backend` 전체에 고르게 분산), 입장 전 캡차
-- 좌석 임시 홀드 5분 → 예약 → 결제. 예약 화면에 **남은 시간 카운트다운**, 0이 되면 자동으로 좌석 선택 화면으로 복귀
-- **공연당 1인 최대 4석** 제한(`RESERVATION_MAX_SEATS_PER_EVENT`로 조정)
-- **이어서 결제**: 결제창을 닫거나 페이지를 벗어나도, 좌석이 아직 잡혀 있는 동안은 "내 티켓 > 주문 내역"의 결제대기 주문에서 남은 시간을 보고 "결제하기"로 바로 이어갈 수 있습니다(대기열·캡차 없이,
-  쿠폰·포인트 적용 상태 유지). 홀드가 끝난 주문은 "결제 시간 만료"로 표시되고 결제를 이어갈 수 없습니다 - 좌석이 이미 풀려 있어 결제하면 받지 못할 좌석값을 내게 되기 때문입니다
-- 오픈 전 공연은 대기열 대신 **오픈 카운트다운 + 오픈 알림**, 매진 공연은 **취소표 알림**(좌석이 풀리면 대기자에게 메일)
-- 결제 전 **구매자 확인**(본인 명의·재판매 목적 아님에 동의, 주문별로 기록)
-- 결제 실패 시 예약 자동 취소, 홀드 만료 자동 정리(이벤트 서비스·예약 서비스가 각자 독립적으로 스윕 — 한쪽이
-  죽어도 다른 쪽이 커버)
-- **동시 예약 30건 부하테스트로 오버셀(중복 판매) 0건을 반복 검증**
-
-**결제 · 혜택 · 환불**
-- PortOne 연동 결제(카드, 설정 시 카카오페이/네이버페이). 결제수단은 클라이언트가 아니라 PortOne 응답에서 읽어 기록
-- **쿠폰**(정액/정률, 사용 기간·총 사용 한도·1인 1회는 DB 유니크 제약으로 보장). 마이페이지의 "사용 가능한 쿠폰"과 결제 화면의 쿠폰 칩으로 보고, 눌러서 바로 적용 + **포인트**(결제금액 1% 적립, 사용 시 최소 결제금액 100원 보장)
-- **단계별 환불**: 공연 7일 전까지 100%, 3일 전까지 70%, 1일 전까지 30%, 이후 취소 불가. 취소 전에 환불 예정액을 서버가
-  계산해 보여주고, 확인하는 사이 구간이 바뀌면 더 적게 환불하지 않고 거절. 부분 환불은 PortOne 부분 취소로 처리
-  - 사용한 포인트는 환불 비율만큼 돌려주고, 쿠폰은 **전액 환불일 때만** 다시 쓸 수 있게 복원(부분 환불은 수수료를 냈으므로 복원하지 않음).
-    취소 확인 창에 포인트 환원과 쿠폰 복원 여부가 미리 표시됩니다
-
-**입장권(QR) · 양도**
-- 공연 2시간 전부터 **QR 입장권** 자동 발급(로그인 토큰과 다른 별도 시크릿으로 서명), 내 티켓의 입장권 탭과 주문 카드에서 QR 확인
-- 관리자 앱의 **스캔 화면**으로 입장 처리 — 같은 QR의 두 번째 스캔은 거절
-- **티켓 양도**: 받는 사람의 가입 이메일로 요청 → 수락/거절/취소, 티켓당 1회, 공연 2시간 전까지
-
-**알림(이메일)**
-- 가입 인증, 공연 전날 리마인더, QR 발급 안내, 오픈 알림, 취소표 알림, 양도 요청 — 모두 수신 설정을 존중하고,
-  실패해도 본 흐름(결제·예약)은 막지 않습니다
-
-**내 티켓 · 마이페이지**
-- **내 티켓**: "입장권"(QR) 탭과 "주문 내역" 탭을 한 화면에 통합. 주문은 카드형으로 상태 색 띠·좌석·결제·환불액을 한눈에 보여주고,
-  결제완료 주문 카드에서 QR 발급 상태를 바로 확인(상태 필터 제공, 환불 예정액 확인 후 취소, 양도, 이어서 결제)
-- **마이페이지**: 왼쪽 메뉴(회원정보 / 비밀번호 / 알림 설정 / 포인트 / 쿠폰)로 한 번에 한 섹션만 표시, 선택한 메뉴는 주소(`?tab=`)에
-  유지, 모바일에서는 가로 탭
-- 양도함, 찜한 공연, 포인트·쿠폰 내역, 이름·비밀번호 변경
-
-**관리자 앱** (별도 프론트 `:5174`, 별도 로그인)
-- 공연 등록/수정, 구역별 좌석 일괄 생성과 가격 수정
-- **공연 가져오기**: KOPIS 공공데이터에서 실제 공연을 가져와 이벤트로 등록([공공데이터 연동](#공공데이터-연동-kopis))
-- 판매 대시보드: 총 매출 / 결제 완료 주문 / 등록된 공연 타일을 눌러 공연별 매출·주문 목록·공연 목록으로 전환
-  (공연별 좌석 현황, 매출은 부분 환불을 반영한 순매출)
-- 주문 내역: 상태별 필터(결제완료·취소·부분환불·결제대기·결제실패)와 구매자·좌석·결제수단 조회
-- 쿠폰 발행, QR 스캔(입구에서 직원이 입장권 QR을 확인해 입장 처리, 같은 QR 재사용 방지)
-
-**프론트엔드 공통**
-- 404 페이지 / 에러 바운더리 / 로딩 스켈레톤 / 토스트 알림, 취소·로그아웃 확인 다이얼로그
-- 이용약관 · 개인정보처리방침 · 문의하기 페이지(환불 정책, 수집 항목, 외부 서비스 이용, FAQ), 가입 화면에서 동의 안내
-
-## 공공데이터 연동 (KOPIS)
-
-예술경영지원센터의 공연예술통합전산망(KOPIS) 오픈API로 **실제 공연**(연극·뮤지컬·클래식·대중음악·국악·무용)을 가져옵니다.
-관리자 앱의 "공연 가져오기"에서 장르와 개수를 고르면 앞으로 90일 안에 열리는 공연이 이벤트로 등록됩니다
-(`POST /api/events/admin/import/kopis`, ADMIN 전용).
-
-| 구분 | 내용 |
-|---|---|
-| 실제 데이터 | 제목, 공연장, 기간, 출연진, 줄거리, 관람 연령, 러닝타임, 공연 시간·가격 안내 |
-| 직접 구성 | **좌석 배치와 판매** — KOPIS에는 좌석 데이터가 없어서, 가격 안내에서 뽑은 가격대(VIP/R/S)로 좌석을 자동 생성합니다. 가격 정보가 없으면 데모 가격을 쓰고 설명에 밝힙니다 |
-
-- **중복 방지**: KOPIS 공연 id를 `externalId`(유니크)로 저장해 다시 가져와도 같은 공연은 건너뜁니다. 이미 끝난 공연은 제외하고,
-  진행 중인 공연은 내일부터 예매할 수 있게 시작 시각을 맞춥니다.
-- **이용 조건 준수**: 호출 제한(초당 10회)보다 훨씬 낮게 초당 5회 이하로 호출하고, 출처를 공연 상세 "출처" 링크·푸터·공연 설명에
-  표기합니다(예: "(재)예술경영지원센터 공연예술통합전산망, www.kopis.or.kr").
-- **방어적 처리**: KOPIS는 오류(잘못된 키, 한도 초과)도 HTTP 200 본문으로 돌려주므로 응답 안의 오류 코드를 해석해 실패로 처리합니다.
-  XML은 DTD를 차단해서(XXE 방어) 파싱하고, 서비스키가 담긴 요청 주소가 로그에 남지 않도록 예외를 연결하지 않습니다.
-- 서비스키는 `.env`의 `KOPIS_SERVICE_KEY`로만 받습니다(없으면 가져오기 비활성). 키는 [KOPIS 오픈API 안내](https://www.kopis.or.kr/por/cs/openapi/openApiInfo.do)에서 본인 명의로 발급받습니다.
-- 가져온 공연은 **데모 예매**이며 실제 예매가 아니라는 점을 설명과 푸터, 이용약관에 명시했습니다.
-- 크롤링 대신 공식 API를 쓴 이유: 예매 사이트 크롤링은 이용약관·데이터베이스권 문제가 있고, 공식 API는 이용 조건(출처 표기, 호출 제한)만
-  지키면 되기 때문입니다.
-
-## 디자인
-
-화면 전체를 **"인쇄된 티켓"** 컨셉으로 통일했습니다(사용자 앱과 관리자 앱 모두).
-
-- **디자인 토큰**: 종이 질감 배경(`--paper`), 잉크색 글씨, 주홍색 포인트 하나. 좌석 등급 색(VIP·R·S)과 상태 색까지 CSS 변수로 관리하고,
-  그림자는 배경 색조를 따라가는 따뜻한 색을 씁니다.
-- **타이포그래피**: 본문 Pretendard Variable, 숫자·코드·카운트다운은 JetBrains Mono(한글이 시스템 폰트로 떨어지지 않게 Pretendard를 뒤에 지정),
-  숫자는 `tabular-nums`로 정렬.
-- **포스터는 제목으로 생성**: 이미지 저작권 문제와 외부 이미지 의존을 피하려고, 공연 제목 길이에 맞춰 글자 크기가 조절되는 6가지 테마의
-  타이포 포스터를 만듭니다(`container query` 단위 사용).
-- **티켓 모양**: 카드의 절취선과 노치, 좌석맵의 등급별 색과 매진 빗금, 오픈 카운트다운은 전광판 스타일.
-- **접근성**: 본문 건너뛰기 링크, 키보드 포커스 링, `prefers-reduced-motion` 대응, 터치 환경에서 좌석 크기 확대.
-- **반응형**: 주문 내역은 모바일에서 카드로, 마이페이지 메뉴는 가로 탭으로 바뀝니다. 관리자 앱은 어두운 헤더로 일반 사이트와 구분됩니다.
-- 스타일은 `frontend/src/styles/`의 모듈(tokens · base · layout · components · events · booking · account · legal)로 나눴습니다.
-
-## 설계 포인트
-
-"기능을 넣었다"보다 **"깨질 수 있는 지점을 어떻게 막았는가"** 를 기준으로 정리했습니다.
+### 핵심 기술
 
 | 문제 | 해결 |
 |---|---|
-| 같은 좌석을 동시에 잡는 경쟁 | Redisson 분산락 + 좌석 상태 확인을 한 임계 구역에서 처리, 30건 동시 요청에도 중복 0건 |
-| 같은 QR을 동시에 두 번 스캔 | `UPDATE … WHERE status='ISSUED'` 한 문장으로 전이해 한 건만 성공 |
-| 쿠폰 사용 한도·포인트 잔액 경쟁 | 조건부 `UPDATE`(영향 행 수 확인)로 처리, 읽고-쓰기 방식 금지 |
-| 결제는 됐는데 쿠폰/포인트 차감이 실패 | 결제 금액·상태를 PortOne 서버에 다시 조회해 검증한 뒤 차감하고, 실패하면 자동 환불 후 주문 실패 처리 |
-| 환불 구간이 확인 중에 바뀜 | 화면에 보여준 환불액을 서버로 되돌려 보내 달라지면 거절(`REFUND_QUOTE_CHANGED`) |
-| 취소와 양도가 동시에 들어옴 | 주문 행 비관적 락 + 한 주문에 수락 대기 양도 1건만(유니크 제약) |
-| 양도 수락/거절/취소가 겹침 | 상태 전이를 조건부 `UPDATE` 한 문장으로 처리해 먼저 온 한 건만 반영 |
-| 관리자 토큰이 일반 사이트에서 쓰임 | 관리자 앱·토큰 저장소·로그인 분리, 관리자 토큰은 15분 단명, 일반/소셜 로그인은 관리자 계정을 거부 |
-| 봇의 로그인 대입·좌석 선점 | IP별 레이트 리미팅 + 로그인/대기열 진입 캡차(검증 서버 장애 시 통과시키지 않음) |
-| 시크릿이 소스에 박혀 토큰 위조 가능 | JWT·QR 시크릿 기본값 제거, 없거나 32바이트 미만이면 서비스 기동 거부 |
-| 메일 서버가 느리거나 죽음 | 메일은 커밋 이후 비동기 발송(스레드풀 제한), 실패는 로그만 남기고 본 흐름 유지 |
-| 중복 알림/폭주 | 취소표 알림은 좌석 1개당 최대 3명(오래된 순), 선점 `UPDATE`로 중복 발송 방지 |
+| 같은 좌석을 동시에 잡는 경쟁 | Redisson 분산락 + 좌석 상태 확인을 한 임계 구역에서 처리 (동시 30건에도 중복 예약 0건) |
+| 사용자가 한꺼번에 몰림 | 선착순 **대기열**, 수평 확장한 backend 3개로 분산, nginx 연결 재사용으로 실패율 24% → 0.05% (기능 확장 이전 구조 기준) |
+| 결제·환불·쿠폰·포인트 정합성 | 조건부 `UPDATE`로 원자적 처리, PortOne 결제를 서버에서 재검증, 환불액을 서버가 계산해 확인 후 취소 |
+| 같은 QR을 두 번 스캔 | `UPDATE … WHERE status='ISSUED'` 한 문장으로 전이해 한 건만 성공 |
+| 봇의 로그인 대입·좌석 선점 | IP별 토큰 버킷 레이트 리미팅 + reCAPTCHA (검증 서버 장애 시 통과시키지 않음) |
+| 시크릿 노출·토큰 위조 | JWT·QR 시크릿 기본값 제거(없거나 32바이트 미만이면 기동 거부), 관리자 토큰 분리·15분 단명 |
+| 메일 서버 지연·장애 | 커밋 이후 비동기 발송, 실패해도 결제·예약 흐름 유지 |
+| 실제 공연 데이터 | KOPIS 공공데이터 연동 (이용 조건 준수: 호출 간격 제한, 출처 표기, XXE 방어) |
 
-## 부하테스트로 검증한 것들
+설계 이유와 검증 방법은 [`docs/design-notes.md`](docs/design-notes.md)에 정리했습니다.
+동시성이 걸린 로직은 mock이 아니라 실제 MySQL에 붙는 통합 테스트로 검증하고, 테스트 메서드는 총 115개입니다.
 
-설계가 "될 것 같다"가 아니라 "작동한다"는 걸 k6(1000 VU 기준) 부하테스트로 직접 증명했습니다.
+### 주요 기능
 
-| 검증 항목 | 이전 | 이후 |
-|---|---|---|
-| 서비스 분리(4차) 후 예약 API 지연(p95) | 122ms | 139ms (홉 1개 추가, 허용 범위로 판단) |
-| 대규모 동시 요청 시 실패율 | 24% | **0.05%** (nginx 임시 포트 고갈 → 정적 업스트림+keepalive로 해결) |
-| `backend` 3레플리카 요청 분산(30건 기준) | 30 : 0 : 0 (전혀 분산 안 됨) | 9 : 10 : 11 (내부 동적 로드밸런서 추가 후) |
-| 좌석 중복 예약 | - | 30건 동시 요청에도 0건 |
-| 부하테스트 중 발견한 설계 결함 | 취소된 좌석 1,003/5,460석이 영구 재예약 불가 | DB 유니크 제약 수정으로 전부 복구 |
+- **예매 흐름**: 대기열 → 좌석 선택(5분 임시 보관, 공연당 1인 4석) → 쿠폰·포인트 → 결제, 결제대기 주문 이어서 결제
+- **결제·환불**: PortOne 카드·간편결제, 공연 7일 전 100% / 3일 전 70% / 1일 전 30% 단계별 환불
+- **내 티켓**: 입장권(QR)과 주문 내역을 한 화면에서 확인, 티켓 양도(티켓당 1회)
+- **알림**: 가입 인증, 공연 전날 리마인더, QR 발급, 오픈 알림, 취소표 알림 (HTML 메일)
+- **탐색**: 장르 필터, 월별 캘린더, 찜, 후기·별점
+- **관리자 앱**: 공연·좌석 관리, 판매 대시보드, 주문 조회, 쿠폰 발행, QR 입장 스캔, **KOPIS 공연 가져오기**
+- **화면**: "인쇄된 티켓" 컨셉의 디자인 시스템(토큰·타이포·포스터 생성·접근성·반응형)
 
-자세한 과정은 [`docs/`](./docs)와 커밋 로그(`nginx 시작 안정성 + backend 로드밸런싱 수정`,
-`nginx 커넥션 재사용 + 좌석 영구 재예약 불가 버그 수정` 등)에 남아 있습니다.
+기능별 상세는 [`docs/features.md`](docs/features.md)를 참고하세요.
 
-> 위 수치는 기능 확장(쿠폰·QR·알림·봇 방어 등) **이전 구조** 기준으로 측정한 값입니다. 이후 추가한 레이트 리미팅과 캡차는
-> 부하 생성기 한 대를 한 IP로 보고 막기 때문에, 부하테스트를 다시 돌릴 때는 아래 "부하테스트" 절처럼 끄고 실행해야 합니다.
+## 5. 도메인
 
-## 테스트
+서비스마다 DB 스키마를 따로 두고, 서비스 간 참조는 FK가 아니라 **id 값 + REST 호출**로만 합니다(점선 관계는 서비스 경계를 넘는 참조).
 
-서비스별 JUnit 테스트 메서드가 총 **115개**(order 53 · event 24 · auth 17 · gateway 12 · backend 6 · reservation 3) 있습니다.
-동시성·정합성이 걸린 로직은 mock이 아니라 **실제 MySQL(Docker Compose)에 붙여 롤백하는 통합 테스트**로 검증합니다.
+```mermaid
+erDiagram
+    USER ||--o{ RESERVATION : "예약"
+    USER ||--o| POINT_ACCOUNT : "포인트"
+    EVENT ||--o{ SEAT : "구역·좌석"
+    EVENT ||--o{ REVIEW : "후기"
+    EVENT ||--o{ WISHLIST : "찜"
+    SEAT ||--o{ RESERVATION : "홀드"
+    RESERVATION ||--o| ORDERS : "결제 대상"
+    ORDERS ||--o| PAYMENT : "결제·환불"
+    ORDERS ||--o| TICKET : "QR 입장권"
+    ORDERS ||--o{ TICKET_TRANSFER : "양도 요청"
+    ORDERS ||--o| COUPON_REDEMPTION : "쿠폰 사용"
+    COUPON ||--o{ COUPON_REDEMPTION : "사용 내역"
+    POINT_ACCOUNT ||--o{ POINT_TRANSACTION : "적립·사용"
+    ORDERS ||--o| VERIFICATION_RECORD : "구매자 확인"
 
-- 쿠폰/포인트의 원자적 차감, 환불 구간 계산, 양도의 락·상태 전이, 구매자 확인 게이트, 매수 제한 집계 쿼리
-- 비동기 메일(느린/죽은 메일 서버에도 가입 응답 유지), 취소표 알림 대기열(발송 실패 시 대기열로 복귀), 캡차 검증(구글 장애 시 거절)
-- 게이트웨이 토큰 버킷(가짜 시계로 충전·정리 검증)과 필터
-- KOPIS 응답 파싱(오류 코드, XXE 차단), 가격 추출과 등급 매핑, 장르 매핑, 공연 기간·시작 시각 계산
-
-```bash
-# 호스트에 설치된 MySQL이 3306을 가로채는 경우가 있어 compose 네트워크 안에서 실행합니다
-docker run --rm --network ticketing-service_default -e DB_HOST=mysql -e REDIS_HOST=redis \
-  -v "$(pwd)/order-service:/workspace" -w /workspace eclipse-temurin:17-jdk \
-  sh -c "tr -d '\r' < gradlew > g && sh g test --no-daemon"
+    USER {
+        long id PK
+        string email
+        string role
+    }
+    EVENT {
+        long id PK
+        string title
+        string category
+        datetime startAt
+        string externalId "KOPIS 공연 id"
+    }
+    SEAT {
+        long id PK
+        string grade
+        string section
+        int price
+        string status
+    }
+    RESERVATION {
+        long id PK
+        string status
+        datetime holdExpireAt
+    }
+    ORDERS {
+        long id PK
+        int totalPrice
+        string status
+    }
+    PAYMENT {
+        long id PK
+        string method
+        int refundedAmount
+    }
+    TICKET {
+        long id PK
+        string tokenJti
+        string status
+    }
 ```
 
-## 기술 스택
-
-| 영역 | 스택 |
+| 서비스 | 도메인 |
 |---|---|
-| Backend | Java 17, Spring Boot 4.1, Spring Security 7, Spring Data JPA, Spring Cloud Gateway(WebMVC), Gradle |
-| Frontend | React 19, TypeScript, Vite, react-router-dom v7, axios, qrcode, Pretendard · JetBrains Mono |
-| 메시징/캐시 | Kafka, Redis 7 (Redisson 분산락) |
-| DB | MySQL 8 (서비스별 스키마 분리) |
-| 외부 연동 | PortOne(결제·환불), Gmail SMTP, Google/Kakao OAuth2, reCAPTCHA v2, KOPIS 오픈API(공연 정보) |
-| 인프라(local) | Docker Compose, nginx |
-| 테스트 | JUnit 5, Mockito, k6(부하) |
+| auth-service | User(이메일·소셜 계정, 역할), NotificationPreference |
+| event-service | Event, Seat, Review, Wishlist, OpenAlertSubscription, WaitlistSubscription |
+| reservation-service | Reservation (좌석 홀드·확정·만료·취소) |
+| order-service | Orders, Payment, Ticket, TicketTransfer, Coupon, CouponRedemption, PointAccount, PointTransaction, VerificationRecord |
+| backend | WaitingQueue (대기열) |
 
-## 프로젝트 구조
+## 6. 프로젝트 구조
 
 ```
 ticketing-service/
-├─ gateway/               # API Gateway (라우팅 + CORS + 레이트 리미팅)
+├─ gateway/               # API Gateway (라우팅 · CORS · 레이트 리미팅)
 ├─ auth-service/          # 인증 · OAuth2 · JWT 발급
-├─ event-service/         # 이벤트 · 좌석 · 후기 · 알림 · 분산락
-├─ reservation-service/   # 예약 · 매수 제한 · 자가치유 스윕
+├─ event-service/         # 공연 · 좌석 · 후기 · 알림 · 분산락 · KOPIS 가져오기
+├─ reservation-service/   # 예약 · 매수 제한 · 만료 스윕
 ├─ order-service/         # 주문 · 결제 · 쿠폰/포인트 · QR · 양도
-├─ backend/               # 대기열(Queue), 수평 확장 대상
-├─ nginx/                 # 외부 진입점 + backend 내부 로드밸런서 설정
-├─ frontend/              # React SPA (일반 사용자용, :5173)
-├─ admin-frontend/        # React SPA (관리자 전용, :5174 — 일반 사이트와 origin/토큰/로그인 분리)
+├─ backend/               # 대기열 (수평 확장 대상)
+├─ nginx/                 # 외부 진입점 + backend 내부 로드밸런서
+├─ frontend/              # 사용자 SPA (:5173)
+├─ admin-frontend/        # 관리자 SPA (:5174, 일반 사이트와 origin·토큰·로그인 분리)
 ├─ loadtest/              # k6 부하테스트 스크립트
-├─ docs/                  # 요구사항/엔티티/API 기획 문서
-└─ docker-compose.yml     # 로컬 전체 스택 기동
+├─ docs/                  # 기능 상세 · 아키텍처 · 설계 노트 · 기획 문서
+└─ docker-compose.yml     # 로컬 전체 스택
 ```
 
-## 로컬 실행 방법
+## 7. 실행 방법
 
-### 1. 환경변수 준비
+필요한 것: Docker Desktop, Node.js 20.19 이상 (Vite 8 요구사항)
 
 ```bash
+# 1. 환경변수 준비 (아래 '환경변수' 참고, 최소 JWT_SECRET·QR_TOKEN_SECRET 필수)
 cp .env.example .env
-```
+cp frontend/.env.example frontend/.env
 
-`.env`에 Google/Kakao OAuth 클라이언트, Gmail SMTP(이메일 인증용), PortOne 테스트 키, reCAPTCHA 시크릿 키, 그리고 서명용 시크릿 `JWT_SECRET`·`QR_TOKEN_SECRET`을 채워주세요.
-
-시크릿 두 개는 **기본값이 없습니다**. 소스에 박힌 시크릿은 누구나 아는 시크릿이라 토큰(관리자 토큰까지)을 위조할 수 있기 때문에, 비어 있으면 서비스가 기동을 거부합니다. 32바이트 이상 무작위 값으로 만드세요(서로 다른 값 권장).
-
-```bash
-openssl rand -base64 48
-# openssl이 없다면
-node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
-```
-시크릿 두 개를 제외하면 비워둔 항목은 해당 기능만 빠집니다(OAuth 키 → 소셜 로그인, PortOne 키 → 결제, SMTP → 메일 발송, reCAPTCHA → 캡차, KOPIS 키 → 공연 가져오기).
-
-| 변수 | 위치 | 설명 |
-|---|---|---|
-| `JWT_SECRET` | `.env` | **필수.** 로그인 토큰 서명/검증, 모든 서비스가 같은 값 |
-| `QR_TOKEN_SECRET` | `.env` | **필수.** 입장 QR 서명 (order-service) |
-| `RECAPTCHA_SECRET_KEY` / `VITE_RECAPTCHA_SITE_KEY` | `.env` / `frontend/.env` | 비우면 캡차 없이 동작 |
-| `PORTONE_*` / `VITE_PORTONE_*` | `.env` / `frontend/.env` | 결제. 간편결제는 `VITE_PORTONE_CHANNEL_KEY_KAKAOPAY`/`_NAVERPAY`를 넣은 방식만 노출 |
-| `RESERVATION_MAX_SEATS_PER_EVENT` | `.env` | 공연당 1인 최대 좌석 수 (기본 4) |
-| `KOPIS_SERVICE_KEY` | `.env` | KOPIS 오픈API 서비스키. 비우면 공연 가져오기 비활성 |
-| `VITE_CONTACT_EMAIL` | `frontend/.env` | 문의하기 페이지에 표시할 이메일 (비우면 예시 주소) |
-| `RATE_LIMIT_ENABLED` · `CAPTCHA_ENABLED` | 셸 | `false`로 끔 (부하테스트용) |
-| `IDENTITY_VERIFICATION_REQUIRED` | `.env` | 결제 전 구매자 확인 필수 여부 (기본 true) |
-
-### 2. 전체 스택 기동
-
-Docker Desktop을 실행한 뒤:
-
-```bash
+# 2. 백엔드 전체 기동 (MySQL, Redis, Kafka, nginx, gateway, 5개 서비스)
 docker compose up -d
+
+# 3. 사용자 앱 → http://localhost:5173
+cd frontend && npm install && npm run dev
+
+# 4. 관리자 앱 → http://localhost:5174 (선택)
+cd admin-frontend && npm install && npm run dev
 ```
 
-MySQL, Redis, Kafka, nginx, gateway와 5개 마이크로서비스가 한 번에 올라옵니다. 진입점은 **nginx 하나**입니다.
+- API 진입점은 nginx 하나입니다: `http://localhost:8080`
+- 관리자 계정은 일반 가입 후 DB에서 승격합니다: `UPDATE users SET role='ADMIN' WHERE email='...'` → 관리자 앱에서 로그인
+- 로그 확인: `docker compose logs -f gateway reservation-service`
+- 서비스 중지: `docker compose stop` (다시 켜기: `docker compose up -d`)
+- 부하테스트 방법은 [`docs/design-notes.md`](docs/design-notes.md#부하테스트-실행)에 있습니다.
 
-- API: `http://localhost:8080` (nginx → gateway → 각 서비스)
-- MySQL: `localhost:3306` / Redis: `localhost:6379`
+## 8. 환경변수
 
-개별 서비스 로그 확인:
+### 루트 `.env` (백엔드)
 
-```bash
-docker compose logs -f gateway reservation-service
-```
+| 변수 | 필수 | 설명 |
+|---|:---:|---|
+| `JWT_SECRET` | ✅ | 로그인 토큰 서명·검증. 모든 서비스가 같은 값, 32바이트 이상 |
+| `QR_TOKEN_SECRET` | ✅ | 입장 QR 서명(order-service). `JWT_SECRET`과 다른 값 권장 |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | | Google 로그인 |
+| `KAKAO_CLIENT_ID` / `KAKAO_CLIENT_SECRET` | | 카카오 로그인 |
+| `MAIL_USERNAME` / `MAIL_PASSWORD` | | Gmail SMTP(앱 비밀번호). 인증·알림 메일 |
+| `PORTONE_STORE_ID` / `PORTONE_CHANNEL_KEY` / `PORTONE_API_SECRET` | | PortOne 테스트 결제 |
+| `RECAPTCHA_SECRET_KEY` | | reCAPTCHA v2 서버 키. 비우면 캡차 없이 동작 |
+| `KOPIS_SERVICE_KEY` | | KOPIS 오픈API 키. 비우면 공연 가져오기 비활성 |
+| `RESERVATION_MAX_SEATS_PER_EVENT` | | 공연당 1인 최대 좌석 수 (기본 4) |
 
-### 3. 프론트엔드 실행
+시크릿 값은 `openssl rand -base64 48` 또는 `node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"`로 만드세요.
+기본값이 없어서 비어 있으면 서비스가 기동을 거부합니다. 선택 항목을 비워 두면 해당 기능만 빠집니다.
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+### `frontend/.env` (사용자 앱)
 
-`http://localhost:5173`에서 확인 가능하며, `frontend/.env`의 `VITE_API_BASE_URL`로 백엔드(nginx) 주소를 지정합니다.
-
-### 4. 관리자 앱 실행 (선택)
-
-```bash
-cd admin-frontend
-npm install
-npm run dev
-```
-
-`http://localhost:5174`에서 열립니다. 관리자는 일반 사이트(5173)에 로그인할 수 없고, 이 앱의 전용 로그인(`POST /api/auth/admin/login`, 세션 15분, 소셜 로그인 불가)으로만 들어옵니다. 관리자 계정은 가입 후 DB에서 `UPDATE users SET role='ADMIN' WHERE email='...'`로 승격합니다.
-
-### 5. 부하테스트 (선택)
-
-게이트웨이는 IP당 요청 수를 제한하고 대기열 진입에는 캡차가 걸려 있으므로(아래 "봇 방어" 참고), 부하 생성기 하나가 한 IP로 보이고 캡차를 풀 수 없는 부하테스트에서는 둘 다 끄고 돌립니다.
-
-```bash
-RATE_LIMIT_ENABLED=false CAPTCHA_ENABLED=false docker compose up -d gateway auth-service backend
-docker run --network ticketing-service_default --ulimit nofile=200000:200000 \
-  -v "$(pwd)/loadtest:/scripts" grafana/k6 run /scripts/reserve_flow.js
-```
-
-## 봇 방어 (레이트 리미팅)
-
-게이트웨이가 클라이언트 IP별 토큰 버킷으로 요청을 제한합니다(`gateway/.../ratelimit`, 설정은 `application.yml`의 `rate-limit`). 버스트는 허용하고 지속적인 과다 요청만 `429 TOO_MANY_REQUESTS`(+ `Retry-After`)로 막습니다.
-
-| 대상 | 제한 |
+| 변수 | 설명 |
 |---|---|
-| 관리자 로그인 | 분당 5회 |
-| 로그인 / 회원가입 | 분당 10회 / 5회 |
-| 인증 메일 재발송 | 분당 3회 |
-| 대기열 진입 / 좌석 홀드 | 분당 20회 / 20회(버스트 10) |
-| 대기열 상태 조회(2초 폴링) | 분당 120회, 전체 제한과 별도 |
-| 쿠폰 적용 / 티켓 양도 | 분당 10회 / 5회 (코드·이메일 추측 방지) |
-| 그 외 `/api/**` | 분당 600회 |
+| `VITE_API_BASE_URL` | API 주소 (기본 `http://localhost:8080/api`) |
+| `VITE_BACKEND_ORIGIN` | OAuth 리다이렉트용 서버 주소 |
+| `VITE_PORTONE_STORE_ID` / `VITE_PORTONE_CHANNEL_KEY` | 결제창 |
+| `VITE_PORTONE_CHANNEL_KEY_KAKAOPAY` / `_NAVERPAY` | 간편결제 (넣은 것만 노출) |
+| `VITE_RECAPTCHA_SITE_KEY` | reCAPTCHA 사이트 키 |
+| `VITE_CONTACT_EMAIL` | 문의하기 페이지에 표시할 이메일 |
 
-- IP는 nginx가 덮어쓰는 `X-Real-IP`를 신뢰합니다(게이트웨이는 nginx를 거쳐서만 접근 가능).
-- 버킷은 게이트웨이 메모리에 있어 단일 인스턴스 기준입니다. 게이트웨이를 여러 대로 늘리면 Redis 같은 공유 저장소로 옮겨야 합니다.
-- 학교·회사처럼 한 IP를 여러 명이 쓰는 환경에서는 제한에 걸릴 수 있어 기본값을 넉넉히 잡았습니다.
-- 캡차(reCAPTCHA v2 체크박스)는 **로그인**과 **대기열 진입**에 붙어 있습니다. 브라우저가 받은 토큰을 서버(auth-service, backend)가 구글 siteverify로 확인하고, 구글에 연결할 수 없으면 통과시키지 않고 거절합니다(fail closed). 대기열 상태 조회와 이후 좌석 홀드는 이미 대기열을 통과한 사용자라 따로 걸지 않았습니다.
-- 키는 `.env`의 `RECAPTCHA_SECRET_KEY`(서버)와 `frontend/.env`의 `VITE_RECAPTCHA_SITE_KEY`(공개 사이트 키)입니다. 둘 다 비워두면 캡차 없이 동작합니다.
+### 실행 시 스위치
 
-## API 게이트웨이 라우팅
-
-| 경로 | 대상 서비스 |
+| 변수 | 설명 |
 |---|---|
-| `/api/auth/**`, `/oauth2/**`, `/login/oauth2/**` | auth-service |
-| `/api/events/**` (관리자용 `/api/events/admin/**` 포함) | event-service |
-| `/api/wishlist/**` | event-service |
-| `/api/reservations/**` | reservation-service |
-| `/api/orders/**` (쿠폰·포인트·티켓·양도 포함) | order-service |
-| `/api/admin/**` (QR 스캔, 쿠폰 발행, 매출 집계, 주문 목록) | order-service |
-| `/api/queue/**` | backend (nginx 내부 로드밸런서 경유) |
+| `RATE_LIMIT_ENABLED` | `false`면 게이트웨이 레이트 리미팅 끔 (부하테스트용) |
+| `CAPTCHA_ENABLED` | `false`면 서버 캡차 검증 끔 |
+| `IDENTITY_VERIFICATION_REQUIRED` | 결제 전 구매자 확인 필수 여부 (기본 true) |
+| `QUEUE_ACTIVE_CAPACITY` / `QUEUE_ADMISSION_INTERVAL_MS` | 대기열 동시 입장 수 / 입장 간격 |
 
-## 알려진 한계
+## 9. 문서
 
-과장하지 않기 위해, 검증하지 못했거나 의도적으로 단순화한 부분을 적어둡니다.
-
-- **PortOne 실결제는 검증하지 못했습니다.** 결제창 호출, 부분 취소, 간편결제 팝업은 실제 결제가 필요해 직접 돌려보지 않았고,
-  환불 구간·쿠폰/포인트·자동 환불 로직은 통합 테스트로 검증했습니다.
-- **본인확인은 스텁입니다.** 결제 전 "본인 명의로 결제합니다" 동의를 주문별로 기록할 뿐 신원을 증명하지는 않으며,
-  `IdentityVerificationProvider` 구현체만 바꾸면 PASS 같은 실제 인증으로 교체할 수 있게 분리해 두었습니다.
-- **KOPIS로 가져온 공연의 좌석·판매는 합성 데이터입니다.** 실제 공연의 예매가 아니며, 좌석 수는 가격대 수에 따라 고정 크기로 만듭니다.
-  KOPIS는 공연예술만 다루므로 전시·스포츠 장르는 직접 등록해야 합니다.
-- **이용약관·개인정보처리방침은 데모 서비스 기준의 초안**입니다. 실제 운영 시에는 법률 검토가 필요합니다. 회원 탈퇴·정보 삭제는
-  화면 기능이 없고 문의하기 이메일로 받는 것으로 안내했습니다.
-- **레이트 리미팅은 단일 게이트웨이 기준**(메모리)이고, 공유 IP 환경에서는 걸릴 수 있습니다.
-- **쿠폰은 모두 공개 쿠폰입니다.** 사용 기간 안에 한도가 남은 쿠폰은 로그인한 누구에게나 목록에 보이고, 특정 사용자에게만 지급하는 쿠폰(쿠폰함·발급)은 없습니다.
-- **인당 매수 제한은 동시 요청에서 1~2석 넘을 수 있습니다.** 집계와 홀드가 한 트랜잭션이 아니기 때문이며, 락으로 막는 대신 봇 방어와 함께 보완하는 쪽으로 남겨 두었습니다.
-- **오픈 전 공연의 예약을 서버가 막지는 않습니다.** 화면에서 대기열 진입을 막고 오픈 시각이 지나면 상태를 자동 전환합니다.
-- **알림 메일은 자동 재시도하지 않습니다.** 인증 메일은 재발송으로, 나머지는 로그로 확인합니다.
-- **부하테스트 수치는 기능 확장 이전 구조 기준**이며, 이후 기능을 얹은 상태에서 다시 측정하지는 않았습니다.
-- **DB 계정 등 로컬 기본값은 개발용**이라 실제 배포 전에는 환경변수로 분리해야 합니다(JWT·QR 시크릿은 이미 필수값).
-
-## 문서
-
-- [`docs/`](./docs) — 요구사항 정의서, 엔티티 설계서, API 명세서, OAuth2 설정 정리
+| 문서 | 내용 |
+|---|---|
+| [기능 상세](docs/features.md) | 기능별 동작·규칙, KOPIS 연동, 디자인 시스템 |
+| [아키텍처](docs/architecture.md) | 서비스 구성, 게이트웨이 라우팅, 봇 방어 설정 |
+| [설계 노트](docs/design-notes.md) | 설계 포인트, 부하테스트(재측정 포함), 테스트, 알려진 한계 |
+| 기획 문서 | 요구사항 정의서, 엔티티 설계서, API 명세서, OAuth2 설정 정리 (`docs/*.docx`) |
