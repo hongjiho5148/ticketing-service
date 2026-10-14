@@ -94,10 +94,18 @@ public class Seat {
      * time in their own DBs and MySQL rounds fractional seconds.)
      */
     public boolean isHeldWith(LocalDateTime expectedHoldExpireAt) {
-        return status == SeatStatus.HOLD
-                && holdExpireAt != null
-                && expectedHoldExpireAt != null
-                && Math.abs(java.time.Duration.between(holdExpireAt, expectedHoldExpireAt).toNanos()) < 1_000_000L;
+        return status == SeatStatus.HOLD && sameHold(expectedHoldExpireAt);
+    }
+
+    /** True if this seat was sold out of exactly that hold - lets a repeated sell (a retried payment) succeed quietly. */
+    public boolean isSoldFrom(LocalDateTime expectedHoldExpireAt) {
+        return status == SeatStatus.SOLD && sameHold(expectedHoldExpireAt);
+    }
+
+    private boolean sameHold(LocalDateTime expected) {
+        return holdExpireAt != null
+                && expected != null
+                && Math.abs(java.time.Duration.between(holdExpireAt, expected).toNanos()) < 1_000_000L;
     }
 
     public void release() {
@@ -105,8 +113,8 @@ public class Seat {
         this.holdExpireAt = null;
     }
 
+    /** Keeps holdExpireAt on purpose: it records which hold bought the seat (see isSoldFrom). Only HOLD seats are ever swept. */
     public void sell() {
         this.status = SeatStatus.SOLD;
-        this.holdExpireAt = null;
     }
 }

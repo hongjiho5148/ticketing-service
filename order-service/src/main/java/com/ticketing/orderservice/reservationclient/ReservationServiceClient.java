@@ -52,6 +52,8 @@ public class ReservationServiceClient {
             return request.get();
         } catch (HttpClientErrorException.NotFound e) {
             throw new ApiException(ErrorCode.RESERVATION_NOT_FOUND);
+        } catch (HttpClientErrorException.Gone e) {
+            throw new ApiException(ErrorCode.HOLD_EXPIRED);
         } catch (HttpClientErrorException.Conflict e) {
             throw new ApiException(ErrorCode.SEAT_ALREADY_RESERVED);
         } catch (RestClientException e) {

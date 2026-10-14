@@ -365,12 +365,22 @@ export function EventDetailPage() {
         return;
       }
 
+      const holdLost = verified.failureReason === "HOLD_EXPIRED";
       if (resumed) {
-        showToast("결제가 거절됐어요. 좌석이 해제됐어요.", "error");
+        showToast(
+          holdLost
+            ? "좌석 예약 시간이 지나 결제가 자동으로 환불됐어요. 다시 예약해주세요."
+            : "결제가 거절됐어요. 좌석이 해제됐어요.",
+          "error",
+        );
         navigate("/tickets?tab=orders");
         return;
       }
-      setError("결제가 거절됐어요. 좌석이 해제됐으니 다시 예약해주세요.");
+      setError(
+        holdLost
+          ? "좌석 예약 시간이 지나 결제가 자동으로 환불됐어요. 다시 예약해주세요."
+          : "결제가 거절됐어요. 좌석이 해제됐으니 다시 예약해주세요.",
+      );
       setReservation(null);
       setSelectedSeat(null);
       setOrder(null);

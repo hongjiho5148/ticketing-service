@@ -93,9 +93,33 @@ public class SeatInternalService {
         }
     }
 
-    @Transactional
     public void sell(Long seatId) {
-        Seat seat = seatRepository.findById(seatId).orElseThrow(() -> new ApiException(ErrorCode.SEAT_NOT_FOUND));
-        seat.sell();
+        sell(seatId, null);
+    }
+
+    /**
+     * Sells the seat for a payment. With {@code expectedHoldExpireAt} it only does so while the seat is still held by
+     * that exact hold - if the hold ran out while the buyer was paying, the seat may already be free or held by
+     * someone else, and selling it anyway would hand the same seat to two people. In that case this throws
+     * SEAT_HOLD_LOST and the caller must refund. Selling an already-sold seat out of the same hold is a no-op, so a
+     * payment that is retried after a partial failure still goes through. Takes the same per-seat lock as hold().
+     */
+    public void sell(Long seatId, LocalDateTime expectedHoldExpireAt) {
+        if (expectedHoldExpireAt == null) {
+            transactionTemplate.executeWithoutResult(status -> {
+                Seat seat = seatRepository.findById(seatId).orElseThrow(() -> new ApiException(ErrorCode.SEAT_NOT_FOUND));
+                seat.sell();
+            });
+            return;
+        }
+        seatLockService.executeWithLock(seatId, () -> transactionTemplate.execute(status -> {
+            Seat seat = seatRepository.findById(seatId).orElseThrow(() -> new ApiException(ErrorCode.SEAT_NOT_FOUND));
+            if (seat.isHeldWith(expectedHoldExpireAt)) {
+                seat.sell();
+            } else if (!seat.isSoldFrom(expectedHoldExpireAt)) {
+                throw new ApiException(ErrorCode.SEAT_HOLD_LOST);
+            }
+            return null;
+        }));
     }
 }

@@ -134,6 +134,8 @@ export interface PaymentResult {
   orderId: number;
   paymentStatus: PaymentStatus;
   paidAt: string;
+  // Set when the server unwound the payment itself, e.g. "HOLD_EXPIRED" (hold ran out while paying; refunded).
+  failureReason?: string | null;
 }
 
 export interface OrderHistoryItem {
