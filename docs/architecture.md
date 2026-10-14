@@ -45,8 +45,8 @@ flowchart TB
 ```
 
 **입구는 nginx 하나뿐입니다.** nginx가 Gateway로 가는 경로는 고정 IP + 커넥션 풀링(`keepalive`)으로 연결하고,
-수평 확장되는 `backend`로 가는 경로만 별도 포트(8081)에서 동적 DNS resolver로 매 요청마다 살아있는 레플리카를
-다시 찾습니다 — 이렇게 나눈 이유는 [부하테스트 결과](./design-notes.md#부하테스트로-검증한-것들)에 있습니다. CORS는 Gateway
+수평 확장되는 `backend`로 가는 경로만 별도 포트(8081)에서 `server backend:8080 resolve`(5초마다 DNS 재조회) + `keepalive`로 살아있는 레플리카를
+찾아 연결을 재사용합니다 — 이렇게 나눈 이유는 [부하테스트 결과](./design-notes.md#부하테스트로-검증한-것들)에 있습니다. CORS는 Gateway
 한 곳에서만 처리합니다(개별 서비스가 각자 CORS를 설정하면 헤더가 중복으로 붙어 브라우저가 응답을 거부합니다).
 
 ## 서비스 구성
