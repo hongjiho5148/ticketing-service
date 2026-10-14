@@ -278,6 +278,7 @@ cd admin-frontend && npm install && npm run dev
 | `RATE_LIMIT_ENABLED` | `false`면 게이트웨이 레이트 리미팅 끔 (부하테스트용) |
 | `CAPTCHA_ENABLED` | `false`면 서버 캡차 검증 끔 |
 | `IDENTITY_VERIFICATION_REQUIRED` | 결제 전 구매자 확인 필수 여부 (기본 true) |
+| `JPA_SHOW_SQL` | `true`면 서비스들이 실행하는 SQL을 콘솔에 출력 (기본 false, 부하 시 초당 수만 줄이라 기본은 끔) |
 | `QUEUE_ACTIVE_CAPACITY` / `QUEUE_ADMISSION_INTERVAL_MS` | 대기열 동시 입장 수 / 입장 간격 |
 
 ## 9. 문서
