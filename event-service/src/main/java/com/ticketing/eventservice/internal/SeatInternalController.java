@@ -1,6 +1,7 @@
 package com.ticketing.eventservice.internal;
 
 import com.ticketing.eventservice.internal.dto.HoldSeatRequest;
+import com.ticketing.eventservice.internal.dto.ReleaseSeatRequest;
 import com.ticketing.eventservice.internal.dto.SeatBatchRequest;
 import com.ticketing.eventservice.internal.dto.SeatBatchResponse;
 import com.ticketing.eventservice.internal.dto.SeatDetailResponse;
@@ -39,9 +40,11 @@ public class SeatInternalController {
         return seatInternalService.hold(seatId, request.holdExpireAt());
     }
 
+    /** The body is optional: without it the seat is released unconditionally (kept for older callers). */
     @PostMapping("/{seatId}/release")
-    public ResponseEntity<Void> release(@PathVariable Long seatId) {
-        seatInternalService.release(seatId);
+    public ResponseEntity<Void> release(
+            @PathVariable Long seatId, @RequestBody(required = false) ReleaseSeatRequest request) {
+        seatInternalService.release(seatId, request == null ? null : request.holdExpireAt());
         return ResponseEntity.ok().build();
     }
 

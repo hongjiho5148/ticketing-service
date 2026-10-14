@@ -3,6 +3,7 @@ package com.ticketing.reservationservice.eventclient;
 import com.ticketing.reservationservice.common.ApiException;
 import com.ticketing.reservationservice.common.ErrorCode;
 import com.ticketing.reservationservice.eventclient.dto.HoldSeatRequest;
+import com.ticketing.reservationservice.eventclient.dto.ReleaseSeatRequest;
 import com.ticketing.reservationservice.eventclient.dto.SeatDetailResponse;
 import java.time.LocalDateTime;
 import java.util.function.Supplier;
@@ -41,8 +42,14 @@ public class EventServiceClient {
                 ErrorCode.SEAT_NOT_FOUND);
     }
 
-    public void release(Long seatId) {
-        call(() -> restClient.post().uri("/internal/seats/{id}/release", seatId).retrieve().toBodilessEntity(),
+    /** Releases the seat only if it is still held by the hold that expires at {@code holdExpireAt}. */
+    public void release(Long seatId, LocalDateTime holdExpireAt) {
+        call(() -> restClient
+                        .post()
+                        .uri("/internal/seats/{id}/release", seatId)
+                        .body(new ReleaseSeatRequest(holdExpireAt))
+                        .retrieve()
+                        .toBodilessEntity(),
                 ErrorCode.SEAT_NOT_FOUND);
     }
 

@@ -17,8 +17,8 @@ spring:
     open-in-view: false
     properties:
       hibernate:
-        format_sql: true
-    show-sql: true
+        format_sql: ${JPA_SHOW_SQL:false}
+    show-sql: ${JPA_SHOW_SQL:false}
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:

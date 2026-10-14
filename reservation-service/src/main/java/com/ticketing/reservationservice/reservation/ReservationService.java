@@ -12,12 +12,21 @@ import com.ticketing.reservationservice.reservation.dto.ReservationResponse;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import org.springframework.beans.factory.annotation.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Deliberately NOT @Transactional as a whole: reserve() and cancel() talk to event-service and the queue over
+ * HTTP, and a transaction around those calls keeps a DB connection checked out while the thread just waits on
+ * the network. With a small pool (Hikari's default is 10) that capped concurrent reservations at roughly the pool
+ * size and made everyone else queue for a connection. Each repository call below runs in its own short
+ * transaction instead, so a connection is only borrowed while it is actually being used.
+ */
 @Service
-@Transactional
 public class ReservationService {
+
+    private static final Logger log = LoggerFactory.getLogger(ReservationService.class);
 
     private static final Duration HOLD_DURATION = Duration.ofMinutes(5);
 
@@ -56,7 +65,15 @@ public class ReservationService {
         SeatDetailResponse heldSeat = eventServiceClient.hold(request.seatId(), holdExpireAt);
 
         Reservation reservation = new Reservation(userId, request.seatId(), heldSeat.eventId(), holdExpireAt);
-        Reservation saved = reservationRepository.save(reservation);
+        Reservation saved;
+        try {
+            saved = reservationRepository.save(reservation);
+        } catch (RuntimeException e) {
+            // The seat is already held in event-service; without a reservation row nobody can cancel or pay for it,
+            // so give it back now instead of leaving it stuck until the hold lapses.
+            releaseQuietly(request.seatId(), holdExpireAt);
+            throw e;
+        }
 
         reservationEventPublisher.publishReservationCreated(new ReservationCreatedEvent(
                 saved.getId(), heldSeat.seatId(), userId, heldSeat.eventId(), saved.getCreatedAt().toString()));
@@ -73,7 +90,19 @@ public class ReservationService {
         if (reservation.getStatus() != ReservationStatus.HOLDING) {
             throw new ApiException(ErrorCode.RESERVATION_NOT_CANCELLABLE);
         }
+        // Release first, then record the cancellation. If the release fails nothing has changed and the user can
+        // retry; if saving fails afterwards the retry finds the seat already free (release is idempotent).
+        eventServiceClient.release(reservation.getSeatId(), reservation.getHoldExpireAt());
         reservation.cancel();
-        eventServiceClient.release(reservation.getSeatId());
+        reservationRepository.save(reservation);
+    }
+
+    private void releaseQuietly(Long seatId, LocalDateTime holdExpireAt) {
+        try {
+            eventServiceClient.release(seatId, holdExpireAt);
+        } catch (RuntimeException e) {
+            // The hold-expiry sweepers free it within a few minutes anyway.
+            log.warn("Could not release seat {} after a failed reservation save: {}", seatId, e.getMessage());
+        }
     }
 }

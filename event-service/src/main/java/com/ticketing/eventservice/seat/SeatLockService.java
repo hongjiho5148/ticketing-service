@@ -13,9 +13,9 @@ import org.springframework.stereotype.Component;
  * Guards the seat-mutation critical section with a per-seat Redis lock (key
  * {@code lock:seat:<seatId>}) so that, under heavy concurrent demand, only one request per seat
  * ever reaches the database at a time - everyone else fails fast with SEAT_ALREADY_RESERVED
- * instead of piling onto MySQL. The @Version optimistic lock on Seat stays in place underneath
- * this as the actual correctness guarantee (the lock is released a moment before the surrounding
- * @Transactional commits, so it narrows contention rather than fully eliminating the race).
+ * instead of piling onto MySQL. Callers run their transaction inside the lock (see SeatInternalService.hold),
+ * so the commit lands before the lock is released. The @Version optimistic lock on Seat stays in place
+ * underneath as defense in depth - e.g. if the lease expires while a slow request is still running.
  */
 @Component
 public class SeatLockService {

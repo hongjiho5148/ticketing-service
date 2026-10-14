@@ -87,6 +87,19 @@ public class Seat {
         this.holdExpireAt = holdExpireAt;
     }
 
+    /**
+     * True while this seat is in HOLD and that hold is the one that expires at {@code holdExpireAt}. The expiry time
+     * doubles as the hold's identity: a seat can only be re-held after it was released, and that takes far longer than
+     * the 1ms tolerance, so two different holds never compare equal. (Tolerance because the two services store the
+     * time in their own DBs and MySQL rounds fractional seconds.)
+     */
+    public boolean isHeldWith(LocalDateTime expectedHoldExpireAt) {
+        return status == SeatStatus.HOLD
+                && holdExpireAt != null
+                && expectedHoldExpireAt != null
+                && Math.abs(java.time.Duration.between(holdExpireAt, expectedHoldExpireAt).toNanos()) < 1_000_000L;
+    }
+
     public void release() {
         this.status = SeatStatus.AVAILABLE;
         this.holdExpireAt = null;
