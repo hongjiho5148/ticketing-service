@@ -67,6 +67,9 @@ public class OrderBenefitService {
      * in which case nothing stays consumed and the caller has to unwind the card payment.
      */
     public void redeem(Orders order) {
+        if (order.isBenefitsRedeemed()) {
+            return; // a retried payment: already consumed, never consume twice
+        }
         Long userId = order.getUserId();
         int points = order.getPointsUsed();
         boolean pointsTaken = false;
@@ -93,6 +96,7 @@ public class OrderBenefitService {
             pointService.give(userId, reward);
             pointService.record(userId, reward, PointTransactionType.EARN, order.getId());
         }
+        order.markBenefitsRedeemed();
     }
 
     /**
@@ -113,5 +117,6 @@ public class OrderBenefitService {
         if (RefundPolicy.restoresCoupon(refundPercent)) {
             couponService.restore(order);
         }
+        order.clearBenefitsRedeemed();
     }
 }

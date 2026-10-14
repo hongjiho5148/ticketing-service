@@ -72,6 +72,12 @@ public class Orders {
     @Column(name = "owner_id")
     private Long ownerId;
 
+    // Set (in the same transaction) when this order's points/coupon were consumed and the purchase reward was given,
+    // cleared when that is reversed. pay() runs in several short transactions around its network calls, so a retry
+    // after a partial failure must not consume the benefits a second time.
+    @Column(name = "benefits_redeemed_at")
+    private LocalDateTime benefitsRedeemedAt;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private OrderStatus status;
@@ -114,6 +120,18 @@ public class Orders {
 
     public void transferTo(Long newHolderId) {
         this.ownerId = newHolderId;
+    }
+
+    public boolean isBenefitsRedeemed() {
+        return benefitsRedeemedAt != null;
+    }
+
+    public void markBenefitsRedeemed() {
+        this.benefitsRedeemedAt = LocalDateTime.now();
+    }
+
+    public void clearBenefitsRedeemed() {
+        this.benefitsRedeemedAt = null;
     }
 
     public void markPaid() {
