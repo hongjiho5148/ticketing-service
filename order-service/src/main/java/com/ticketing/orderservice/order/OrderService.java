@@ -9,6 +9,10 @@ import com.ticketing.orderservice.order.dto.OrderCreateRequest;
 import com.ticketing.orderservice.order.dto.OrderHistoryListResponse;
 import com.ticketing.orderservice.order.dto.OrderHistoryResponse;
 import com.ticketing.orderservice.order.dto.OrderResponse;
+import com.ticketing.orderservice.order.dto.PaymentIntentResponse;
+import com.ticketing.orderservice.payment.PaymentAttempt;
+import com.ticketing.orderservice.payment.PaymentAttemptRepository;
+import java.util.UUID;
 import com.ticketing.orderservice.order.dto.PaymentRequest;
 import com.ticketing.orderservice.order.dto.PaymentResponse;
 import com.ticketing.orderservice.payment.Payment;
@@ -56,6 +60,7 @@ public class OrderService {
     private final TicketTransferRepository transferRepository;
     private final TransferPolicy transferPolicy;
     private final IdentityVerificationService identityVerificationService;
+    private final PaymentAttemptRepository paymentAttemptRepository;
 
     public OrderService(
             OrderRepository orderRepository,
@@ -66,7 +71,8 @@ public class OrderService {
             OrderBenefitService orderBenefitService,
             TicketTransferRepository transferRepository,
             TransferPolicy transferPolicy,
-            IdentityVerificationService identityVerificationService) {
+            IdentityVerificationService identityVerificationService,
+            PaymentAttemptRepository paymentAttemptRepository) {
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
         this.portOneClient = portOneClient;
@@ -76,6 +82,7 @@ public class OrderService {
         this.transferRepository = transferRepository;
         this.transferPolicy = transferPolicy;
         this.identityVerificationService = identityVerificationService;
+        this.paymentAttemptRepository = paymentAttemptRepository;
     }
 
     public OrderResponse applyCoupon(Long userId, Long orderId, String code) {
@@ -105,6 +112,17 @@ public class OrderService {
             throw new ApiException(ErrorCode.ORDER_NOT_PENDING);
         }
         return order;
+    }
+
+    /**
+     * Registers a fresh payment id for this order. pay() later accepts only ids registered here, so a payment made for
+     * one order cannot be presented for another, and the reconciler knows which PortOne payments to look up.
+     */
+    public PaymentIntentResponse createPaymentIntent(Long userId, Long orderId) {
+        Orders order = loadPendingOrder(userId, orderId);
+        String paymentId = "pay-" + order.getId() + "-" + UUID.randomUUID();
+        paymentAttemptRepository.save(new PaymentAttempt(order.getId(), paymentId));
+        return new PaymentIntentResponse(paymentId, order.getTotalPrice());
     }
 
     public OrderResponse createOrder(Long userId, OrderCreateRequest request) {
@@ -144,6 +162,16 @@ public class OrderService {
         // with the same paymentId, and the order stays PENDING in between.
         if (!identityVerificationService.isSatisfied(orderId)) {
             throw new ApiException(ErrorCode.IDENTITY_VERIFICATION_REQUIRED);
+        }
+
+        // The payment id must be one this server issued for THIS order. Without it a single paid PortOne payment could be
+        // presented for every other pending order of the same price.
+        boolean registered = paymentAttemptRepository
+                .findByPaymentId(request.paymentId())
+                .map(attempt -> attempt.getOrderId().equals(order.getId()))
+                .orElse(false);
+        if (!registered) {
+            throw new ApiException(ErrorCode.PAYMENT_NOT_REGISTERED);
         }
 
         PortOnePaymentResponse portOnePayment = portOneClient.getPayment(request.paymentId());

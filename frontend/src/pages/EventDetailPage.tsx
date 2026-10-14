@@ -7,6 +7,7 @@ import {
   applyPoints,
   createOrder,
   fetchCheckout,
+  createPaymentIntent,
   payOrder,
   removeCoupon,
   verifyIdentity,
@@ -344,13 +345,19 @@ export function EventDetailPage() {
       // Recorded before the payment window opens - the server won't confirm an order without it.
       await verifyIdentity(currentOrder.orderId);
 
-      const paymentResult = await requestPayment({
-        method: payMethod,
-        orderName: event.title,
-        totalAmount: currentOrder.totalPrice,
-        customerName: user.name,
-        customerEmail: user.email,
-      });
+      // The server decides the payment id and the amount; it only accepts a payment made with an id it issued.
+      const intent = await createPaymentIntent(currentOrder.orderId);
+
+      const paymentResult = await requestPayment(
+        {
+          method: payMethod,
+          orderName: event.title,
+          totalAmount: intent.amount,
+          customerName: user.name,
+          customerEmail: user.email,
+        },
+        intent.paymentId,
+      );
 
       if (paymentResult.failed) {
         setError(paymentResult.failureMessage ?? "결제가 취소됐어요. 다시 시도해주세요.");
