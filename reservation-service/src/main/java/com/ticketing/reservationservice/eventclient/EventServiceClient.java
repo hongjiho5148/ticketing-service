@@ -4,6 +4,7 @@ import com.ticketing.reservationservice.common.ApiException;
 import com.ticketing.reservationservice.common.ErrorCode;
 import com.ticketing.reservationservice.eventclient.dto.HoldSeatRequest;
 import com.ticketing.reservationservice.eventclient.dto.ReleaseSeatRequest;
+import com.ticketing.reservationservice.eventclient.dto.SellSeatRequest;
 import com.ticketing.reservationservice.eventclient.dto.SeatDetailResponse;
 import java.time.LocalDateTime;
 import java.util.function.Supplier;
@@ -53,8 +54,14 @@ public class EventServiceClient {
                 ErrorCode.SEAT_NOT_FOUND);
     }
 
-    public void sell(Long seatId) {
-        call(() -> restClient.post().uri("/internal/seats/{id}/sell", seatId).retrieve().toBodilessEntity(),
+    /** Sells the seat only if it is still held by the hold that expires at {@code holdExpireAt}; otherwise HOLD_EXPIRED. */
+    public void sell(Long seatId, LocalDateTime holdExpireAt) {
+        call(() -> restClient
+                        .post()
+                        .uri("/internal/seats/{id}/sell", seatId)
+                        .body(new SellSeatRequest(holdExpireAt))
+                        .retrieve()
+                        .toBodilessEntity(),
                 ErrorCode.SEAT_NOT_FOUND);
     }
 
@@ -63,6 +70,8 @@ public class EventServiceClient {
             return request.get();
         } catch (HttpClientErrorException.NotFound e) {
             throw new ApiException(notFoundCode);
+        } catch (HttpClientErrorException.Gone e) {
+            throw new ApiException(ErrorCode.HOLD_EXPIRED);
         } catch (HttpClientErrorException.Conflict e) {
             throw new ApiException(ErrorCode.SEAT_ALREADY_RESERVED);
         } catch (RestClientException e) {

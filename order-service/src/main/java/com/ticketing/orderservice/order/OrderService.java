@@ -160,33 +160,48 @@ public class OrderService {
                 // so the payment gets refunded and the order fails instead of being paid at a price
                 // it no longer qualifies for.
                 log.warn("Benefits no longer valid for order {}: {}", orderId, e.getErrorCode());
-                refundQuietly(request.paymentId());
-                return failPayment(order, request.paymentId(), method);
+                refundQuietly(request.paymentId(), "쿠폰/포인트 적용 실패로 자동 환불");
+                return failPayment(order, request.paymentId(), method, null);
             }
             LocalDateTime paidAt = LocalDateTime.now();
             // Confirm on reservation-service (which sells the seat on its end) before committing our
             // own PAID status locally, so a failed confirm never leaves an order marked paid with no
             // matching reservation/seat state on the other side.
-            reservationServiceClient.confirm(order.getReservationId());
+            try {
+                reservationServiceClient.confirm(order.getReservationId());
+            } catch (ApiException e) {
+                if (e.getErrorCode() != ErrorCode.HOLD_EXPIRED) {
+                    // reservation-service is unreachable or failed for another reason: nothing says the seat is
+                    // lost, so the order stays PENDING and the same paymentId can be retried while the hold lasts.
+                    throw e;
+                }
+                // The 5-minute hold ran out while the payment window was open, and the seat may already be free
+                // or held by someone else - confirming would sell one seat twice. The customer has paid, so give
+                // everything back: coupon, points and reward first, then the payment itself.
+                log.warn("Hold expired before order {} could be confirmed - refunding payment {}", orderId, request.paymentId());
+                orderBenefitService.reverse(order, 100);
+                refundQuietly(request.paymentId(), "좌석 홀드 만료로 자동 환불");
+                return failPayment(order, request.paymentId(), method, "HOLD_EXPIRED");
+            }
             order.markPaid();
             paymentRepository.save(
                     new Payment(order, method, request.paymentId(), PaymentStatus.SUCCESS, order.getTotalPrice(), paidAt));
-            return new PaymentResponse(order.getId(), PaymentStatus.SUCCESS, paidAt);
+            return new PaymentResponse(order.getId(), PaymentStatus.SUCCESS, paidAt, null);
         }
 
-        return failPayment(order, request.paymentId(), method);
+        return failPayment(order, request.paymentId(), method, null);
     }
 
-    private PaymentResponse failPayment(Orders order, String paymentId, String method) {
+    private PaymentResponse failPayment(Orders order, String paymentId, String method, String failureReason) {
         reservationServiceClient.cancel(order.getReservationId());
         order.markFailed();
         paymentRepository.save(new Payment(order, method, paymentId, PaymentStatus.FAILED, order.getTotalPrice(), null));
-        return new PaymentResponse(order.getId(), PaymentStatus.FAILED, null);
+        return new PaymentResponse(order.getId(), PaymentStatus.FAILED, null, failureReason);
     }
 
-    private void refundQuietly(String paymentId) {
+    private void refundQuietly(String paymentId, String reason) {
         try {
-            portOneClient.cancelPayment(paymentId, "쿠폰/포인트 적용 실패로 자동 환불");
+            portOneClient.cancelPayment(paymentId, reason);
         } catch (RestClientException e) {
             // Nothing more to do automatically - needs a manual refund in the PortOne console.
             log.error("AUTO-REFUND FAILED for PortOne payment {} - refund it manually: {}", paymentId, e.getMessage());

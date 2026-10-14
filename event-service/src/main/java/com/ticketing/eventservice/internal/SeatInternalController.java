@@ -2,6 +2,7 @@ package com.ticketing.eventservice.internal;
 
 import com.ticketing.eventservice.internal.dto.HoldSeatRequest;
 import com.ticketing.eventservice.internal.dto.ReleaseSeatRequest;
+import com.ticketing.eventservice.internal.dto.SellSeatRequest;
 import com.ticketing.eventservice.internal.dto.SeatBatchRequest;
 import com.ticketing.eventservice.internal.dto.SeatBatchResponse;
 import com.ticketing.eventservice.internal.dto.SeatDetailResponse;
@@ -48,9 +49,11 @@ public class SeatInternalController {
         return ResponseEntity.ok().build();
     }
 
+    /** The body is optional: without it the seat is sold unconditionally (kept for older callers). */
     @PostMapping("/{seatId}/sell")
-    public ResponseEntity<Void> sell(@PathVariable Long seatId) {
-        seatInternalService.sell(seatId);
+    public ResponseEntity<Void> sell(
+            @PathVariable Long seatId, @RequestBody(required = false) SellSeatRequest request) {
+        seatInternalService.sell(seatId, request == null ? null : request.holdExpireAt());
         return ResponseEntity.ok().build();
     }
 }
