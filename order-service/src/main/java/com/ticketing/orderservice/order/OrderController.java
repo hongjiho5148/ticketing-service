@@ -7,6 +7,7 @@ import com.ticketing.orderservice.order.dto.CheckoutResponse;
 import com.ticketing.orderservice.order.dto.OrderCreateRequest;
 import com.ticketing.orderservice.order.dto.OrderHistoryListResponse;
 import com.ticketing.orderservice.order.dto.OrderResponse;
+import com.ticketing.orderservice.order.dto.PaymentIntentResponse;
 import com.ticketing.orderservice.order.dto.PaymentRequest;
 import com.ticketing.orderservice.order.dto.RefundPreviewResponse;
 import com.ticketing.orderservice.order.dto.PaymentResponse;
@@ -38,6 +39,12 @@ public class OrderController {
     public ResponseEntity<OrderResponse> createOrder(@Valid @RequestBody OrderCreateRequest request) {
         OrderResponse response = orderService.createOrder(SecurityUtil.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /** Called right before the payment window opens: registers the payment id the window must use. */
+    @PostMapping("/{orderId}/payment-intent")
+    public PaymentIntentResponse createPaymentIntent(@PathVariable Long orderId) {
+        return orderService.createPaymentIntent(SecurityUtil.getCurrentUserId(), orderId);
     }
 
     @PostMapping("/{orderId}/payment")

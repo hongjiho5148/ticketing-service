@@ -37,8 +37,7 @@ export interface PaymentResult {
   failureMessage?: string;
 }
 
-export async function requestPayment(request: PaymentRequest): Promise<PaymentResult> {
-  const paymentId = crypto.randomUUID();
+export async function requestPayment(request: PaymentRequest, paymentId: string): Promise<PaymentResult> {
   const config = PAY_METHODS[request.method];
   if (!config.channelKey) {
     return { paymentId, failed: true, failureMessage: `${config.label} 결제 채널이 설정되지 않았어요.` };

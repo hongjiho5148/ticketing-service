@@ -72,6 +72,12 @@ reminder:
   lead-hours: 24
   window-hours: 1
 
+payment:
+  # Settles payments the browser never reported back (see PaymentReconciliationService).
+  reconcile-sweep-cron: "0 * * * * *"
+  # Hold (5 min) plus a generous margin for a payment window left open; older unpaid orders are not looked at.
+  reconcile-lookback-minutes: 60
+
 event:
   service:
     uri: ${EVENT_SERVICE_URI:http://event-service:8080}

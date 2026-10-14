@@ -5,6 +5,16 @@ export function createOrder(reservationId: number) {
   return apiClient.post<Order>("/orders", { reservationId }).then((res) => res.data);
 }
 
+export interface PaymentIntent {
+  paymentId: string;
+  amount: number;
+}
+
+/** Asks the server for the payment id (and amount) the payment window must use. */
+export function createPaymentIntent(orderId: number) {
+  return apiClient.post<PaymentIntent>(`/orders/${orderId}/payment-intent`).then((res) => res.data);
+}
+
 export function payOrder(orderId: number, paymentId: string) {
   return apiClient.post<PaymentResult>(`/orders/${orderId}/payment`, { paymentId }).then((res) => res.data);
 }

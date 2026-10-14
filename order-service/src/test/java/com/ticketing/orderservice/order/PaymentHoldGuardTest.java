@@ -49,6 +49,7 @@ class PaymentHoldGuardTest {
 
     private Long userId;
     private Orders order;
+    private String paymentId;
 
     @BeforeEach
     void setUp() {
@@ -56,13 +57,14 @@ class PaymentHoldGuardTest {
         long id = SEQ.incrementAndGet();
         order = orderRepository.save(new Orders(userId, id, id, LocalDateTime.now().plusDays(3), 1L, PRICE));
         verification.verifyForOrder(userId, order.getId(), new VerifyIdentityRequest(true));
-        when(portOneClient.getPayment("pay-1")).thenReturn(new PortOnePaymentResponse(
+        paymentId = orderService.createPaymentIntent(userId, order.getId()).paymentId();
+        when(portOneClient.getPayment(paymentId)).thenReturn(new PortOnePaymentResponse(
                 "PAID", new PortOnePaymentResponse.Amount(PRICE), new PortOnePaymentResponse.Method("PaymentMethodCard", null)));
     }
 
     @Test
     void confirmedInTimeBecomesPaidWithoutAnyRefund() {
-        PaymentResponse response = orderService.pay(userId, order.getId(), new PaymentRequest("pay-1"));
+        PaymentResponse response = orderService.pay(userId, order.getId(), new PaymentRequest(paymentId));
 
         assertThat(response.paymentStatus()).isEqualTo(PaymentStatus.SUCCESS);
         assertThat(response.failureReason()).isNull();
@@ -75,12 +77,12 @@ class PaymentHoldGuardTest {
         when(reservationServiceClient.confirm(order.getReservationId()))
                 .thenThrow(new ApiException(ErrorCode.HOLD_EXPIRED));
 
-        PaymentResponse response = orderService.pay(userId, order.getId(), new PaymentRequest("pay-1"));
+        PaymentResponse response = orderService.pay(userId, order.getId(), new PaymentRequest(paymentId));
 
         assertThat(response.paymentStatus()).isEqualTo(PaymentStatus.FAILED);
         assertThat(response.failureReason()).isEqualTo("HOLD_EXPIRED");
         assertThat(order.getStatus()).isEqualTo(OrderStatus.FAILED);
-        verify(portOneClient).cancelPayment(eq("pay-1"), anyString());
+        verify(portOneClient).cancelPayment(eq(paymentId), anyString());
         verify(reservationServiceClient).cancel(order.getReservationId());
     }
 
@@ -89,7 +91,7 @@ class PaymentHoldGuardTest {
         when(reservationServiceClient.confirm(order.getReservationId()))
                 .thenThrow(new ApiException(ErrorCode.RESERVATION_SERVICE_UNAVAILABLE));
 
-        assertThatThrownBy(() -> orderService.pay(userId, order.getId(), new PaymentRequest("pay-1")))
+        assertThatThrownBy(() -> orderService.pay(userId, order.getId(), new PaymentRequest(paymentId)))
                 .isInstanceOfSatisfying(ApiException.class,
                         e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.RESERVATION_SERVICE_UNAVAILABLE));
 
