@@ -30,7 +30,7 @@ public class ReservationExpirySweeper {
         for (Reservation reservation : expired) {
             reservation.expire();
             try {
-                eventServiceClient.release(reservation.getSeatId());
+                eventServiceClient.release(reservation.getSeatId(), reservation.getHoldExpireAt());
             } catch (Exception e) {
                 // event-service runs the same expiry sweep independently on Seat.holdExpireAt, so
                 // a failed release here isn't the last line of defense - just log and move on.

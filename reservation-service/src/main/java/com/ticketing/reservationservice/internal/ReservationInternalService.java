@@ -43,7 +43,7 @@ public class ReservationInternalService {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new ApiException(ErrorCode.RESERVATION_NOT_FOUND));
         reservation.cancel();
-        eventServiceClient.release(reservation.getSeatId());
+        eventServiceClient.release(reservation.getSeatId(), reservation.getHoldExpireAt());
         return ReservationDetailResponse.from(reservation);
     }
 }

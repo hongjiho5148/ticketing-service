@@ -71,7 +71,7 @@ public class ReservationService {
         } catch (RuntimeException e) {
             // The seat is already held in event-service; without a reservation row nobody can cancel or pay for it,
             // so give it back now instead of leaving it stuck until the hold lapses.
-            releaseQuietly(request.seatId());
+            releaseQuietly(request.seatId(), holdExpireAt);
             throw e;
         }
 
@@ -92,14 +92,14 @@ public class ReservationService {
         }
         // Release first, then record the cancellation. If the release fails nothing has changed and the user can
         // retry; if saving fails afterwards the retry finds the seat already free (release is idempotent).
-        eventServiceClient.release(reservation.getSeatId());
+        eventServiceClient.release(reservation.getSeatId(), reservation.getHoldExpireAt());
         reservation.cancel();
         reservationRepository.save(reservation);
     }
 
-    private void releaseQuietly(Long seatId) {
+    private void releaseQuietly(Long seatId, LocalDateTime holdExpireAt) {
         try {
-            eventServiceClient.release(seatId);
+            eventServiceClient.release(seatId, holdExpireAt);
         } catch (RuntimeException e) {
             // The hold-expiry sweepers free it within a few minutes anyway.
             log.warn("Could not release seat {} after a failed reservation save: {}", seatId, e.getMessage());

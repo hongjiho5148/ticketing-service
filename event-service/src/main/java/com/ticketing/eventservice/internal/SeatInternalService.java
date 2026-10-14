@@ -11,6 +11,7 @@ import com.ticketing.eventservice.seat.SeatStatus;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
@@ -64,15 +65,31 @@ public class SeatInternalService {
         }));
     }
 
-    @Transactional
-    public void release(Long seatId) {
-        Seat seat = seatRepository.findById(seatId).orElseThrow(() -> new ApiException(ErrorCode.SEAT_NOT_FOUND));
-        // Both reservation-service and SeatHoldExpirySweeper release expired holds, so the second call
-        // lands on an already-AVAILABLE seat - that must not count as a freshly freed seat for the waitlist.
-        boolean wasUnavailable = seat.getStatus() != SeatStatus.AVAILABLE;
-        seat.release();
-        if (wasUnavailable) {
-            eventPublisher.publishEvent(new SeatsReleasedEvent(seat.getEvent().getId(), 1));
+    /**
+     * Gives a seat back. With {@code expectedHoldExpireAt} it only does so while the seat is still held by that exact
+     * hold; otherwise it is a no-op. That matters because the release is requested asynchronously by several parties
+     * (the user's cancel, a failed payment, and two independent expiry sweepers): a late request for a hold that is
+     * already gone must not free the hold of whoever took the seat since. Without it (null) the release is
+     * unconditional, as before.
+     */
+    public void release(Long seatId, LocalDateTime expectedHoldExpireAt) {
+        try {
+            transactionTemplate.executeWithoutResult(status -> {
+                Seat seat = seatRepository.findById(seatId).orElseThrow(() -> new ApiException(ErrorCode.SEAT_NOT_FOUND));
+                if (expectedHoldExpireAt != null && !seat.isHeldWith(expectedHoldExpireAt)) {
+                    return; // that hold is already gone (expired, released, or sold) - nothing of ours to give back
+                }
+                // Both reservation-service and SeatHoldExpirySweeper release expired holds, so the second call
+                // lands on an already-AVAILABLE seat - that must not count as a freshly freed seat for the waitlist.
+                boolean wasUnavailable = seat.getStatus() != SeatStatus.AVAILABLE;
+                seat.release();
+                if (wasUnavailable) {
+                    eventPublisher.publishEvent(new SeatsReleasedEvent(seat.getEvent().getId(), 1));
+                }
+            });
+        } catch (ObjectOptimisticLockingFailureException e) {
+            // Someone else changed the seat between our read and commit (e.g. the other sweeper freed it first).
+            // Either way the hold we meant to release is no longer ours to release.
         }
     }
 
