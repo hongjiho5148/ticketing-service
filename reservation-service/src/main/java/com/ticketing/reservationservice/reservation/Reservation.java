@@ -7,6 +7,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
@@ -15,7 +16,14 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
-@Table(name = "reservation")
+// Without these the table has only its primary key, so the per-user seat-limit count in reserve() and the expiry sweeper
+// scan every reservation ever made (cancelled and expired rows are never deleted) - a cost that grows with history.
+@Table(
+        name = "reservation",
+        indexes = {
+            @Index(name = "idx_reservation_user_event_status", columnList = "user_id, event_id, status"),
+            @Index(name = "idx_reservation_status_hold_expire", columnList = "status, hold_expire_at")
+        })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Reservation {
@@ -46,7 +54,7 @@ public class Reservation {
     @Column(nullable = false, length = 20)
     private ReservationStatus status;
 
-    @Column(nullable = false)
+    @Column(name = "hold_expire_at", nullable = false)
     private LocalDateTime holdExpireAt;
 
     @CreationTimestamp
