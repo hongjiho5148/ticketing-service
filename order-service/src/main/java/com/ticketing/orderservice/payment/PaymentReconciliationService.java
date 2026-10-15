@@ -14,7 +14,10 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Settles the case pay() never got the chance to: the customer paid at PortOne, but the browser closed or the
@@ -28,7 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
  * reservation-service cannot be reached - refunding a customer whose hold is in fact alive would be worse than waiting.
  */
 @Service
-@Transactional
+@Transactional(propagation = Propagation.SUPPORTS)
 public class PaymentReconciliationService {
 
     private static final Logger log = LoggerFactory.getLogger(PaymentReconciliationService.class);
@@ -39,6 +42,7 @@ public class PaymentReconciliationService {
     private final ReservationServiceClient reservationServiceClient;
     private final PortOneClient portOneClient;
     private final OrderService orderService;
+    private final TransactionTemplate transactionTemplate;
 
     public PaymentReconciliationService(
             OrderRepository orderRepository,
@@ -46,13 +50,15 @@ public class PaymentReconciliationService {
             PaymentAttemptRepository attemptRepository,
             ReservationServiceClient reservationServiceClient,
             PortOneClient portOneClient,
-            OrderService orderService) {
+            OrderService orderService,
+            PlatformTransactionManager transactionManager) {
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
         this.attemptRepository = attemptRepository;
         this.reservationServiceClient = reservationServiceClient;
         this.portOneClient = portOneClient;
         this.orderService = orderService;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
     public void reconcile(Long orderId) {
@@ -119,10 +125,13 @@ public class PaymentReconciliationService {
             return;
         }
         int paid = payment.amount() == null ? order.getTotalPrice() : (int) payment.amount().total();
-        Payment record = new Payment(order, payment.methodLabel(), attempt.getPaymentId(), PaymentStatus.FAILED, paid, null);
-        record.markRefunded(paid);
-        paymentRepository.save(record);
-        order.markFailed();
+        transactionTemplate.executeWithoutResult(status -> {
+            Orders current = orderRepository.findById(order.getId()).orElseThrow();
+            Payment record = new Payment(current, payment.methodLabel(), attempt.getPaymentId(), PaymentStatus.FAILED, paid, null);
+            record.markRefunded(paid);
+            paymentRepository.save(record);
+            current.markFailed();
+        });
         try {
             reservationServiceClient.cancel(order.getReservationId());
         } catch (RuntimeException e) {

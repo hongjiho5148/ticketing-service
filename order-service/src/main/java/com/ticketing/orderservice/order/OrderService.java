@@ -37,7 +37,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClientException;
 
 @Service
@@ -61,6 +64,7 @@ public class OrderService {
     private final TransferPolicy transferPolicy;
     private final IdentityVerificationService identityVerificationService;
     private final PaymentAttemptRepository paymentAttemptRepository;
+    private final TransactionTemplate transactionTemplate;
 
     public OrderService(
             OrderRepository orderRepository,
@@ -72,7 +76,8 @@ public class OrderService {
             TicketTransferRepository transferRepository,
             TransferPolicy transferPolicy,
             IdentityVerificationService identityVerificationService,
-            PaymentAttemptRepository paymentAttemptRepository) {
+            PaymentAttemptRepository paymentAttemptRepository,
+            PlatformTransactionManager transactionManager) {
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
         this.portOneClient = portOneClient;
@@ -83,6 +88,7 @@ public class OrderService {
         this.transferPolicy = transferPolicy;
         this.identityVerificationService = identityVerificationService;
         this.paymentAttemptRepository = paymentAttemptRepository;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
     public OrderResponse applyCoupon(Long userId, Long orderId, String code) {
@@ -148,9 +154,68 @@ public class OrderService {
      * The frontend only tells us a PortOne payment window finished - never whether it actually
      * succeeded. We look the payment up on PortOne's own server and check both its status and
      * amount before trusting it, so a tampered client request can't mark an order paid for free.
+     *
+     * <p>Not one big transaction: it calls PortOne and reservation-service over HTTP, and a transaction around those
+     * calls would keep a DB connection checked out while the thread just waits on the network. Instead each database
+     * step is its own short transaction and the network calls run in between with no connection held. That makes
+     * every step after the redeem something that has to be undone or retried safely: the redeem is idempotent
+     * (see Orders.benefitsRedeemedAt) and is compensated when the seat confirmation fails.
      */
+    @Transactional(propagation = Propagation.SUPPORTS)
     public PaymentResponse pay(Long userId, Long orderId, PaymentRequest request) {
-        Orders order = orderRepository.findById(orderId).orElseThrow(() -> new ApiException(ErrorCode.ORDER_NOT_FOUND));
+        PayContext ctx = transactionTemplate.execute(status -> preparePayment(userId, orderId, request));
+
+        PortOnePaymentResponse portOnePayment = portOneClient.getPayment(request.paymentId());
+        boolean verified = portOnePayment.isPaid() && portOnePayment.amount().total() == ctx.totalPrice();
+        // Recorded from PortOne's own report (card / KAKAOPAY / NAVERPAY ...), not from anything the client sent.
+        String method = portOnePayment.methodLabel();
+        if (!verified) {
+            return failPayment(ctx, request.paymentId(), method, null);
+        }
+
+        try {
+            transactionTemplate.executeWithoutResult(status -> orderBenefitService.redeem(loadOrder(orderId)));
+        } catch (ApiException e) {
+            // The customer already paid PortOne the discounted amount, but the coupon/points that
+            // justified that price can't be honored any more (spent elsewhere, coupon ran out) -
+            // so the payment gets refunded and the order fails instead of being paid at a price
+            // it no longer qualifies for.
+            log.warn("Benefits no longer valid for order {}: {}", orderId, e.getErrorCode());
+            refundQuietly(request.paymentId(), "쿠폰/포인트 적용 실패로 자동 환불");
+            return failPayment(ctx, request.paymentId(), method, null);
+        }
+
+        // Confirm on reservation-service (which sells the seat on its end) before committing our
+        // own PAID status locally, so a failed confirm never leaves an order marked paid with no
+        // matching reservation/seat state on the other side.
+        try {
+            reservationServiceClient.confirm(ctx.reservationId());
+        } catch (ApiException e) {
+            // The benefits were committed a moment ago; give them back so the order is exactly as it was before this
+            // attempt - a retry then redeems them afresh instead of finding them half-used.
+            reverseRedeemedBenefits(orderId);
+            if (e.getErrorCode() != ErrorCode.HOLD_EXPIRED) {
+                // reservation-service is unreachable or failed for another reason: nothing says the seat is
+                // lost, so the order stays PENDING and the same paymentId can be retried while the hold lasts.
+                throw e;
+            }
+            // The 5-minute hold ran out while the payment window was open, and the seat may already be free
+            // or held by someone else - confirming would sell one seat twice. The customer has paid, so
+            // refund the payment (the coupon/points/reward were already given back above).
+            log.warn("Hold expired before order {} could be confirmed - refunding payment {}", orderId, request.paymentId());
+            refundQuietly(request.paymentId(), "좌석 홀드 만료로 자동 환불");
+            return failPayment(ctx, request.paymentId(), method, "HOLD_EXPIRED");
+        }
+
+        return transactionTemplate.execute(status -> completePayment(orderId, method, request.paymentId()));
+    }
+
+    /** What the rest of pay() needs to know about the order, so it never has to hold a loaded entity across a network call. */
+    private record PayContext(Long orderId, Long reservationId, int totalPrice) {
+    }
+
+    private PayContext preparePayment(Long userId, Long orderId, PaymentRequest request) {
+        Orders order = loadOrder(orderId);
         if (!order.getUserId().equals(userId)) {
             throw new ApiException(ErrorCode.FORBIDDEN);
         }
@@ -173,58 +238,47 @@ public class OrderService {
         if (!registered) {
             throw new ApiException(ErrorCode.PAYMENT_NOT_REGISTERED);
         }
-
-        PortOnePaymentResponse portOnePayment = portOneClient.getPayment(request.paymentId());
-        boolean verified = portOnePayment.isPaid() && portOnePayment.amount().total() == order.getTotalPrice();
-        // Recorded from PortOne's own report (card / KAKAOPAY / NAVERPAY ...), not from anything the client sent.
-        String method = portOnePayment.methodLabel();
-
-        if (verified) {
-            try {
-                orderBenefitService.redeem(order);
-            } catch (ApiException e) {
-                // The customer already paid PortOne the discounted amount, but the coupon/points that
-                // justified that price can't be honored any more (spent elsewhere, coupon ran out) -
-                // so the payment gets refunded and the order fails instead of being paid at a price
-                // it no longer qualifies for.
-                log.warn("Benefits no longer valid for order {}: {}", orderId, e.getErrorCode());
-                refundQuietly(request.paymentId(), "쿠폰/포인트 적용 실패로 자동 환불");
-                return failPayment(order, request.paymentId(), method, null);
-            }
-            LocalDateTime paidAt = LocalDateTime.now();
-            // Confirm on reservation-service (which sells the seat on its end) before committing our
-            // own PAID status locally, so a failed confirm never leaves an order marked paid with no
-            // matching reservation/seat state on the other side.
-            try {
-                reservationServiceClient.confirm(order.getReservationId());
-            } catch (ApiException e) {
-                if (e.getErrorCode() != ErrorCode.HOLD_EXPIRED) {
-                    // reservation-service is unreachable or failed for another reason: nothing says the seat is
-                    // lost, so the order stays PENDING and the same paymentId can be retried while the hold lasts.
-                    throw e;
-                }
-                // The 5-minute hold ran out while the payment window was open, and the seat may already be free
-                // or held by someone else - confirming would sell one seat twice. The customer has paid, so give
-                // everything back: coupon, points and reward first, then the payment itself.
-                log.warn("Hold expired before order {} could be confirmed - refunding payment {}", orderId, request.paymentId());
-                orderBenefitService.reverse(order, 100);
-                refundQuietly(request.paymentId(), "좌석 홀드 만료로 자동 환불");
-                return failPayment(order, request.paymentId(), method, "HOLD_EXPIRED");
-            }
-            order.markPaid();
-            paymentRepository.save(
-                    new Payment(order, method, request.paymentId(), PaymentStatus.SUCCESS, order.getTotalPrice(), paidAt));
-            return new PaymentResponse(order.getId(), PaymentStatus.SUCCESS, paidAt, null);
-        }
-
-        return failPayment(order, request.paymentId(), method, null);
+        return new PayContext(order.getId(), order.getReservationId(), order.getTotalPrice());
     }
 
-    private PaymentResponse failPayment(Orders order, String paymentId, String method, String failureReason) {
-        reservationServiceClient.cancel(order.getReservationId());
-        order.markFailed();
-        paymentRepository.save(new Payment(order, method, paymentId, PaymentStatus.FAILED, order.getTotalPrice(), null));
-        return new PaymentResponse(order.getId(), PaymentStatus.FAILED, null, failureReason);
+    private Orders loadOrder(Long orderId) {
+        return orderRepository.findById(orderId).orElseThrow(() -> new ApiException(ErrorCode.ORDER_NOT_FOUND));
+    }
+
+    /** The last step: the seat is sold, so record the payment and flip the order. Row-locked so two completions cannot both win. */
+    private PaymentResponse completePayment(Long orderId, String method, String paymentId) {
+        Orders order = orderRepository.findByIdForUpdate(orderId).orElseThrow(() -> new ApiException(ErrorCode.ORDER_NOT_FOUND));
+        if (order.getStatus() != OrderStatus.PENDING) {
+            throw new ApiException(ErrorCode.ORDER_ALREADY_PAID);
+        }
+        LocalDateTime paidAt = LocalDateTime.now();
+        order.markPaid();
+        paymentRepository.save(new Payment(order, method, paymentId, PaymentStatus.SUCCESS, order.getTotalPrice(), paidAt));
+        return new PaymentResponse(order.getId(), PaymentStatus.SUCCESS, paidAt, null);
+    }
+
+    /** Undoes a redeem that was already committed. A failure here must not hide the error that made us undo it. */
+    private void reverseRedeemedBenefits(Long orderId) {
+        try {
+            transactionTemplate.executeWithoutResult(status -> {
+                Orders order = loadOrder(orderId);
+                if (order.isBenefitsRedeemed()) {
+                    orderBenefitService.reverse(order, 100);
+                }
+            });
+        } catch (RuntimeException e) {
+            log.error("Could not give back the coupon/points of order {} after a failed payment - needs a look: {}", orderId, e.getMessage());
+        }
+    }
+
+    private PaymentResponse failPayment(PayContext ctx, String paymentId, String method, String failureReason) {
+        reservationServiceClient.cancel(ctx.reservationId());
+        transactionTemplate.executeWithoutResult(status -> {
+            Orders order = loadOrder(ctx.orderId());
+            order.markFailed();
+            paymentRepository.save(new Payment(order, method, paymentId, PaymentStatus.FAILED, order.getTotalPrice(), null));
+        });
+        return new PaymentResponse(ctx.orderId(), PaymentStatus.FAILED, null, failureReason);
     }
 
     private void refundQuietly(String paymentId, String reason) {
