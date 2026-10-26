@@ -63,6 +63,7 @@ flowchart TB
 | `mysql` / `redis` / `kafka` | 데이터 저장소 · 메시징 | 서비스마다 스키마(`ticketing_auth`, `ticketing_event` 등) 분리 |
 
 각 서비스는 자신의 DB 스키마만 소유하며, 서비스 간 참조는 전부 `Long` id + 전용 REST 클라이언트로 이뤄집니다.
+스키마 변경은 서비스별 Flyway 마이그레이션(`src/main/resources/db/migration/V<n>__*.sql`)으로 관리하고, 엔티티와 DB가 다르면 기동 시 `validate`가 막습니다. 자세한 내용은 [설계 노트](design-notes.md#스키마-변경을-flyway로-관리-2026-10)를 보세요.
 JWT는 auth-service만 발급하고(`sub`, `email`, `role` 클레임), 나머지 서비스는 같은 시크릿으로 검증만 하며 `role`을
 `ROLE_USER` / `ROLE_ADMIN` 권한으로 바꿉니다. 권한 검사는 서비스별 `SecurityConfig`의 URL 매처(`hasRole("ADMIN")`)로 합니다.
 
