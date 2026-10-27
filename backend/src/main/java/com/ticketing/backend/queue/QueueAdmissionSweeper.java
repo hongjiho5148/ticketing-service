@@ -1,6 +1,8 @@
 package com.ticketing.backend.queue;
 
 import java.time.LocalDateTime;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 import org.redisson.api.RLock;
@@ -30,13 +32,16 @@ public class QueueAdmissionSweeper {
     private final int activeCapacity;
     private final long passTokenTtlMs;
     private final long sweepLockLeaseMs;
+    private final Counter admittedCounter;
 
     public QueueAdmissionSweeper(
             RedissonClient redissonClient,
             WaitingQueueRepository waitingQueueRepository,
             @Value("${queue.active-capacity}") int activeCapacity,
             @Value("${queue.pass-token-ttl-ms}") long passTokenTtlMs,
-            @Value("${queue.admission-interval-ms}") long admissionIntervalMs) {
+            @Value("${queue.admission-interval-ms}") long admissionIntervalMs,
+            MeterRegistry meterRegistry) {
+        this.admittedCounter = Counter.builder("queue_admitted_total").description("People let in from the queue").register(meterRegistry);
         this.redissonClient = redissonClient;
         this.waitingQueueRepository = waitingQueueRepository;
         this.activeCapacity = activeCapacity;
@@ -97,6 +102,7 @@ public class QueueAdmissionSweeper {
             active.add(expiresAt, queueToken);
             waiting.remove(queueToken);
         }
+        admittedCounter.increment(toAdmit.size());
         // Not a @Transactional method of this class: it is called from admitWaitingUsers() on this same object, so
         // Spring's proxy would never intercept it and nothing would be saved. The repository call opens its own
         // transaction, and it is one UPDATE for the whole batch.

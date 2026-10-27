@@ -74,7 +74,7 @@
 | **관리자 대시보드** | **모바일** |
 | <img src="docs/images/05-admin-dashboard.png" alt="관리자 대시보드"> | <img src="docs/images/07-mobile.png" alt="모바일 공연 목록" width="50%"> |
 
-관리자 앱의 [KOPIS 공연 가져오기](docs/images/06-admin-import.png) 화면도 있습니다.
+관리자 앱의 [KOPIS 공연 가져오기](docs/images/06-admin-import.png) 화면도 있습니다. 운영 지표 대시보드는 [Grafana 화면](docs/images/08-grafana-dashboard.png)에서 볼 수 있습니다(장애를 일으킨 뒤의 모습).
 
 ## 4. 중요 기술 및 기능
 
@@ -118,9 +118,10 @@ flowchart TB
 | 구매를 마친 사람이 대기열 슬롯을 계속 점유 | 결제 확정 이벤트로 슬롯을 즉시 반환(멱등): 시뮬레이션에서 전원 입장까지 152.5초 → 21.5초(모두 구매하는 최선의 경우) |
 | 스키마 변경 이력 없음·코드와 DB의 조용한 불일치 | **Flyway** 마이그레이션 + `ddl-auto: validate` (엔티티와 DB가 다르면 기동 실패) |
 | 서비스 하나가 멈추면 호출한 서비스까지 멈춤(타임아웃 없음) | 서비스 간 호출에 **타임아웃 + 서킷 브레이커 + 안전한 호출만 1회 재시도**: 장애 재현(event-service를 20초 얼림)에서 10초 넘는 예약 요청 62건 → 0건, 서킷은 5초 뒤 열리고 복구 직후 닫힘 (같은 PC 측정) |
+| 장애를 로그와 수작업 SQL로만 찾음 | **Prometheus + Grafana**: 요청·지연, DB 연결 풀, 서킷 상태, 아웃박스 적체, 대기열, 좌석 홀드·결제 결과를 한 화면에, 알림 규칙 5개. 장애 재현 때 그래프에 원인과 결과가 그대로 보임(수집 부담은 측정 오차 안) |
 
 설계 이유와 검증 방법은 [`docs/design-notes.md`](docs/design-notes.md)에 정리했습니다.
-동시성이 걸린 로직은 mock이 아니라 실제 MySQL에 붙는 통합 테스트로 검증하고, 테스트 메서드는 총 219개입니다.
+동시성이 걸린 로직은 mock이 아니라 실제 MySQL에 붙는 통합 테스트로 검증하고, 테스트 메서드는 총 223개입니다.
 
 ### 주요 기능
 
@@ -246,6 +247,7 @@ cd admin-frontend && npm install && npm run dev
 - 로그 확인: `docker compose logs -f gateway reservation-service`
 - DB 스키마는 서비스가 기동할 때 Flyway가 적용합니다(`src/main/resources/db/migration`). 엔티티를 바꾸면 `V<n>__*.sql`을 함께 추가해야 합니다.
 - `nginx/nginx.conf`를 바꾼 뒤에는 `docker compose up -d --force-recreate nginx`로 반영합니다.
+- 모니터링: Grafana `http://localhost:3030`(대시보드 "PickSeat 운영 현황", 익명은 보기만), Prometheus `http://localhost:9091`(수집 대상·알림). 둘 다 이 컴퓨터에서만 열립니다. 관리자 비밀번호는 `GRAFANA_ADMIN_PASSWORD`(기본값은 로컬 개발용).
 - 서비스 중지: `docker compose stop` (다시 켜기: `docker compose up -d`)
 - 부하테스트 방법은 [`docs/design-notes.md`](docs/design-notes.md#부하테스트-실행)에 있습니다.
 
@@ -289,6 +291,7 @@ cd admin-frontend && npm install && npm run dev
 | `JPA_SHOW_SQL` | `true`면 서비스들이 실행하는 SQL을 콘솔에 출력 (기본 false, 부하 시 초당 수만 줄이라 기본은 끔) |
 | `QUEUE_ACTIVE_CAPACITY` / `QUEUE_ADMISSION_INTERVAL_MS` | 대기열 동시 입장 수 / 입장 간격 |
 | `QUEUE_RELEASE_SLOT_ON_PURCHASE` | `false`면 결제를 마친 사람도 입장권이 만료될 때까지 슬롯을 유지 (기본 true) |
+| `GRAFANA_ADMIN_PASSWORD` | Grafana 관리자 비밀번호 (기본값은 로컬 개발용, `127.0.0.1`에만 열려 있음) |
 
 ## 9. 문서
 

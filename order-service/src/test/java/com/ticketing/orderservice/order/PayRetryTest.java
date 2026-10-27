@@ -22,6 +22,7 @@ import com.ticketing.orderservice.reservationclient.ReservationServiceClient;
 import com.ticketing.orderservice.verification.IdentityVerificationService;
 import com.ticketing.orderservice.verification.VerificationRecordRepository;
 import com.ticketing.orderservice.verification.dto.VerifyIdentityRequest;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.AfterEach;
@@ -60,6 +61,7 @@ class PayRetryTest {
     @Autowired private PointAccountRepository pointAccountRepository;
 
     @Autowired private org.springframework.transaction.PlatformTransactionManager txManager;
+    @Autowired private MeterRegistry meters;
 
     @MockitoBean private PortOneClient portOneClient;
     @MockitoBean private ReservationServiceClient reservationServiceClient;
@@ -132,7 +134,9 @@ class PayRetryTest {
 
         // reservation-service is back: the same payment id goes through
         org.mockito.Mockito.reset(reservationServiceClient);
+        double paidBefore = meters.counter("payments_total", "result", "success").count();
         PaymentResponse response = orderService.pay(userId, order.getId(), new PaymentRequest(paymentId));
+        assertThat(meters.counter("payments_total", "result", "success").count()).isEqualTo(paidBefore + 1);
 
         assertThat(response.paymentStatus()).isEqualTo(PaymentStatus.SUCCESS);
         assertThat(reload().getStatus()).isEqualTo(OrderStatus.PAID);
@@ -142,8 +146,10 @@ class PayRetryTest {
     @Test
     void anExpiredHoldGivesEverythingBack() {
         when(reservationServiceClient.confirm(anyLong())).thenThrow(new ApiException(ErrorCode.HOLD_EXPIRED));
+        double failedBefore = meters.counter("payments_total", "result", "failed").count();
 
         PaymentResponse response = orderService.pay(userId, order.getId(), new PaymentRequest(paymentId));
+        assertThat(meters.counter("payments_total", "result", "failed").count()).isEqualTo(failedBefore + 1);
 
         assertThat(response.paymentStatus()).isEqualTo(PaymentStatus.FAILED);
         assertThat(reload().getStatus()).isEqualTo(OrderStatus.FAILED);

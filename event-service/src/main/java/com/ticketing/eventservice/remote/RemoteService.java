@@ -3,6 +3,7 @@ package com.ticketing.eventservice.remote;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpTimeoutException;
@@ -42,13 +43,15 @@ public class RemoteService {
     private final CircuitBreaker breaker;
     private final long retryBackoffMs;
 
-    public RemoteService(String name, String baseUrl, RemoteSettings settings, Duration readTimeout) {
+    public RemoteService(
+            String name, String baseUrl, RemoteSettings settings, Duration readTimeout, CircuitBreakerRegistry registry) {
         this.name = name;
         HttpClient httpClient = HttpClient.newBuilder().connectTimeout(settings.connectTimeout()).build();
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
         requestFactory.setReadTimeout(readTimeout);
         this.restClient = RestClient.builder().baseUrl(baseUrl).requestFactory(requestFactory).build();
-        this.breaker = CircuitBreaker.of(name, CircuitBreakerConfig.custom()
+        // created through the registry so its state and call counts are exported as metrics (see RemoteServices)
+        this.breaker = registry.circuitBreaker(name, CircuitBreakerConfig.custom()
                 .slidingWindowType(CircuitBreakerConfig.SlidingWindowType.COUNT_BASED)
                 .slidingWindowSize(settings.windowSize())
                 .minimumNumberOfCalls(settings.minimumCalls())

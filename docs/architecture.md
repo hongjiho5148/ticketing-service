@@ -61,8 +61,11 @@ flowchart TB
 | `backend` | 대기열(Queue) 입장/상태 조회, 결제를 마친 사람의 슬롯 반환 | 3개 레플리카로 수평 확장되는 유일한 서비스. `reservation.confirmed`를 받아 슬롯 반환(멱등), 처리 못 하는 메시지는 재시도 후 DLT |
 | `nginx` | 외부 진입점, 내부 로드밸런서, 좌석 목록 캐시 | `backend` 전용 동적 로드밸런싱 포트(8081) 별도 운영, 좌석 목록 1초 캐시 + gzip |
 | `mysql` / `redis` / `kafka` | 데이터 저장소 · 메시징 | 서비스마다 스키마(`ticketing_auth`, `ticketing_event` 등) 분리. Kafka 토픽: `reservation.created`, `reservation.confirmed`(+ `.DLT`) |
+| `prometheus` / `grafana` | 지표 수집, 대시보드 | 각 서비스의 관리 포트(9090)를 10초마다 수집, 알림 규칙 5개. `127.0.0.1`에만 열림(Grafana 3030, Prometheus 9091) |
 
 서비스끼리의 HTTP 호출은 모두 `RemoteService`를 거칩니다: 연결 1초·읽기 5초 타임아웃, 실패가 쌓이면 잠시 호출 없이 거절하는 서킷 브레이커, 안전한 호출에만 한 번 재시도. 게이트웨이의 프록시도 연결 2초·읽기 30초입니다. 자세한 내용은 [설계 노트](design-notes.md#서비스-간-호출의-타임아웃서킷-브레이커재시도-2026-10)를 보세요.
+
+모든 서비스는 지표를 **별도 관리 포트(9090)** 로 내보냅니다. 이 포트는 docker 네트워크 안에만 있고 nginx와 게이트웨이가 라우팅하지 않아 외부에서는 닿지 않습니다. 대시보드와 알림은 [설계 노트](design-notes.md#운영-지표와-대시보드-prometheus--grafana-2026-10)를 보세요.
 
 각 서비스는 자신의 DB 스키마만 소유하며, 서비스 간 참조는 전부 `Long` id + 전용 REST 클라이언트로 이뤄집니다.
 스키마 변경은 서비스별 Flyway 마이그레이션(`src/main/resources/db/migration/V<n>__*.sql`)으로 관리하고, 엔티티와 DB가 다르면 기동 시 `validate`가 막습니다. 자세한 내용은 [설계 노트](design-notes.md#스키마-변경을-flyway로-관리-2026-10)를 보세요.

@@ -57,6 +57,9 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/error").permitAll()
+                        // Metrics are served on the separate management port (9090), which only exists inside the docker
+                        // network; this security chain covers that port too, and Prometheus carries no token.
+                        .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/admin/login", "/api/auth/verify-email", "/api/auth/resend-verification").permitAll()
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                         .requestMatchers("/internal/**").permitAll()

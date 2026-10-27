@@ -1,0 +1,44 @@
+# Alert rules. There is no Alertmanager in this setup, so these show up on Prometheus's Alerts page (and as firing alerts
+# in Grafana); wiring them to a channel (Slack, mail) means adding an Alertmanager.
+groups:
+  - name: pickseat
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 30s
+        labels: { severity: critical }
+        annotations:
+          summary: "{{ $labels.service }} ({{ $labels.instance }}) is not answering Prometheus"
+
+      # A circuit that stays broken flips between open and half-open every few seconds, so this fires the moment it opens
+      # and keeps firing for half a minute after, instead of requiring it to be open for a long unbroken stretch.
+      - alert: CircuitOpen
+        expr: resilience4j_circuitbreaker_state{state="open"} == 1
+        for: 0s
+        keep_firing_for: 30s
+        labels: { severity: warning }
+        annotations:
+          summary: "{{ $labels.application }} stopped calling {{ $labels.name }}: its circuit is open"
+
+      - alert: OutboxBacklog
+        expr: outbox_oldest_unsent_age_seconds > 30
+        for: 20s
+        labels: { severity: warning }
+        annotations:
+          summary: "Kafka events have been waiting {{ $value }}s in the outbox - Kafka or the relay is not delivering"
+
+      - alert: ServerErrorRate
+        expr: |
+          sum by (application) (rate(http_server_requests_seconds_count{status=~"5.."}[1m]))
+            / sum by (application) (rate(http_server_requests_seconds_count[1m])) > 0.05
+        for: 1m
+        labels: { severity: warning }
+        annotations:
+          summary: "{{ $labels.application }}: more than 5% of requests are failing with 5xx"
+
+      - alert: DbConnectionsWaiting
+        expr: hikaricp_connections_pending > 0
+        for: 1m
+        labels: { severity: warning }
+        annotations:
+          summary: "{{ $labels.application }}: requests are waiting for a database connection (pool exhausted)"
