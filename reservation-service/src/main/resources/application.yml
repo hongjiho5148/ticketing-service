@@ -25,6 +25,12 @@ spring:
   flyway:
     baseline-on-migrate: true
     baseline-version: 1
+  # The default scheduler has a single thread, so a slow sweep (remote calls) would hold up the outbox relay and a
+  # relay waiting on a down broker would hold up the sweeps.
+  task:
+    scheduling:
+      pool:
+        size: 3
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
@@ -37,6 +43,13 @@ jwt:
   # Deliberately no default: a secret baked into the source is a secret everyone has, and whoever holds it can
   # forge tokens. The service refuses to start until JWT_SECRET is set (see .env.example).
   secret: ${JWT_SECRET}
+
+# Events reach Kafka through the outbox table (see OutboxRelay); these are its defaults.
+outbox:
+  relay-interval-ms: 500
+  send-timeout-ms: 5000
+  retention-hours: 24
+  purge-cron: "0 0 * * * *"
 
 reservation:
   hold-expire-sweep-cron: "0 * * * * *"
