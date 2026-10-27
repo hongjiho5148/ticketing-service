@@ -48,6 +48,10 @@ jwt:
 outbox:
   relay-interval-ms: 500
   send-timeout-ms: 5000
+  # How long a relay holds the rows it claimed; another instance takes them over if it dies mid-send.
+  lease-ms: 30000
+  # SQL LIKE pattern of the topics this relay sends ("%" = all).
+  topic-pattern: "%"
   retention-hours: 24
   purge-cron: "0 0 * * * *"
 

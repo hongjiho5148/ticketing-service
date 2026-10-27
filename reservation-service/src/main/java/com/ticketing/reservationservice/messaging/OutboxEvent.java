@@ -40,6 +40,12 @@ public class OutboxEvent {
     /** Null until the broker acknowledged the event. */
     private LocalDateTime sentAt;
 
+    /** The relay poll that holds this row for sending, and until when (see OutboxEventRepository.claim). */
+    @Column(length = 64)
+    private String claimedBy;
+
+    private LocalDateTime claimedUntil;
+
     public OutboxEvent(String topic, String eventKey, String payload) {
         this.topic = topic;
         this.eventKey = eventKey;
