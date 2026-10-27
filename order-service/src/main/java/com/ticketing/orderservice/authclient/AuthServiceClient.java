@@ -4,7 +4,8 @@ import com.ticketing.orderservice.authclient.dto.UserInternalResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestClient;
+import com.ticketing.orderservice.remote.RemoteService;
+import com.ticketing.orderservice.remote.RemoteServices;
 
 /**
  * Talks to auth-service directly over the docker network - never through the public Gateway.
@@ -15,25 +16,26 @@ import org.springframework.web.client.RestClient;
 @Component
 public class AuthServiceClient {
 
-    private final RestClient restClient;
+    private final RemoteService remote;
 
-    public AuthServiceClient(@Value("${auth.service.uri}") String baseUrl) {
-        this.restClient = RestClient.builder().baseUrl(baseUrl).build();
+    public AuthServiceClient(RemoteServices remotes, @Value("${auth.service.uri}") String baseUrl) {
+        this.remote = remotes.create("auth-service", baseUrl);
     }
 
     /** The user registered under this email, or null when there is none. Other failures still throw. */
     public UserInternalResponse lookupByEmail(String email) {
         try {
-            return restClient.get()
+            return remote.callIdempotent(() -> remote.rest().get()
                     .uri(uriBuilder -> uriBuilder.path("/internal/users/lookup").queryParam("email", email).build())
                     .retrieve()
-                    .body(UserInternalResponse.class);
+                    .body(UserInternalResponse.class));
         } catch (HttpClientErrorException.NotFound e) {
             return null;
         }
     }
 
     public UserInternalResponse getUser(Long userId) {
-        return restClient.get().uri("/internal/users/{id}", userId).retrieve().body(UserInternalResponse.class);
+        return remote.callIdempotent(
+                () -> remote.rest().get().uri("/internal/users/{id}", userId).retrieve().body(UserInternalResponse.class));
     }
 }

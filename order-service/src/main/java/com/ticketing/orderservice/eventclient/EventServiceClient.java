@@ -10,26 +10,27 @@ import java.util.function.Supplier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestClient;
+import com.ticketing.orderservice.remote.RemoteService;
+import com.ticketing.orderservice.remote.RemoteServices;
 import org.springframework.web.client.RestClientException;
 
 /** Talks to event-service directly over the docker network - never through the public Gateway, which is for external clients only. */
 @Component
 public class EventServiceClient {
 
-    private final RestClient restClient;
+    private final RemoteService remote;
 
-    public EventServiceClient(@Value("${event.service.uri}") String baseUrl) {
-        this.restClient = RestClient.builder().baseUrl(baseUrl).build();
+    public EventServiceClient(RemoteServices remotes, @Value("${event.service.uri}") String baseUrl) {
+        this.remote = remotes.create("event-service", baseUrl);
     }
 
     public SeatDetailResponse getSeat(Long seatId) {
         return call(
-                () -> restClient.get().uri("/internal/seats/{id}", seatId).retrieve().body(SeatDetailResponse.class));
+                () -> remote.rest().get().uri("/internal/seats/{id}", seatId).retrieve().body(SeatDetailResponse.class));
     }
 
     public List<SeatDetailResponse> getSeats(List<Long> seatIds) {
-        SeatBatchResponse response = call(() -> restClient
+        SeatBatchResponse response = call(() -> remote.rest()
                 .post()
                 .uri("/internal/seats/batch")
                 .body(new SeatBatchRequest(seatIds))
@@ -40,7 +41,7 @@ public class EventServiceClient {
 
     private <T> T call(Supplier<T> request) {
         try {
-            return request.get();
+            return remote.callIdempotent(request); // both calls only read
         } catch (HttpClientErrorException.NotFound e) {
             throw new ApiException(ErrorCode.SEAT_NOT_FOUND);
         } catch (RestClientException e) {
