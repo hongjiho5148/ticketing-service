@@ -9,9 +9,7 @@ import com.ticketing.eventservice.event.dto.RatingStats;
 import com.ticketing.eventservice.event.dto.SeatGradeSummary;
 import com.ticketing.eventservice.event.dto.SeatSectionSummary;
 import com.ticketing.eventservice.review.ReviewRepository;
-import com.ticketing.eventservice.seat.Seat;
 import com.ticketing.eventservice.seat.SeatRepository;
-import com.ticketing.eventservice.seat.SeatStatus;
 import com.ticketing.eventservice.seat.dto.SeatResponse;
 import java.time.LocalDate;
 import java.util.Comparator;
@@ -76,32 +74,24 @@ public class EventService {
 
     public EventDetailResponse getEventDetail(Long eventId) {
         Event event = eventRepository.findById(eventId).orElseThrow(() -> new ApiException(ErrorCode.EVENT_NOT_FOUND));
-        List<Seat> seats = seatRepository.findByEventId(eventId);
         long reviewCount = reviewRepository.countByEventId(eventId);
         RatingStats rating = reviewCount == 0
                 ? RatingStats.NONE
                 : new RatingStats(reviewRepository.findAverageRatingByEventId(eventId), reviewCount);
 
-        Map<String, List<Seat>> byGrade = seats.stream().collect(Collectors.groupingBy(Seat::getSeatGrade));
-        List<SeatGradeSummary> seatSummary = byGrade.entrySet().stream()
-                .map(entry -> new SeatGradeSummary(
-                        entry.getKey(),
-                        entry.getValue().size(),
-                        entry.getValue().stream().filter(seat -> seat.getStatus() == SeatStatus.AVAILABLE).count()))
+        // Counted by the database (GROUP BY) rather than by loading every seat of the event just to tally them.
+        List<SeatGradeSummary> seatSummary = seatRepository.gradeSummary(eventId).stream()
+                .map(row -> new SeatGradeSummary((String) row[0], ((Number) row[1]).longValue(), ((Number) row[2]).longValue()))
                 .sorted(Comparator.comparing(SeatGradeSummary::grade))
                 .toList();
 
-        Map<String, List<Seat>> bySection = seats.stream().collect(Collectors.groupingBy(Seat::getSection));
-        List<SeatSectionSummary> sectionSummary = bySection.entrySet().stream()
-                .map(entry -> {
-                    List<Seat> sectionSeats = entry.getValue();
-                    return new SeatSectionSummary(
-                            entry.getKey(),
-                            sectionSeats.get(0).getSeatGrade(),
-                            sectionSeats.get(0).getPrice(),
-                            sectionSeats.size(),
-                            sectionSeats.stream().filter(seat -> seat.getStatus() == SeatStatus.AVAILABLE).count());
-                })
+        List<SeatSectionSummary> sectionSummary = seatRepository.sectionSummary(eventId).stream()
+                .map(row -> new SeatSectionSummary(
+                        (String) row[0],
+                        (String) row[1],
+                        ((Number) row[2]).intValue(),
+                        ((Number) row[3]).longValue(),
+                        ((Number) row[4]).longValue()))
                 .sorted(Comparator.comparing(SeatSectionSummary::section))
                 .toList();
 
@@ -112,9 +102,8 @@ public class EventService {
         if (!eventRepository.existsById(eventId)) {
             throw new ApiException(ErrorCode.EVENT_NOT_FOUND);
         }
-        List<Seat> seats = grade == null
-                ? seatRepository.findByEventId(eventId)
-                : seatRepository.findByEventIdAndSeatGrade(eventId, grade);
-        return seats.stream().map(SeatResponse::from).toList();
+        return grade == null
+                ? seatRepository.listForEvent(eventId)
+                : seatRepository.listForEventAndGrade(eventId, grade);
     }
 }
