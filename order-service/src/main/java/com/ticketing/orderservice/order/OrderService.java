@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -65,6 +66,7 @@ public class OrderService {
     private final IdentityVerificationService identityVerificationService;
     private final PaymentAttemptRepository paymentAttemptRepository;
     private final TransactionTemplate transactionTemplate;
+    private final MeterRegistry meterRegistry;
 
     public OrderService(
             OrderRepository orderRepository,
@@ -77,7 +79,9 @@ public class OrderService {
             TransferPolicy transferPolicy,
             IdentityVerificationService identityVerificationService,
             PaymentAttemptRepository paymentAttemptRepository,
-            PlatformTransactionManager transactionManager) {
+            PlatformTransactionManager transactionManager,
+            MeterRegistry meterRegistry) {
+        this.meterRegistry = meterRegistry;
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
         this.portOneClient = portOneClient;
@@ -254,6 +258,7 @@ public class OrderService {
         LocalDateTime paidAt = LocalDateTime.now();
         order.markPaid();
         paymentRepository.save(new Payment(order, method, paymentId, PaymentStatus.SUCCESS, order.getTotalPrice(), paidAt));
+        meterRegistry.counter("payments_total", "result", "success").increment();
         return new PaymentResponse(order.getId(), PaymentStatus.SUCCESS, paidAt, null);
     }
 
@@ -278,6 +283,7 @@ public class OrderService {
             order.markFailed();
             paymentRepository.save(new Payment(order, method, paymentId, PaymentStatus.FAILED, order.getTotalPrice(), null));
         });
+        meterRegistry.counter("payments_total", "result", "failed").increment();
         return new PaymentResponse(ctx.orderId(), PaymentStatus.FAILED, null, failureReason);
     }
 

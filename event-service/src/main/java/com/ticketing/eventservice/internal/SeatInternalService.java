@@ -8,6 +8,7 @@ import com.ticketing.eventservice.seat.Seat;
 import com.ticketing.eventservice.seat.SeatLockService;
 import com.ticketing.eventservice.seat.SeatRepository;
 import com.ticketing.eventservice.seat.SeatStatus;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.context.ApplicationEventPublisher;
@@ -24,12 +25,15 @@ public class SeatInternalService {
     private final SeatLockService seatLockService;
     private final ApplicationEventPublisher eventPublisher;
     private final TransactionTemplate transactionTemplate;
+    private final MeterRegistry meterRegistry;
 
     public SeatInternalService(
             SeatRepository seatRepository,
             SeatLockService seatLockService,
             ApplicationEventPublisher eventPublisher,
-            PlatformTransactionManager transactionManager) {
+            PlatformTransactionManager transactionManager,
+            MeterRegistry meterRegistry) {
+        this.meterRegistry = meterRegistry;
         this.seatRepository = seatRepository;
         this.seatLockService = seatLockService;
         this.eventPublisher = eventPublisher;
@@ -55,14 +59,23 @@ public class SeatInternalService {
      * the lock a moment before the commit.) The @Version check on Seat stays as the last line of defense.
      */
     public SeatDetailResponse hold(Long seatId, LocalDateTime holdExpireAt) {
-        return seatLockService.executeWithLock(seatId, () -> transactionTemplate.execute(status -> {
-            Seat seat = seatRepository.findById(seatId).orElseThrow(() -> new ApiException(ErrorCode.SEAT_NOT_FOUND));
-            if (seat.getStatus() != SeatStatus.AVAILABLE) {
-                throw new ApiException(ErrorCode.SEAT_ALREADY_RESERVED);
-            }
-            seat.hold(holdExpireAt);
-            return SeatDetailResponse.from(seat);
-        }));
+        try {
+            SeatDetailResponse held = seatLockService.executeWithLock(seatId, () -> transactionTemplate.execute(status -> {
+                Seat seat = seatRepository.findById(seatId).orElseThrow(() -> new ApiException(ErrorCode.SEAT_NOT_FOUND));
+                if (seat.getStatus() != SeatStatus.AVAILABLE) {
+                    throw new ApiException(ErrorCode.SEAT_ALREADY_RESERVED);
+                }
+                seat.hold(holdExpireAt);
+                return SeatDetailResponse.from(seat);
+            }));
+            meterRegistry.counter("seat_hold_total", "result", "ok").increment();
+            return held;
+        } catch (ApiException e) {
+            // a conflict (taken, or the seat lock was busy) is the normal outcome of a seat many people want
+            String result = e.getErrorCode() == ErrorCode.SEAT_ALREADY_RESERVED ? "conflict" : "error";
+            meterRegistry.counter("seat_hold_total", "result", result).increment();
+            throw e;
+        }
     }
 
     /**

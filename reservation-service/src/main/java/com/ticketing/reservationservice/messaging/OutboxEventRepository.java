@@ -12,6 +12,9 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> 
 
     long countBySentAtIsNull();
 
+    /** The oldest event still waiting to go out (for how long the backlog has been stuck). */
+    java.util.Optional<OutboxEvent> findFirstBySentAtIsNullOrderByIdAsc();
+
     /**
      * Locks up to 100 of the oldest unsent rows nobody holds a live lease on, skipping rows another transaction has
      * already locked instead of waiting for them. Must run inside the transaction that then {@link #assign}s them (see

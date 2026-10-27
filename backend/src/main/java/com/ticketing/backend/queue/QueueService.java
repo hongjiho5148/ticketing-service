@@ -5,6 +5,8 @@ import com.ticketing.backend.common.ErrorCode;
 import com.ticketing.backend.eventclient.EventServiceClient;
 import com.ticketing.backend.queue.dto.QueueEnterResponse;
 import com.ticketing.backend.queue.dto.QueueStatusResponse;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;
 import java.util.UUID;
 import org.redisson.api.RAtomicLong;
@@ -29,6 +31,8 @@ public class QueueService {
     private final int activeCapacity;
     private final long admissionIntervalMs;
     private final boolean releaseSlotOnPurchase;
+    private final Counter enteredCounter;
+    private final Counter releasedCounter;
 
     public QueueService(
             RedissonClient redissonClient,
@@ -36,7 +40,11 @@ public class QueueService {
             EventServiceClient eventServiceClient,
             @Value("${queue.active-capacity}") int activeCapacity,
             @Value("${queue.admission-interval-ms}") long admissionIntervalMs,
-            @Value("${queue.release-slot-on-purchase:true}") boolean releaseSlotOnPurchase) {
+            @Value("${queue.release-slot-on-purchase:true}") boolean releaseSlotOnPurchase,
+            MeterRegistry meterRegistry) {
+        this.enteredCounter = Counter.builder("queue_entered_total").description("People who joined a queue").register(meterRegistry);
+        this.releasedCounter = Counter.builder("queue_slots_released_total")
+                .description("Active slots handed back because the buyer paid").register(meterRegistry);
         this.redissonClient = redissonClient;
         this.waitingQueueRepository = waitingQueueRepository;
         this.eventServiceClient = eventServiceClient;
@@ -63,6 +71,7 @@ public class QueueService {
         long rankNo = rankOf(waiting, queueToken);
 
         waitingQueueRepository.save(new WaitingQueue(userId, eventId, queueToken, rankNo));
+        enteredCounter.increment();
 
         return new QueueEnterResponse(queueToken, rankNo, estimateWaitSeconds(rankNo));
     }
@@ -120,6 +129,7 @@ public class QueueService {
         for (WaitingQueue entry : waitingQueueRepository.findByUserIdAndEventId(userId, eventId)) {
             if (active.remove(entry.getQueueToken())) {
                 released++;
+                releasedCounter.increment();
             }
         }
         return released;

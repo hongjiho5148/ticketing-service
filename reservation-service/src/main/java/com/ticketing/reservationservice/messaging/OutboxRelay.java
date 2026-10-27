@@ -1,6 +1,8 @@
 package com.ticketing.reservationservice.messaging;
 
 import jakarta.annotation.PreDestroy;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -43,6 +45,8 @@ public class OutboxRelay {
     private final long leaseMs;
     private final String topicPattern;
     private long lastWarnAtMs;
+    private final Counter sentCounter;
+    private final Counter failureCounter;
 
     /** At most one extra poll waits behind a running one; more requests are dropped, since that poll sees everything. */
     private final ExecutorService kicker = new ThreadPoolExecutor(
@@ -55,7 +59,12 @@ public class OutboxRelay {
             @Value("${outbox.send-timeout-ms:5000}") long sendTimeoutMs,
             @Value("${outbox.retention-hours:24}") long retentionHours,
             @Value("${outbox.lease-ms:30000}") long leaseMs,
-            @Value("${outbox.topic-pattern:%}") String topicPattern) {
+            @Value("${outbox.topic-pattern:%}") String topicPattern,
+            MeterRegistry meterRegistry) {
+        this.sentCounter = Counter.builder("outbox_events_sent_total")
+                .description("Outbox events acknowledged by Kafka").register(meterRegistry);
+        this.failureCounter = Counter.builder("outbox_send_failures_total")
+                .description("Attempts to send an outbox event that Kafka did not acknowledge").register(meterRegistry);
         this.repository = repository;
         this.claimer = claimer;
         this.kafkaTemplate = kafkaTemplate;
@@ -107,10 +116,12 @@ public class OutboxRelay {
             } catch (Exception e) {
                 // Kafka is down or slow. Nothing is lost - the rows go back to unsent and the next poll starts from this one.
                 repository.release(token);
+                failureCounter.increment();
                 warnThrottled(batch.get(0), batch.size() - sent, e);
                 break;
             }
             repository.markSent(event.getId(), LocalDateTime.now());
+            sentCounter.increment();
             sent++;
         }
         return sent;

@@ -69,3 +69,19 @@ captcha:
   enabled: ${CAPTCHA_ENABLED:true}
   secret: ${RECAPTCHA_SECRET_KEY:}
   verify-url: https://www.google.com/recaptcha/api/siteverify
+
+# Metrics for Prometheus, on a separate port that only exists inside the docker network: nothing routes to it (the
+# gateway forwards /api/** only), so it is never reachable from outside and needs no authentication of its own.
+management:
+  server:
+    port: 9090
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true

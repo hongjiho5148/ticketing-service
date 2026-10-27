@@ -133,3 +133,19 @@ rate-limit:
 cors:
   # 5173 = public site, 5174 = admin app (separate origin on purpose, so the two never share storage).
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174}
+
+# Metrics for Prometheus, on a separate port that only exists inside the docker network: nothing routes to it (the
+# gateway forwards /api/** only), so it is never reachable from outside and needs no authentication of its own.
+management:
+  server:
+    port: 9090
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true

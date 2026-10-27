@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -88,7 +89,7 @@ class RemoteServiceTest {
     }
 
     private RemoteService remote() {
-        return new RemoteService("test-service", baseUrl, SETTINGS, SETTINGS.readTimeout());
+        return new RemoteService("test-service", baseUrl, SETTINGS, SETTINGS.readTimeout(), CircuitBreakerRegistry.ofDefaults());
     }
 
     private static String get(RemoteService remote, String path) {
@@ -120,7 +121,8 @@ class RemoteServiceTest {
         try (ServerSocket socket = new ServerSocket(0)) {
             closedPort = socket.getLocalPort();
         }
-        RemoteService remote = new RemoteService("nobody-home", "http://127.0.0.1:" + closedPort, SETTINGS, SETTINGS.readTimeout());
+        RemoteService remote = new RemoteService(
+                "nobody-home", "http://127.0.0.1:" + closedPort, SETTINGS, SETTINGS.readTimeout(), CircuitBreakerRegistry.ofDefaults());
 
         long started = System.nanoTime();
         assertThatThrownBy(() -> remote.call(() -> get(remote, "/ok"))).isInstanceOf(ResourceAccessException.class);
