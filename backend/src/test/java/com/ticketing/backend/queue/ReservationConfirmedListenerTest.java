@@ -96,18 +96,18 @@ class ReservationConfirmedListenerTest {
     }
 
     /**
-     * In the running service the sweeper admits people from a method it calls on itself, so no transaction is opened and
-     * the history row is never marked PASSED. Admitting through the unproxied bean reproduces exactly that; the slot must
-     * still come back.
+     * The sweeper used to admit people from a @Transactional method it called on itself, which Spring never intercepted,
+     * so the history row stayed WAITING in the running service. Admitting through the unproxied bean (no surrounding
+     * transaction, exactly as in production) must now leave it PASSED, and the slot still comes back.
      */
     @Test
-    void theSlotIsHandedBackEvenThoughTheAdmissionNeverMarkedTheHistoryRowPassed() throws Exception {
+    void theSlotIsHandedBackAndTheAdmissionMarkedTheHistoryRowPassed() throws Exception {
         long buyer = 9_100_000_000L + SEQ.incrementAndGet() % 1_000_000;
         String buyerToken = enter(buyer);
         AopTestUtils.<QueueAdmissionSweeper>getUltimateTargetObject(sweeper).admitForEvent(eventId);
         assertThat(passValid(buyerToken)).isTrue();
         assertThat(waitingQueueRepository.findByQueueToken(buyerToken).orElseThrow().getStatus())
-                .isEqualTo(QueueEntryStatus.WAITING);
+                .isEqualTo(QueueEntryStatus.PASSED);
 
         confirmed(buyer);
 
