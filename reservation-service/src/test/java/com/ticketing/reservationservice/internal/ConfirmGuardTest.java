@@ -10,11 +10,15 @@ import static org.mockito.Mockito.verify;
 import com.ticketing.reservationservice.common.ApiException;
 import com.ticketing.reservationservice.common.ErrorCode;
 import com.ticketing.reservationservice.eventclient.EventServiceClient;
+import com.ticketing.reservationservice.messaging.KafkaTopics;
+import com.ticketing.reservationservice.messaging.OutboxEvent;
+import com.ticketing.reservationservice.messaging.OutboxEventRepository;
 import com.ticketing.reservationservice.queueclient.QueueServiceClient;
 import com.ticketing.reservationservice.reservation.Reservation;
 import com.ticketing.reservationservice.reservation.ReservationRepository;
 import com.ticketing.reservationservice.reservation.ReservationStatus;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +38,7 @@ class ConfirmGuardTest {
 
     @Autowired private ReservationInternalService internalService;
     @Autowired private ReservationRepository reservationRepository;
+    @Autowired private OutboxEventRepository outboxEventRepository;
 
     @MockitoBean private EventServiceClient eventServiceClient;
     @MockitoBean private QueueServiceClient queueServiceClient;
@@ -84,5 +89,46 @@ class ConfirmGuardTest {
 
         assertThat(r.getStatus()).isEqualTo(ReservationStatus.CONFIRMED);
         verify(eventServiceClient, never()).sell(anyLong(), any());
+    }
+
+    private List<OutboxEvent> confirmedEventsFor(Reservation r) {
+        return outboxEventRepository.findAll().stream()
+                .filter(e -> e.getTopic().equals(KafkaTopics.RESERVATION_CONFIRMED)
+                        && e.getEventKey().equals(r.getId().toString()))
+                .toList();
+    }
+
+    @Test
+    void confirmingRecordsOneReservationConfirmedEventNamingTheBuyerAndTheEvent() {
+        Reservation r = reservation(ReservationStatus.HOLDING, LocalDateTime.now().plusMinutes(3));
+
+        internalService.confirm(r.getId());
+
+        List<OutboxEvent> events = confirmedEventsFor(r);
+        assertThat(events).hasSize(1);
+        assertThat(events.get(0).getSentAt()).isNull();
+        assertThat(events.get(0).getPayload())
+                .contains("\"reservationId\":" + r.getId())
+                .contains("\"userId\":" + r.getUserId())
+                .contains("\"eventId\":" + r.getEventId());
+    }
+
+    @Test
+    void confirmingTwiceStillRecordsOnlyOneEvent() {
+        Reservation r = reservation(ReservationStatus.HOLDING, LocalDateTime.now().plusMinutes(3));
+
+        internalService.confirm(r.getId());
+        internalService.confirm(r.getId());
+
+        assertThat(confirmedEventsFor(r)).hasSize(1);
+    }
+
+    @Test
+    void aReservationThatCannotBeConfirmedAnnouncesNothing() {
+        Reservation r = reservation(ReservationStatus.EXPIRED, LocalDateTime.now().minusMinutes(1));
+
+        assertThatThrownBy(() -> internalService.confirm(r.getId())).isInstanceOf(ApiException.class);
+
+        assertThat(confirmedEventsFor(r)).isEmpty();
     }
 }

@@ -28,18 +28,21 @@ public class QueueService {
     private final EventServiceClient eventServiceClient;
     private final int activeCapacity;
     private final long admissionIntervalMs;
+    private final boolean releaseSlotOnPurchase;
 
     public QueueService(
             RedissonClient redissonClient,
             WaitingQueueRepository waitingQueueRepository,
             EventServiceClient eventServiceClient,
             @Value("${queue.active-capacity}") int activeCapacity,
-            @Value("${queue.admission-interval-ms}") long admissionIntervalMs) {
+            @Value("${queue.admission-interval-ms}") long admissionIntervalMs,
+            @Value("${queue.release-slot-on-purchase:true}") boolean releaseSlotOnPurchase) {
         this.redissonClient = redissonClient;
         this.waitingQueueRepository = waitingQueueRepository;
         this.eventServiceClient = eventServiceClient;
         this.activeCapacity = activeCapacity;
         this.admissionIntervalMs = admissionIntervalMs;
+        this.releaseSlotOnPurchase = releaseSlotOnPurchase;
     }
 
     @Transactional
@@ -90,6 +93,36 @@ public class QueueService {
         }
         Double expiresAt = redissonClient.<String>getScoredSortedSet(activeKey(eventId)).getScore(passToken);
         return expiresAt != null && expiresAt > System.currentTimeMillis();
+    }
+
+    /**
+     * Hands back the active slot(s) a buyer is holding for an event, once they have paid: the slot would otherwise stay
+     * taken until the pass token expired (ten minutes by default) although the person is finished. Looked up by user
+     * and event because the live queue is keyed by queue token, which the payment side doesn't know. Safe to call
+     * repeatedly - a slot that is already gone is simply not there to remove.
+     *
+     * <p>Deliberately does not filter on the history row's status: QueueAdmissionSweeper marks entries PASSED from a
+     * transactional method it calls on itself, which Spring does not intercept, so in the running service that status
+     * is never saved. Only tokens in the active set are touched anyway, so looking at every entry of the user is safe.
+     *
+     * <p>The trade-off: the pass token stops working, so someone who wants more seats after paying joins the queue
+     * again. Turn it off with queue.release-slot-on-purchase=false.
+     *
+     * @return how many slots were handed back
+     */
+    @Transactional(readOnly = true)
+    public int releaseSlotsOfBuyer(Long userId, Long eventId) {
+        if (!releaseSlotOnPurchase) {
+            return 0;
+        }
+        RScoredSortedSet<String> active = redissonClient.getScoredSortedSet(activeKey(eventId));
+        int released = 0;
+        for (WaitingQueue entry : waitingQueueRepository.findByUserIdAndEventId(userId, eventId)) {
+            if (active.remove(entry.getQueueToken())) {
+                released++;
+            }
+        }
+        return released;
     }
 
     private long rankOf(RScoredSortedSet<String> waiting, String queueToken) {
