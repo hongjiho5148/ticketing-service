@@ -47,6 +47,7 @@
 ![JWT](https://img.shields.io/badge/JWT-000000?style=flat&logo=jsonwebtokens&logoColor=white)
 ![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=flat&logo=redis&logoColor=white&labelColor=555555)
 ![Kafka](https://img.shields.io/badge/Kafka-3.8-231F20?style=flat&logo=apachekafka&logoColor=white&labelColor=555555)
+![Flyway](https://img.shields.io/badge/Flyway-CC0200?style=flat&logo=flyway&logoColor=white&labelColor=555555)
 ![MySQL](https://img.shields.io/badge/MySQL-8-4479A1?style=flat&logo=mysql&logoColor=white&labelColor=555555)
 ![JUnit5](https://img.shields.io/badge/JUnit5-25A162?style=flat&logo=junit5&logoColor=white)
 
@@ -95,7 +96,7 @@ flowchart TB
     Event --> KOPIS["KOPIS 오픈API"]
     Auth --> MySQL[("MySQL\n서비스별 스키마")]
     Event --> Redis[("Redis\n분산락")]
-    Reservation -. Kafka .-> Backend
+    Reservation -. "Kafka (outbox)" .-> Backend
 ```
 
 서비스별 역할과 라우팅, 봇 방어 설정은 [`docs/architecture.md`](docs/architecture.md)에 있습니다.
@@ -105,16 +106,20 @@ flowchart TB
 | 문제 | 해결 |
 |---|---|
 | 같은 좌석을 동시에 잡는 경쟁 | Redisson 분산락 + 좌석 상태 확인을 한 임계 구역에서 처리 (동시 30건에도 중복 예약 0건) |
-| 사용자가 한꺼번에 몰림 | 선착순 **대기열**, 수평 확장한 backend 3개로 분산, nginx 연결 재사용으로 실패율 24% → 0.05% (기능 확장 이전 구조 기준) |
+| 사용자가 한꺼번에 몰림 | 선착순 **대기열**, 수평 확장한 backend 3개로 분산, nginx 연결 재사용으로 실패율 25.37% → 0.04% (현재 구조 재측정, 서비스 분리 직후 최초 발견은 24% → 0.05%) |
 | 결제·환불·쿠폰·포인트 정합성 | 조건부 `UPDATE`로 원자적 처리, PortOne 결제를 서버에서 재검증, 환불액을 서버가 계산해 확인 후 취소 |
 | 같은 QR을 두 번 스캔 | `UPDATE … WHERE status='ISSUED'` 한 문장으로 전이해 한 건만 성공 |
 | 봇의 로그인 대입·좌석 선점 | IP별 토큰 버킷 레이트 리미팅 + reCAPTCHA (검증 서버 장애 시 통과시키지 않음) |
 | 시크릿 노출·토큰 위조 | JWT·QR 시크릿 기본값 제거(없거나 32바이트 미만이면 기동 거부), 관리자 토큰 분리·15분 단명 |
 | 메일 서버 지연·장애 | 커밋 이후 비동기 발송, 실패해도 결제·예약 흐름 유지 |
 | 실제 공연 데이터 | KOPIS 공공데이터 연동 (이용 조건 준수: 호출 간격 제한, 출처 표기, XXE 방어) |
+| 좌석 목록 읽기 부하 | 조회를 엔티티 대신 projection·DB 집계로 바꾸고, nginx가 좌석 목록만 1초 캐시 + gzip: 처리량 299 → 745 req/s, 응답 360KB → 29KB, event-service CPU 약 490% → 8% (같은 PC 측정) |
+| DB 저장과 Kafka 발행의 불일치(이벤트 유실) | **Transactional Outbox**: 예약과 같은 트랜잭션에 기록하고 릴레이가 브로커 확인 후 전송, 여러 인스턴스는 행 임대로 중복 방지, 소비자는 재시도 후 DLT |
+| 구매를 마친 사람이 대기열 슬롯을 계속 점유 | 결제 확정 이벤트로 슬롯을 즉시 반환(멱등): 시뮬레이션에서 전원 입장까지 152.5초 → 21.5초(모두 구매하는 최선의 경우) |
+| 스키마 변경 이력 없음·코드와 DB의 조용한 불일치 | **Flyway** 마이그레이션 + `ddl-auto: validate` (엔티티와 DB가 다르면 기동 실패) |
 
 설계 이유와 검증 방법은 [`docs/design-notes.md`](docs/design-notes.md)에 정리했습니다.
-동시성이 걸린 로직은 mock이 아니라 실제 MySQL에 붙는 통합 테스트로 검증하고, 테스트 메서드는 총 177개입니다.
+동시성이 걸린 로직은 mock이 아니라 실제 MySQL에 붙는 통합 테스트로 검증하고, 테스트 메서드는 총 179개입니다.
 
 ### 주요 기능
 
@@ -238,6 +243,8 @@ cd admin-frontend && npm install && npm run dev
 - API 진입점은 nginx 하나입니다: `http://localhost:8080`
 - 관리자 계정은 일반 가입 후 DB에서 승격합니다: `UPDATE users SET role='ADMIN' WHERE email='...'` → 관리자 앱에서 로그인
 - 로그 확인: `docker compose logs -f gateway reservation-service`
+- DB 스키마는 서비스가 기동할 때 Flyway가 적용합니다(`src/main/resources/db/migration`). 엔티티를 바꾸면 `V<n>__*.sql`을 함께 추가해야 합니다.
+- `nginx/nginx.conf`를 바꾼 뒤에는 `docker compose up -d --force-recreate nginx`로 반영합니다.
 - 서비스 중지: `docker compose stop` (다시 켜기: `docker compose up -d`)
 - 부하테스트 방법은 [`docs/design-notes.md`](docs/design-notes.md#부하테스트-실행)에 있습니다.
 
@@ -280,6 +287,7 @@ cd admin-frontend && npm install && npm run dev
 | `IDENTITY_VERIFICATION_REQUIRED` | 결제 전 구매자 확인 필수 여부 (기본 true) |
 | `JPA_SHOW_SQL` | `true`면 서비스들이 실행하는 SQL을 콘솔에 출력 (기본 false, 부하 시 초당 수만 줄이라 기본은 끔) |
 | `QUEUE_ACTIVE_CAPACITY` / `QUEUE_ADMISSION_INTERVAL_MS` | 대기열 동시 입장 수 / 입장 간격 |
+| `QUEUE_RELEASE_SLOT_ON_PURCHASE` | `false`면 결제를 마친 사람도 입장권이 만료될 때까지 슬롯을 유지 (기본 true) |
 
 ## 9. 문서
 
