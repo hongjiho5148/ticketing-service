@@ -1,14 +1,16 @@
 package com.ticketing.backend.queue;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 import org.redisson.api.RLock;
 import org.redisson.api.RScoredSortedSet;
 import org.redisson.api.RedissonClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Periodically lets the next batch of waiters through, up to however many active slots are free.
@@ -20,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Component
 public class QueueAdmissionSweeper {
+
+    private static final Logger log = LoggerFactory.getLogger(QueueAdmissionSweeper.class);
 
     private final RedissonClient redissonClient;
     private final WaitingQueueRepository waitingQueueRepository;
@@ -72,7 +76,6 @@ public class QueueAdmissionSweeper {
         }
     }
 
-    @Transactional
     void admitForEvent(Long eventId) {
         RScoredSortedSet<String> active = redissonClient.getScoredSortedSet(QueueService.activeKey(eventId));
         long now = System.currentTimeMillis();
@@ -93,7 +96,15 @@ public class QueueAdmissionSweeper {
         for (String queueToken : toAdmit) {
             active.add(expiresAt, queueToken);
             waiting.remove(queueToken);
-            waitingQueueRepository.findByQueueToken(queueToken).ifPresent(WaitingQueue::pass);
+        }
+        // Not a @Transactional method of this class: it is called from admitWaitingUsers() on this same object, so
+        // Spring's proxy would never intercept it and nothing would be saved. The repository call opens its own
+        // transaction, and it is one UPDATE for the whole batch.
+        // The history is only stats: if the DB hiccups, the people already let in Redis stay in and other events go on.
+        try {
+            waitingQueueRepository.markPassed(toAdmit, LocalDateTime.now());
+        } catch (RuntimeException e) {
+            log.warn("could not mark {} admitted entries of event {} PASSED", toAdmit.size(), eventId, e);
         }
     }
 }

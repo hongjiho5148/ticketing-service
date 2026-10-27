@@ -101,9 +101,9 @@ public class QueueService {
      * and event because the live queue is keyed by queue token, which the payment side doesn't know. Safe to call
      * repeatedly - a slot that is already gone is simply not there to remove.
      *
-     * <p>Deliberately does not filter on the history row's status: QueueAdmissionSweeper marks entries PASSED from a
-     * transactional method it calls on itself, which Spring does not intercept, so in the running service that status
-     * is never saved. Only tokens in the active set are touched anyway, so looking at every entry of the user is safe.
+     * <p>Deliberately does not filter on the history row's status: only tokens in the active set are touched anyway, so
+     * looking at every entry of the user is safe, and rows admitted before QueueAdmissionSweeper started saving PASSED
+     * are still WAITING.
      *
      * <p>The trade-off: the pass token stops working, so someone who wants more seats after paying joins the queue
      * again. Turn it off with queue.release-slot-on-purchase=false.
