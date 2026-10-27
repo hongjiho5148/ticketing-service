@@ -4,9 +4,13 @@ import com.ticketing.reservationservice.common.ApiException;
 import com.ticketing.reservationservice.common.ErrorCode;
 import com.ticketing.reservationservice.eventclient.EventServiceClient;
 import com.ticketing.reservationservice.internal.dto.ReservationDetailResponse;
+import com.ticketing.reservationservice.messaging.KafkaTopics;
+import com.ticketing.reservationservice.messaging.OutboxRecorder;
+import com.ticketing.reservationservice.messaging.ReservationConfirmedEvent;
 import com.ticketing.reservationservice.reservation.Reservation;
 import com.ticketing.reservationservice.reservation.ReservationRepository;
 import com.ticketing.reservationservice.reservation.ReservationStatus;
+import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,10 +20,15 @@ public class ReservationInternalService {
 
     private final ReservationRepository reservationRepository;
     private final EventServiceClient eventServiceClient;
+    private final OutboxRecorder outboxRecorder;
 
-    public ReservationInternalService(ReservationRepository reservationRepository, EventServiceClient eventServiceClient) {
+    public ReservationInternalService(
+            ReservationRepository reservationRepository,
+            EventServiceClient eventServiceClient,
+            OutboxRecorder outboxRecorder) {
         this.reservationRepository = reservationRepository;
         this.eventServiceClient = eventServiceClient;
+        this.outboxRecorder = outboxRecorder;
     }
 
     @Transactional(readOnly = true)
@@ -49,6 +58,17 @@ public class ReservationInternalService {
         }
         reservation.confirm();
         eventServiceClient.sell(reservation.getSeatId(), reservation.getHoldExpireAt());
+        // Recorded in this transaction, so the announcement exists exactly when the confirmation commits. A repeated
+        // confirm returns above and records nothing, so there is one event per reservation.
+        outboxRecorder.record(
+                KafkaTopics.RESERVATION_CONFIRMED,
+                reservation.getId().toString(),
+                new ReservationConfirmedEvent(
+                        reservation.getId(),
+                        reservation.getSeatId(),
+                        reservation.getUserId(),
+                        reservation.getEventId(),
+                        LocalDateTime.now().toString()));
         return ReservationDetailResponse.from(reservation);
     }
 
