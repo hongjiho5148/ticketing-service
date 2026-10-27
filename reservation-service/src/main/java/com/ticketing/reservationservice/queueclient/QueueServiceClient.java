@@ -5,7 +5,8 @@ import com.ticketing.reservationservice.common.ErrorCode;
 import com.ticketing.reservationservice.queueclient.dto.PassTokenValidResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
+import com.ticketing.reservationservice.remote.RemoteService;
+import com.ticketing.reservationservice.remote.RemoteServices;
 import org.springframework.web.client.RestClientException;
 
 /**
@@ -17,15 +18,15 @@ import org.springframework.web.client.RestClientException;
 @Component
 public class QueueServiceClient {
 
-    private final RestClient restClient;
+    private final RemoteService remote;
 
-    public QueueServiceClient(@Value("${queue.service.uri}") String baseUrl) {
-        this.restClient = RestClient.builder().baseUrl(baseUrl).build();
+    public QueueServiceClient(RemoteServices remotes, @Value("${queue.service.uri}") String baseUrl) {
+        this.remote = remotes.create("queue-service", baseUrl);
     }
 
     public boolean isPassTokenValid(Long eventId, String passToken) {
         try {
-            PassTokenValidResponse response = restClient
+            PassTokenValidResponse response = remote.callIdempotent(() -> remote.rest()
                     .get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/internal/queue/pass-token/valid")
@@ -33,7 +34,7 @@ public class QueueServiceClient {
                             .queryParam("passToken", passToken == null ? "" : passToken)
                             .build())
                     .retrieve()
-                    .body(PassTokenValidResponse.class);
+                    .body(PassTokenValidResponse.class));
             return response != null && response.valid();
         } catch (RestClientException e) {
             throw new ApiException(ErrorCode.QUEUE_SERVICE_UNAVAILABLE);

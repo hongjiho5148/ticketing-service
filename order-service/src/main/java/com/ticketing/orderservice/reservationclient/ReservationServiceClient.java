@@ -3,25 +3,29 @@ package com.ticketing.orderservice.reservationclient;
 import com.ticketing.orderservice.common.ApiException;
 import com.ticketing.orderservice.common.ErrorCode;
 import com.ticketing.orderservice.reservationclient.dto.ReservationDetailResponse;
+import java.time.Duration;
 import java.util.function.Supplier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestClient;
+import com.ticketing.orderservice.remote.RemoteService;
+import com.ticketing.orderservice.remote.RemoteServices;
 import org.springframework.web.client.RestClientException;
 
 /** Talks to reservation-service directly over the docker network - never through the public Gateway, which is for external clients only. */
 @Component
 public class ReservationServiceClient {
 
-    private final RestClient restClient;
+    private final RemoteService remote;
 
-    public ReservationServiceClient(@Value("${reservation.service.uri}") String baseUrl) {
-        this.restClient = RestClient.builder().baseUrl(baseUrl).build();
+    public ReservationServiceClient(RemoteServices remotes, @Value("${reservation.service.uri}") String baseUrl) {
+        // confirm() makes reservation-service call event-service, which can itself take up to its own read timeout, so
+        // this one waits longer than that - otherwise it would give up on a confirmation that is about to succeed
+        this.remote = remotes.create("reservation-service", baseUrl, Duration.ofSeconds(8));
     }
 
     public ReservationDetailResponse getReservation(Long reservationId) {
-        return call(() -> restClient
+        return call(() -> remote.rest()
                 .get()
                 .uri("/internal/reservations/{id}", reservationId)
                 .retrieve()
@@ -32,7 +36,7 @@ public class ReservationServiceClient {
     // sell() call its own ReservationExpirySweeper already makes on expiry - order-service never
     // calls event-service directly to mutate seat state.
     public ReservationDetailResponse confirm(Long reservationId) {
-        return call(() -> restClient
+        return call(() -> remote.rest()
                 .post()
                 .uri("/internal/reservations/{id}/confirm", reservationId)
                 .retrieve()
@@ -40,7 +44,7 @@ public class ReservationServiceClient {
     }
 
     public ReservationDetailResponse cancel(Long reservationId) {
-        return call(() -> restClient
+        return call(() -> remote.rest()
                 .post()
                 .uri("/internal/reservations/{id}/cancel", reservationId)
                 .retrieve()
@@ -49,7 +53,7 @@ public class ReservationServiceClient {
 
     private <T> T call(Supplier<T> request) {
         try {
-            return request.get();
+            return remote.callIdempotent(request); // a read, and confirm/cancel return early when already done
         } catch (HttpClientErrorException.NotFound e) {
             throw new ApiException(ErrorCode.RESERVATION_NOT_FOUND);
         } catch (HttpClientErrorException.Gone e) {

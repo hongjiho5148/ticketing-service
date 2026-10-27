@@ -8,6 +8,13 @@ server:
 spring:
   application:
     name: gateway
+  # How long the gateway waits on a service it proxies to. Without these it waited forever (the nginx in front gave up
+  # after 60s), so a service that stopped answering tied up a gateway thread per request. Thirty seconds is above the
+  # slowest legitimate call (an admin KOPIS import of up to 30 shows); services call each other with much shorter limits.
+  http:
+    clients:
+      connect-timeout: 2s
+      read-timeout: 30s
   cloud:
     gateway:
       server:

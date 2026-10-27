@@ -11,63 +11,64 @@ import java.util.function.Supplier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestClient;
+import com.ticketing.reservationservice.remote.RemoteService;
+import com.ticketing.reservationservice.remote.RemoteServices;
 import org.springframework.web.client.RestClientException;
 
 /** Talks to event-service directly over the docker network - never through the public Gateway, which is for external clients only. */
 @Component
 public class EventServiceClient {
 
-    private final RestClient restClient;
+    private final RemoteService remote;
 
-    public EventServiceClient(@Value("${event.service.uri}") String baseUrl) {
-        this.restClient = RestClient.builder().baseUrl(baseUrl).build();
+    public EventServiceClient(RemoteServices remotes, @Value("${event.service.uri}") String baseUrl) {
+        this.remote = remotes.create("event-service", baseUrl);
     }
 
     public SeatDetailResponse getSeat(Long seatId) {
         return call(
-                () -> restClient.get().uri("/internal/seats/{id}", seatId).retrieve().body(SeatDetailResponse.class),
-                ErrorCode.SEAT_NOT_FOUND);
+                () -> remote.rest().get().uri("/internal/seats/{id}", seatId).retrieve().body(SeatDetailResponse.class),
+                ErrorCode.SEAT_NOT_FOUND, true);
     }
 
     // Same critical operation ReservationService used to run in-process under SeatLockService -
     // now a single atomic call to event-service, which holds that lock itself.
     public SeatDetailResponse hold(Long seatId, LocalDateTime holdExpireAt) {
         return call(
-                () -> restClient
+                () -> remote.rest()
                         .post()
                         .uri("/internal/seats/{id}/hold", seatId)
                         .body(new HoldSeatRequest(holdExpireAt))
                         .retrieve()
                         .body(SeatDetailResponse.class),
-                ErrorCode.SEAT_NOT_FOUND);
+                ErrorCode.SEAT_NOT_FOUND, false);
     }
 
     /** Releases the seat only if it is still held by the hold that expires at {@code holdExpireAt}. */
     public void release(Long seatId, LocalDateTime holdExpireAt) {
-        call(() -> restClient
+        call(() -> remote.rest()
                         .post()
                         .uri("/internal/seats/{id}/release", seatId)
                         .body(new ReleaseSeatRequest(holdExpireAt))
                         .retrieve()
                         .toBodilessEntity(),
-                ErrorCode.SEAT_NOT_FOUND);
+                ErrorCode.SEAT_NOT_FOUND, true);
     }
 
     /** Sells the seat only if it is still held by the hold that expires at {@code holdExpireAt}; otherwise HOLD_EXPIRED. */
     public void sell(Long seatId, LocalDateTime holdExpireAt) {
-        call(() -> restClient
+        call(() -> remote.rest()
                         .post()
                         .uri("/internal/seats/{id}/sell", seatId)
                         .body(new SellSeatRequest(holdExpireAt))
                         .retrieve()
                         .toBodilessEntity(),
-                ErrorCode.SEAT_NOT_FOUND);
+                ErrorCode.SEAT_NOT_FOUND, true);
     }
 
-    private <T> T call(Supplier<T> request, ErrorCode notFoundCode) {
+    private <T> T call(Supplier<T> request, ErrorCode notFoundCode, boolean idempotent) {
         try {
-            return request.get();
+            return idempotent ? remote.callIdempotent(request) : remote.call(request);
         } catch (HttpClientErrorException.NotFound e) {
             throw new ApiException(notFoundCode);
         } catch (HttpClientErrorException.Gone e) {

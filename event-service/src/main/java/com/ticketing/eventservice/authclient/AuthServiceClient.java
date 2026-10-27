@@ -3,7 +3,8 @@ package com.ticketing.eventservice.authclient;
 import com.ticketing.eventservice.authclient.dto.UserInternalResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
+import com.ticketing.eventservice.remote.RemoteService;
+import com.ticketing.eventservice.remote.RemoteServices;
 
 /**
  * Talks to auth-service directly over the docker network - never through the public Gateway.
@@ -13,13 +14,14 @@ import org.springframework.web.client.RestClient;
 @Component
 public class AuthServiceClient {
 
-    private final RestClient restClient;
+    private final RemoteService remote;
 
-    public AuthServiceClient(@Value("${auth.service.uri}") String baseUrl) {
-        this.restClient = RestClient.builder().baseUrl(baseUrl).build();
+    public AuthServiceClient(RemoteServices remotes, @Value("${auth.service.uri}") String baseUrl) {
+        this.remote = remotes.create("auth-service", baseUrl);
     }
 
     public UserInternalResponse getUser(Long userId) {
-        return restClient.get().uri("/internal/users/{id}", userId).retrieve().body(UserInternalResponse.class);
+        return remote.callIdempotent(
+                () -> remote.rest().get().uri("/internal/users/{id}", userId).retrieve().body(UserInternalResponse.class));
     }
 }

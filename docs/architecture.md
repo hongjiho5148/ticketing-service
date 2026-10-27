@@ -62,6 +62,8 @@ flowchart TB
 | `nginx` | 외부 진입점, 내부 로드밸런서, 좌석 목록 캐시 | `backend` 전용 동적 로드밸런싱 포트(8081) 별도 운영, 좌석 목록 1초 캐시 + gzip |
 | `mysql` / `redis` / `kafka` | 데이터 저장소 · 메시징 | 서비스마다 스키마(`ticketing_auth`, `ticketing_event` 등) 분리. Kafka 토픽: `reservation.created`, `reservation.confirmed`(+ `.DLT`) |
 
+서비스끼리의 HTTP 호출은 모두 `RemoteService`를 거칩니다: 연결 1초·읽기 5초 타임아웃, 실패가 쌓이면 잠시 호출 없이 거절하는 서킷 브레이커, 안전한 호출에만 한 번 재시도. 게이트웨이의 프록시도 연결 2초·읽기 30초입니다. 자세한 내용은 [설계 노트](design-notes.md#서비스-간-호출의-타임아웃서킷-브레이커재시도-2026-10)를 보세요.
+
 각 서비스는 자신의 DB 스키마만 소유하며, 서비스 간 참조는 전부 `Long` id + 전용 REST 클라이언트로 이뤄집니다.
 스키마 변경은 서비스별 Flyway 마이그레이션(`src/main/resources/db/migration/V<n>__*.sql`)으로 관리하고, 엔티티와 DB가 다르면 기동 시 `validate`가 막습니다. 자세한 내용은 [설계 노트](design-notes.md#스키마-변경을-flyway로-관리-2026-10)를 보세요.
 JWT는 auth-service만 발급하고(`sub`, `email`, `role` 클레임), 나머지 서비스는 같은 시크릿으로 검증만 하며 `role`을
