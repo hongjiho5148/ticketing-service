@@ -5,7 +5,8 @@ import com.ticketing.reservationservice.common.ErrorCode;
 import com.ticketing.reservationservice.eventclient.EventServiceClient;
 import com.ticketing.reservationservice.eventclient.dto.SeatDetailResponse;
 import com.ticketing.reservationservice.messaging.ReservationCreatedEvent;
-import com.ticketing.reservationservice.messaging.ReservationEventPublisher;
+import com.ticketing.reservationservice.messaging.KafkaTopics;
+import com.ticketing.reservationservice.messaging.OutboxRecorder;
 import com.ticketing.reservationservice.queueclient.QueueServiceClient;
 import com.ticketing.reservationservice.reservation.dto.ReservationCreateRequest;
 import com.ticketing.reservationservice.reservation.dto.ReservationResponse;
@@ -15,6 +16,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Deliberately NOT @Transactional as a whole: reserve() and cancel() talk to event-service and the queue over
@@ -33,19 +36,22 @@ public class ReservationService {
     private final ReservationRepository reservationRepository;
     private final EventServiceClient eventServiceClient;
     private final QueueServiceClient queueServiceClient;
-    private final ReservationEventPublisher reservationEventPublisher;
+    private final OutboxRecorder outboxRecorder;
+    private final TransactionTemplate transactionTemplate;
     private final int maxSeatsPerEvent;
 
     public ReservationService(
             ReservationRepository reservationRepository,
             EventServiceClient eventServiceClient,
             QueueServiceClient queueServiceClient,
-            ReservationEventPublisher reservationEventPublisher,
+            OutboxRecorder outboxRecorder,
+            PlatformTransactionManager transactionManager,
             @Value("${reservation.max-seats-per-event}") int maxSeatsPerEvent) {
         this.reservationRepository = reservationRepository;
         this.eventServiceClient = eventServiceClient;
         this.queueServiceClient = queueServiceClient;
-        this.reservationEventPublisher = reservationEventPublisher;
+        this.outboxRecorder = outboxRecorder;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.maxSeatsPerEvent = maxSeatsPerEvent;
     }
 
@@ -65,18 +71,30 @@ public class ReservationService {
         SeatDetailResponse heldSeat = eventServiceClient.hold(request.seatId(), holdExpireAt);
 
         Reservation reservation = new Reservation(userId, request.seatId(), heldSeat.eventId(), holdExpireAt);
+        // The reservation and the event announcing it are saved in one short transaction: either both exist or neither,
+        // so the event can't be lost (or announce a reservation that was never saved). OutboxRelay sends it to Kafka
+        // afterwards - the broker is not part of this request.
         Reservation saved;
         try {
-            saved = reservationRepository.save(reservation);
+            saved = transactionTemplate.execute(status -> {
+                Reservation created = reservationRepository.save(reservation);
+                outboxRecorder.record(
+                        KafkaTopics.RESERVATION_CREATED,
+                        created.getId().toString(),
+                        new ReservationCreatedEvent(
+                                created.getId(),
+                                heldSeat.seatId(),
+                                userId,
+                                heldSeat.eventId(),
+                                created.getCreatedAt().toString()));
+                return created;
+            });
         } catch (RuntimeException e) {
             // The seat is already held in event-service; without a reservation row nobody can cancel or pay for it,
             // so give it back now instead of leaving it stuck until the hold lapses.
             releaseQuietly(request.seatId(), holdExpireAt);
             throw e;
         }
-
-        reservationEventPublisher.publishReservationCreated(new ReservationCreatedEvent(
-                saved.getId(), heldSeat.seatId(), userId, heldSeat.eventId(), saved.getCreatedAt().toString()));
 
         return ReservationResponse.from(saved);
     }

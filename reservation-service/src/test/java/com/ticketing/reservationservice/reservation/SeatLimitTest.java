@@ -14,7 +14,6 @@ import com.ticketing.reservationservice.common.ApiException;
 import com.ticketing.reservationservice.common.ErrorCode;
 import com.ticketing.reservationservice.eventclient.EventServiceClient;
 import com.ticketing.reservationservice.eventclient.dto.SeatDetailResponse;
-import com.ticketing.reservationservice.messaging.ReservationEventPublisher;
 import com.ticketing.reservationservice.queueclient.QueueServiceClient;
 import com.ticketing.reservationservice.reservation.dto.ReservationCreateRequest;
 import java.time.LocalDateTime;
@@ -42,7 +41,6 @@ class SeatLimitTest {
 
     @MockitoBean private EventServiceClient eventServiceClient;
     @MockitoBean private QueueServiceClient queueServiceClient;
-    @MockitoBean private ReservationEventPublisher publisher;
 
     private Long userId;
     private Long eventId;

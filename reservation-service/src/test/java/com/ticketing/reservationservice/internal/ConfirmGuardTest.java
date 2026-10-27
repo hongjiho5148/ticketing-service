@@ -10,7 +10,6 @@ import static org.mockito.Mockito.verify;
 import com.ticketing.reservationservice.common.ApiException;
 import com.ticketing.reservationservice.common.ErrorCode;
 import com.ticketing.reservationservice.eventclient.EventServiceClient;
-import com.ticketing.reservationservice.messaging.ReservationEventPublisher;
 import com.ticketing.reservationservice.queueclient.QueueServiceClient;
 import com.ticketing.reservationservice.reservation.Reservation;
 import com.ticketing.reservationservice.reservation.ReservationRepository;
@@ -38,7 +37,6 @@ class ConfirmGuardTest {
 
     @MockitoBean private EventServiceClient eventServiceClient;
     @MockitoBean private QueueServiceClient queueServiceClient;
-    @MockitoBean private ReservationEventPublisher publisher;
 
     private Reservation reservation(ReservationStatus status, LocalDateTime holdExpireAt) {
         long n = SEQ.incrementAndGet();
