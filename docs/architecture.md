@@ -7,7 +7,7 @@
 ```mermaid
 flowchart TB
     Client["브라우저\n사용자 SPA · 관리자 SPA"]
-    Nginx["nginx :8080\n정적 업스트림 + keepalive"]
+    Nginx["nginx :8080\n정적 업스트림 + keepalive\n좌석 목록 1초 캐시 · gzip"]
     Gateway["Gateway\nSpring Cloud Gateway\nCORS 단일 소유 · 레이트 리미팅"]
 
     Client --> Nginx
@@ -26,7 +26,7 @@ flowchart TB
     Event -->|후기 자격 확인| Order
     Event -->|알림 수신자 조회| Auth
     Reservation -->|좌석 홀드/해제| Event
-    Reservation -. Kafka .-> Backend
+    Reservation -. "Kafka (outbox)" .-> Backend
 
     Order --> PortOne["PortOne\n결제 · 환불"]
     Auth --> SMTP["Gmail SMTP"]
@@ -46,7 +46,7 @@ flowchart TB
 
 **입구는 nginx 하나뿐입니다.** nginx가 Gateway로 가는 경로는 고정 IP + 커넥션 풀링(`keepalive`)으로 연결하고,
 수평 확장되는 `backend`로 가는 경로만 별도 포트(8081)에서 `server backend:8080 resolve`(5초마다 DNS 재조회) + `keepalive`로 살아있는 레플리카를
-찾아 연결을 재사용합니다 — 이렇게 나눈 이유는 [부하테스트 결과](./design-notes.md#부하테스트로-검증한-것들)에 있습니다. CORS는 Gateway
+찾아 연결을 재사용합니다 — 이렇게 나눈 이유는 [부하테스트 결과](./design-notes.md#부하테스트로-검증한-것들)에 있습니다. 또 좌석 목록(`GET /api/events/{id}/seats`) 경로만 nginx가 1초 동안 캐시하고 gzip으로 압축합니다(모든 방문자에게 같은 응답, 약 360KB → 29KB, 목록이 최대 1초 오래될 수 있음 - 좌석 확정은 서버가 판정). 자세한 내용은 [설계 노트](./design-notes.md#좌석-목록-읽기-최적화-2026-10)를 보세요. CORS는 Gateway
 한 곳에서만 처리합니다(개별 서비스가 각자 CORS를 설정하면 헤더가 중복으로 붙어 브라우저가 응답을 거부합니다).
 
 ## 서비스 구성
@@ -56,11 +56,11 @@ flowchart TB
 | `gateway` | 단일 진입점, 라우팅, CORS, IP별 레이트 리미팅 | Spring Cloud Gateway (함수형 `RouterFunction` 기반) |
 | `auth-service` | 회원가입/로그인, 이메일 인증, OAuth2(Google/Kakao), 관리자 로그인, 알림 수신 설정, JWT 발급 | JWT를 **발급**하는 유일한 서비스 |
 | `event-service` | 이벤트/좌석, 장르·캘린더 조회, 찜·후기, 오픈/취소표 알림, 관리자 공연·좌석 관리, KOPIS 공연 가져오기 | Redis(Redisson) 분산락으로 동시 홀드 방지 |
-| `reservation-service` | 좌석 예약, 예약 확정/취소, 공연당 매수 제한 | 홀드 만료를 스스로 정리하는 자가치유 스윕 보유 |
+| `reservation-service` | 좌석 예약, 예약 확정/취소, 공연당 매수 제한 | 홀드 만료를 스스로 정리하는 자가치유 스윕 보유. 예약 생성·확정 이벤트를 **outbox 테이블에 같은 트랜잭션으로 기록**하고 릴레이가 Kafka로 발행 |
 | `order-service` | 주문, PortOne 결제/단계별 환불, 쿠폰·포인트, QR 입장권, 티켓 양도, 구매자 확인, 관리자 매출 집계·주문 조회 | 결제 실패 시 예약 자동 취소(saga) |
-| `backend` | 대기열(Queue) 입장/상태 조회 | 3개 레플리카로 수평 확장되는 유일한 서비스 |
-| `nginx` | 외부 진입점, 내부 로드밸런서 | `backend` 전용 동적 로드밸런싱 포트(8081) 별도 운영 |
-| `mysql` / `redis` / `kafka` | 데이터 저장소 · 메시징 | 서비스마다 스키마(`ticketing_auth`, `ticketing_event` 등) 분리 |
+| `backend` | 대기열(Queue) 입장/상태 조회, 결제를 마친 사람의 슬롯 반환 | 3개 레플리카로 수평 확장되는 유일한 서비스. `reservation.confirmed`를 받아 슬롯 반환(멱등), 처리 못 하는 메시지는 재시도 후 DLT |
+| `nginx` | 외부 진입점, 내부 로드밸런서, 좌석 목록 캐시 | `backend` 전용 동적 로드밸런싱 포트(8081) 별도 운영, 좌석 목록 1초 캐시 + gzip |
+| `mysql` / `redis` / `kafka` | 데이터 저장소 · 메시징 | 서비스마다 스키마(`ticketing_auth`, `ticketing_event` 등) 분리. Kafka 토픽: `reservation.created`, `reservation.confirmed`(+ `.DLT`) |
 
 각 서비스는 자신의 DB 스키마만 소유하며, 서비스 간 참조는 전부 `Long` id + 전용 REST 클라이언트로 이뤄집니다.
 스키마 변경은 서비스별 Flyway 마이그레이션(`src/main/resources/db/migration/V<n>__*.sql`)으로 관리하고, 엔티티와 DB가 다르면 기동 시 `validate`가 막습니다. 자세한 내용은 [설계 노트](design-notes.md#스키마-변경을-flyway로-관리-2026-10)를 보세요.
