@@ -1,3 +1,4 @@
+import { isAxiosError } from "axios";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { fetchEventDetail, fetchEventSeats } from "../api/events";
@@ -31,7 +32,7 @@ import { couponBenefitLabel } from "../utils/coupon";
 import { posterGlyph, posterThemeClass } from "../utils/poster";
 import { CATEGORY_LABEL } from "../utils/category";
 import { availablePayMethods, requestPayment, type PayMethod } from "../utils/portone";
-import type { AvailableCoupon, EventDetail, Order, Reservation, ReviewListResponse, Seat } from "../types";
+import type { ApiErrorBody, AvailableCoupon, EventDetail, Order, Reservation, ReviewListResponse, Seat } from "../types";
 
 const GRADE_ORDER = ["VIP", "R", "S"];
 
@@ -195,6 +196,13 @@ export function EventDetailPage() {
       const created = await createReservation(selectedSeat.id, passToken);
       setReservation(created);
     } catch (err) {
+      if (isAxiosError<ApiErrorBody>(err) && err.response?.data?.code === "PASS_TOKEN_REQUIRED") {
+        // The pass ran out while they were choosing: back to the queue rather than a message with nowhere to go.
+        setPassToken(null);
+        setSelectedSeat(null);
+        showToast("입장 시간이 지났어요. 다시 줄을 서 주세요.");
+        return;
+      }
       setError(extractErrorMessage(err));
     } finally {
       setIsProcessing(false);

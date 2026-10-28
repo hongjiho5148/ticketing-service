@@ -66,7 +66,14 @@ queue:
   # room UI (e.g. QUEUE_ACTIVE_CAPACITY=3 via .env) - it's still fully overridable per environment.
   active-capacity: ${QUEUE_ACTIVE_CAPACITY:500}
   admission-interval-ms: ${QUEUE_ADMISSION_INTERVAL_MS:300}
-  pass-token-ttl-ms: ${QUEUE_PASS_TOKEN_TTL_MS:600000}
+  # How long a pass lasts after being let in. Five minutes: someone who is let in and then does nothing keeps a slot for
+  # that long, so the shorter the better - but someone who is still choosing seats must not lose it, which is what
+  # pass-extension-ms is for. The 5 minutes is a starting value, not a measured one (see AdmissionUseTracker for the
+  # numbers that would settle it).
+  pass-token-ttl-ms: ${QUEUE_PASS_TOKEN_TTL_MS:300000}
+  # When a person holds a seat, their pass is lengthened to at least this much from that moment (about the time a seat is
+  # held), so that finishing the purchase or choosing another seat does not send them back to the queue. 0 turns it off.
+  pass-extension-ms: ${QUEUE_PASS_EXTENSION_MS:300000}
   # A buyer who has paid gives their slot back right away instead of holding it until the pass token expires.
   release-slot-on-purchase: ${QUEUE_RELEASE_SLOT_ON_PURCHASE:true}
 

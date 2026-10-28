@@ -40,6 +40,8 @@ public class QueueService {
     private final int activeCapacity;
     private final long admissionIntervalMs;
     private final boolean releaseSlotOnPurchase;
+    private final long passExtensionMs;
+    private final Counter extendedCounter;
     private final Counter enteredCounter;
     private final Counter releasedCounter;
 
@@ -50,6 +52,7 @@ public class QueueService {
             @Value("${queue.active-capacity}") int activeCapacity,
             @Value("${queue.admission-interval-ms}") long admissionIntervalMs,
             @Value("${queue.release-slot-on-purchase:true}") boolean releaseSlotOnPurchase,
+            @Value("${queue.pass-extension-ms:300000}") long passExtensionMs,
             MeterRegistry meterRegistry) {
         this.enteredCounter = Counter.builder("queue_entered_total").description("People who joined a queue").register(meterRegistry);
         this.releasedCounter = Counter.builder("queue_slots_released_total")
@@ -60,6 +63,9 @@ public class QueueService {
         this.activeCapacity = activeCapacity;
         this.admissionIntervalMs = admissionIntervalMs;
         this.releaseSlotOnPurchase = releaseSlotOnPurchase;
+        this.passExtensionMs = passExtensionMs;
+        this.extendedCounter = Counter.builder("queue_passes_extended_total")
+                .description("Passes lengthened because their holder took a seat").register(meterRegistry);
     }
 
     @Transactional
@@ -216,6 +222,35 @@ public class QueueService {
             }
         }
         return released;
+    }
+
+    /**
+     * Lengthens the pass of someone who has just taken a seat, to at least pass-extension-ms from now. Passes are kept
+     * short so that a person who was let in and did nothing gives the slot back soon; this is what keeps a person who is
+     * actually buying from losing theirs in the middle (to pick another seat or to finish paying, if they go on to need
+     * it). Only a pass that is still valid is touched, and it is never shortened: a pass that has run out stays out.
+     * Safe to call repeatedly (a second seat, a redelivered event).
+     *
+     * @return how many passes were lengthened
+     */
+    @Transactional(readOnly = true)
+    public int extendPassesOfHolder(Long userId, Long eventId) {
+        if (passExtensionMs <= 0) {
+            return 0;
+        }
+        long now = System.currentTimeMillis();
+        double until = now + passExtensionMs;
+        RScoredSortedSet<String> active = redissonClient.getScoredSortedSet(activeKey(eventId));
+        int extended = 0;
+        for (WaitingQueue entry : waitingQueueRepository.findByUserIdAndEventId(userId, eventId)) {
+            Double expiresAt = active.getScore(entry.getQueueToken());
+            if (expiresAt != null && expiresAt > now && until > expiresAt) {
+                active.add(until, entry.getQueueToken());
+                extended++;
+                extendedCounter.increment();
+            }
+        }
+        return extended;
     }
 
     private long rankOf(RScoredSortedSet<String> waiting, String queueToken) {
