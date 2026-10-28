@@ -3,6 +3,7 @@ package com.ticketing.backend.config;
 import com.ticketing.backend.auth.JwtAuthenticationFilter;
 import com.ticketing.backend.common.ErrorCode;
 import com.ticketing.backend.common.ErrorResponse;
+import jakarta.servlet.DispatcherType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -34,6 +35,10 @@ public class SecurityConfig {
                 // browser rejects that as invalid, so this service deliberately does none of it.
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
+                        // A queue stream (SSE) is dispatched a second time when it completes, on a thread that carries no
+                        // login. The request itself was already authorized when it arrived, so that second pass is
+                        // let through; without this every stream that ends logs an "Access Denied" error.
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                         .requestMatchers("/error").permitAll()
                         // Metrics are served on the separate management port (9090), which only exists inside the docker
                         // network; this security chain covers that port too, and Prometheus carries no token.

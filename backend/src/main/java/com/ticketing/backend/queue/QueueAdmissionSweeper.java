@@ -32,6 +32,7 @@ public class QueueAdmissionSweeper {
     private final int activeCapacity;
     private final long passTokenTtlMs;
     private final long sweepLockLeaseMs;
+    private final QueueStreams queueStreams;
     private final Counter admittedCounter;
 
     public QueueAdmissionSweeper(
@@ -40,7 +41,9 @@ public class QueueAdmissionSweeper {
             @Value("${queue.active-capacity}") int activeCapacity,
             @Value("${queue.pass-token-ttl-ms}") long passTokenTtlMs,
             @Value("${queue.admission-interval-ms}") long admissionIntervalMs,
+            QueueStreams queueStreams,
             MeterRegistry meterRegistry) {
+        this.queueStreams = queueStreams;
         this.admittedCounter = Counter.builder("queue_admitted_total").description("People let in from the queue").register(meterRegistry);
         this.redissonClient = redissonClient;
         this.waitingQueueRepository = waitingQueueRepository;
@@ -52,7 +55,10 @@ public class QueueAdmissionSweeper {
         this.sweepLockLeaseMs = Math.max(admissionIntervalMs * 4, 2000);
     }
 
-    @Scheduled(fixedRateString = "${queue.admission-interval-ms}")
+    // The first run waits one interval like every later one: nobody is queued the moment the service starts, and a sweep
+    // kicking off in the background right after startup would let in people a caller is about to look at (it made tests
+    // that queue people up straight after the context starts fail now and then).
+    @Scheduled(initialDelayString = "${queue.admission-interval-ms}", fixedRateString = "${queue.admission-interval-ms}")
     public void admitWaitingUsers() {
         RLock lock = redissonClient.getLock("lock:queue-sweep");
         boolean acquired;
@@ -103,6 +109,12 @@ public class QueueAdmissionSweeper {
             waiting.remove(queueToken);
         }
         admittedCounter.increment(toAdmit.size());
+        // Tell the connections waiting on any instance. A failure here only means they hear it at the next refresh.
+        try {
+            queueStreams.announceAdmitted(eventId, toAdmit);
+        } catch (RuntimeException e) {
+            log.warn("could not announce {} admitted entries of event {}", toAdmit.size(), eventId, e);
+        }
         // Not a @Transactional method of this class: it is called from admitWaitingUsers() on this same object, so
         // Spring's proxy would never intercept it and nothing would be saved. The repository call opens its own
         // transaction, and it is one UPDATE for the whole batch.

@@ -96,6 +96,15 @@ public class QueueService {
         return QueueStatusResponse.waiting(rankNo, estimateWaitSeconds(rankNo));
     }
 
+    /** The event a queue token belongs to. */
+    Long eventOf(String queueToken) {
+        Long eventId = redissonClient.<Long>getBucket(tokenEventKey(queueToken)).get();
+        if (eventId == null) {
+            throw new ApiException(ErrorCode.QUEUE_TOKEN_NOT_FOUND);
+        }
+        return eventId;
+    }
+
     public boolean isPassTokenValid(Long eventId, String passToken) {
         if (passToken == null || passToken.isBlank()) {
             return false;
@@ -140,7 +149,7 @@ public class QueueService {
         return rank == null ? 0 : rank + 1L;
     }
 
-    private long estimateWaitSeconds(long rankNo) {
+    long estimateWaitSeconds(long rankNo) {
         long batches = (rankNo + activeCapacity - 1) / activeCapacity;
         return batches * (admissionIntervalMs / 1000);
     }
