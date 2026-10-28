@@ -2,6 +2,7 @@
 //
 //   node loadtest/queue_wait.mjs --mode=poll --waiters=300 --event=4 --ttl=20000
 //   node loadtest/queue_wait.mjs --mode=sse  --waiters=300 --event=4 --ttl=20000
+//   node loadtest/queue_wait.mjs --mode=sse  ... --killpubsub=3000   (3초마다 Redis 구독 연결을 끊어 입장 알림을 일부러 잃게 함)
 //
 // 줄이 천천히 흐르도록 backend를 QUEUE_ACTIVE_CAPACITY=50, QUEUE_PASS_TOKEN_TTL_MS=20000 정도로 띄워 둡니다(입장권이 20초 뒤
 // 만료되면 다음 50명이 들어갑니다). 로그인 캡차와 레이트 리미팅은 꺼 둡니다. --ttl은 backend의 값과 같아야 합니다.
@@ -23,6 +24,7 @@ const POLL_MS = Number(args.poll ?? 2000);
 const BASE = args.base ?? "http://localhost:8080/api";
 const MAX_RUN_MS = Number(args.max ?? 240000);
 const REDIS = args.redis ?? "ticketing-redis";
+const KILL_PUBSUB_MS = Number(args.killpubsub ?? 0);
 const WATCH = (args.watch ?? "ticketing-gateway,ticketing-nginx,ticketing-service-backend").split(",");
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -169,11 +171,23 @@ async function main() {
     }
   })();
 
+  // 구독 연결을 끊으면 Redisson이 다시 구독하지만 그 사이에 발행된 입장 알림은 잃는다.
+  let kills = 0;
+  const killer = (async () => {
+    while (KILL_PUBSUB_MS > 0 && !stop.done) {
+      try {
+        const out = (await redisAsync("CLIENT", "KILL", "TYPE", "pubsub")).trim();
+        kills += Number(out) || 0;
+      } catch {}
+      await sleep(KILL_PUBSUB_MS);
+    }
+  })();
+
   const deadline = t0 + MAX_RUN_MS;
   while (passedAt.size < waiters.length && Date.now() < deadline) await sleep(500);
   stop.done = true;
   await Promise.allSettled(tasks);
-  await Promise.allSettled([admitSampler, cpuSampler]);
+  await Promise.allSettled([admitSampler, cpuSampler, killer]);
   const elapsed = (Date.now() - t0) / 1000;
 
   // 지연 = 클라이언트가 안 시각 - 입장 허용 시각. 보기 시작하기 전에 이미 들어간 사람은 뺀다.
@@ -198,8 +212,11 @@ async function main() {
     httpRequests: stats.statusRequests + stats.streamOpens,
     ...stats,
     requestsPerSec: Number(((stats.statusRequests + stats.streamOpens) / elapsed).toFixed(1)),
+    pubsubConnectionsKilled: kills,
     scoresSeen: admitScore.size,
     lagMeasured: lags.length,
+    lagOver1s: lags.filter((l) => l > 1000).length,
+    lagOver5s: lags.filter((l) => l > 5000).length,
     lagMs: { avg: Math.round(avg(lags)), p50: Math.round(q(0.5)), p95: Math.round(q(0.95)), max: Math.round(lags[lags.length - 1] ?? NaN) },
     // 컨테이너 CPU%의 평균(레플리카는 합계). 100%는 코어 하나
     avgCpuPercent: Object.fromEntries(WATCH.map((n) => [n, Number(avg(cpu[n]).toFixed(1))])),
