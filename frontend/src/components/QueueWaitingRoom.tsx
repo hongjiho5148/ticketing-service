@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { enterQueue, fetchQueueStatus } from "../api/queue";
+import { enterQueue, fetchQueueStatus, streamQueueStatus } from "../api/queue";
+import type { QueueStatusResult } from "../types";
 import { extractErrorMessage } from "../utils/error";
 import { isCaptchaEnabled } from "../utils/recaptcha";
 import { ReCaptcha } from "./ReCaptcha";
@@ -26,21 +27,43 @@ export function QueueWaitingRoom({ eventId, onPassed }: QueueWaitingRoomProps) {
     if (isCaptchaEnabled && !enterToken) return;
     let cancelled = false;
     let intervalId: number | undefined;
+    const controller = new AbortController();
+
+    // Returns true once the person has been let in.
+    function apply(status: QueueStatusResult): boolean {
+      if (cancelled) return true;
+      if (status.status === "PASSED" && status.passToken) {
+        if (intervalId) window.clearInterval(intervalId);
+        controller.abort();
+        onPassedRef.current(status.passToken);
+        return true;
+      }
+      setRankNo(status.rankNo);
+      setEstimatedWaitSeconds(status.estimatedWaitSeconds);
+      return false;
+    }
 
     async function poll(queueToken: string) {
       try {
-        const status = await fetchQueueStatus(queueToken);
-        if (cancelled) return;
-        if (status.status === "PASSED" && status.passToken) {
-          if (intervalId) window.clearInterval(intervalId);
-          onPassedRef.current(status.passToken);
-          return;
-        }
-        setRankNo(status.rankNo);
-        setEstimatedWaitSeconds(status.estimatedWaitSeconds);
+        apply(await fetchQueueStatus(queueToken));
       } catch (err) {
         if (!cancelled) setError(extractErrorMessage(err));
       }
+    }
+
+    // The server pushes updates over one open connection. If that cannot be had (the server is full, something between
+    // us and it drops the stream) the page asks every two seconds instead, which is how it worked before.
+    async function watch(queueToken: string) {
+      let passed = false;
+      try {
+        await streamQueueStatus(queueToken, (status) => {
+          if (apply(status)) passed = true;
+        }, controller.signal);
+      } catch {
+        // fall through to polling
+      }
+      if (cancelled || passed) return;
+      intervalId = window.setInterval(() => poll(queueToken), POLL_INTERVAL_MS);
     }
 
     enterQueue(eventId, enterToken ?? undefined)
@@ -48,7 +71,7 @@ export function QueueWaitingRoom({ eventId, onPassed }: QueueWaitingRoomProps) {
         if (cancelled) return;
         setRankNo(entered.rankNo);
         setEstimatedWaitSeconds(entered.estimatedWaitSeconds);
-        intervalId = window.setInterval(() => poll(entered.queueToken), POLL_INTERVAL_MS);
+        void watch(entered.queueToken);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -62,6 +85,7 @@ export function QueueWaitingRoom({ eventId, onPassed }: QueueWaitingRoomProps) {
 
     return () => {
       cancelled = true;
+      controller.abort();
       if (intervalId) window.clearInterval(intervalId);
     };
   }, [eventId, enterToken]);
