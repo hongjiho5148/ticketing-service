@@ -42,7 +42,7 @@ public class QueueController {
 
     @GetMapping("/status")
     public QueueStatusResponse status(@RequestParam String queueToken) {
-        return queueService.status(queueToken);
+        return queueService.poll(queueToken);
     }
 
     /**

@@ -5,6 +5,7 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
+import org.redisson.api.RBatch;
 import org.redisson.api.RLock;
 import org.redisson.api.RScoredSortedSet;
 import org.redisson.api.RedissonClient;
@@ -31,9 +32,11 @@ public class QueueAdmissionSweeper {
     private final WaitingQueueRepository waitingQueueRepository;
     private final int activeCapacity;
     private final long passTokenTtlMs;
+    private final long abandonGraceMs;
     private final long sweepLockLeaseMs;
     private final QueueStreams queueStreams;
     private final Counter admittedCounter;
+    private final Counter abandonedCounter;
 
     public QueueAdmissionSweeper(
             RedissonClient redissonClient,
@@ -41,9 +44,13 @@ public class QueueAdmissionSweeper {
             @Value("${queue.active-capacity}") int activeCapacity,
             @Value("${queue.pass-token-ttl-ms}") long passTokenTtlMs,
             @Value("${queue.admission-interval-ms}") long admissionIntervalMs,
+            @Value("${queue.abandon-grace-ms:60000}") long abandonGraceMs,
             QueueStreams queueStreams,
             MeterRegistry meterRegistry) {
         this.queueStreams = queueStreams;
+        this.abandonGraceMs = abandonGraceMs;
+        this.abandonedCounter = Counter.builder("queue_abandoned_total")
+                .description("Waiting people taken out of the line because they stopped showing up").register(meterRegistry);
         this.admittedCounter = Counter.builder("queue_admitted_total").description("People let in from the queue").register(meterRegistry);
         this.redissonClient = redissonClient;
         this.waitingQueueRepository = waitingQueueRepository;
@@ -87,7 +94,44 @@ public class QueueAdmissionSweeper {
         }
     }
 
+    /**
+     * Takes out of the line the people who have not been heard from for the grace period: their browser neither holds a
+     * stream open nor asks for its status any more. Without this they stay in the line and, when their turn comes, are
+     * let in and sit on a slot for the whole pass lifetime while someone who is actually waiting stays behind them.
+     * Does nothing when the grace is 0 or less. A person taken out who comes back finds their token gone and joins again
+     * at the back.
+     */
+    void removeAbandoned(Long eventId) {
+        if (abandonGraceMs <= 0) {
+            return;
+        }
+        RScoredSortedSet<String> seen = redissonClient.getScoredSortedSet(QueueService.seenKey(eventId));
+        Collection<String> stale = seen.valueRange(
+                Double.NEGATIVE_INFINITY, true, System.currentTimeMillis() - abandonGraceMs, true, 0, 1000);
+        if (stale.isEmpty()) {
+            return;
+        }
+        // Counted by what was really still in the line: a person let in a moment ago can still have a stale note here.
+        RBatch batch = redissonClient.createBatch();
+        for (String token : stale) {
+            batch.getScoredSortedSet(QueueService.waitingKey(eventId)).removeAsync(token);
+        }
+        long removed = batch.execute().getResponses().stream().filter(Boolean.TRUE::equals).count();
+        seen.removeAll(stale);
+        if (removed == 0) {
+            return;
+        }
+        abandonedCounter.increment(removed);
+        log.info("took {} people who stopped showing up out of the line of event {}", removed, eventId);
+        try {
+            waitingQueueRepository.markAbandoned(stale);
+        } catch (RuntimeException e) {
+            log.warn("could not mark {} abandoned entries of event {}", stale.size(), eventId, e);
+        }
+    }
+
     void admitForEvent(Long eventId) {
+        removeAbandoned(eventId);
         RScoredSortedSet<String> active = redissonClient.getScoredSortedSet(QueueService.activeKey(eventId));
         long now = System.currentTimeMillis();
         active.removeRangeByScore(0, true, now, true);
@@ -109,6 +153,7 @@ public class QueueAdmissionSweeper {
             waiting.remove(queueToken);
         }
         admittedCounter.increment(toAdmit.size());
+        redissonClient.getScoredSortedSet(QueueService.seenKey(eventId)).removeAll(toAdmit);
         // Tell the connections waiting on any instance. A failure here only means they hear it at the next refresh.
         try {
             queueStreams.announceAdmitted(eventId, toAdmit);

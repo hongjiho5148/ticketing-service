@@ -2,6 +2,7 @@
 //
 //   node loadtest/queue_wait.mjs --mode=poll --waiters=300 --event=4 --ttl=20000
 //   node loadtest/queue_wait.mjs --mode=sse  --waiters=300 --event=4 --ttl=20000
+//   node loadtest/queue_wait.mjs --mode=sse  ... --abandon=30       (30%는 줄만 서고 떠남: 조회도 연결도 하지 않음)
 //   node loadtest/queue_wait.mjs --mode=sse  ... --killpubsub=3000   (3초마다 Redis 구독 연결을 끊어 입장 알림을 일부러 잃게 함)
 //
 // 줄이 천천히 흐르도록 backend를 QUEUE_ACTIVE_CAPACITY=50, QUEUE_PASS_TOKEN_TTL_MS=20000 정도로 띄워 둡니다(입장권이 20초 뒤
@@ -24,6 +25,7 @@ const POLL_MS = Number(args.poll ?? 2000);
 const BASE = args.base ?? "http://localhost:8080/api";
 const MAX_RUN_MS = Number(args.max ?? 240000);
 const REDIS = args.redis ?? "ticketing-redis";
+const ABANDON_PERCENT = Number(args.abandon ?? 0);
 const KILL_PUBSUB_MS = Number(args.killpubsub ?? 0);
 const WATCH = (args.watch ?? "ticketing-gateway,ticketing-nginx,ticketing-service-backend").split(",");
 
@@ -139,7 +141,11 @@ async function main() {
 
   const stop = { done: false };
   const t0 = Date.now();
-  const tasks = waiters.map((w) => (MODE === "sse" ? streamer(w, stop) : poller(w, stop)));
+  // --abandon=N: 앞에서부터 10명 중 N/10명은 줄만 서고 떠난다(순번이 줄 전체에 고르게 섞인다)
+  waiters.forEach((w, i) => (w.abandoned = ABANDON_PERCENT > 0 && i % 10 < ABANDON_PERCENT / 10));
+  const live = waiters.filter((w) => !w.abandoned);
+  console.log(`${waiters.length - live.length} of them left right after joining`);
+  const tasks = live.map((w) => (MODE === "sse" ? streamer(w, stop) : poller(w, stop)));
 
   // 입장 ZSET을 수시로 읽어 입장 허용 시각(점수 - ttl)을 모으고, 컨테이너 CPU를 잰다.
   const cpu = Object.fromEntries(WATCH.map((n) => [n, []]));
@@ -184,7 +190,7 @@ async function main() {
   })();
 
   const deadline = t0 + MAX_RUN_MS;
-  while (passedAt.size < waiters.length && Date.now() < deadline) await sleep(500);
+  while (passedAt.size < live.length && Date.now() < deadline) await sleep(500);
   stop.done = true;
   await Promise.allSettled(tasks);
   await Promise.allSettled([admitSampler, cpuSampler, killer]);
@@ -204,10 +210,20 @@ async function main() {
   const q = (x) => (lags.length ? lags[Math.min(lags.length - 1, Math.floor(lags.length * x))] : NaN);
   const avg = (a) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : NaN);
 
+  // 줄을 선 시각부터 입장을 안 시각까지(떠난 사람은 제외)
+  const waits = live.map((w) => (passedAt.get(w.queueToken) ?? NaN) - w.entered).filter((x) => !Number.isNaN(x)).sort((a, b) => a - b);
+  const wq = (x) => (waits.length ? waits[Math.min(waits.length - 1, Math.floor(waits.length * x))] : NaN);
+  const abandonedLetIn = waiters.filter((w) => w.abandoned && admitScore.has(w.queueToken)).length;
+
   const result = {
     mode: MODE,
     waiters: waiters.length,
+    leftWithoutWaiting: waiters.length - live.length,
+    leftButLetIn: abandonedLetIn,
+    liveWaiters: live.length,
     passed: passedAt.size,
+    liveAllInAfterSec: Number(((Math.max(...passedAt.values()) - t0) / 1000).toFixed(1)),
+    waitSec: { avg: Number((waits.reduce((a, b) => a + b, 0) / waits.length / 1000).toFixed(1)), p50: Number((wq(0.5) / 1000).toFixed(1)), p95: Number((wq(0.95) / 1000).toFixed(1)) },
     elapsedSec: Number(elapsed.toFixed(1)),
     httpRequests: stats.statusRequests + stats.streamOpens,
     ...stats,

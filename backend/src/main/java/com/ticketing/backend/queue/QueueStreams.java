@@ -191,6 +191,26 @@ public class QueueStreams {
         }
     }
 
+    /**
+     * Tells the line these connected people are still here: one write per event however many connections this instance
+     * holds. A connection that has died is dropped by the heartbeat and stops being refreshed, which is how a person who
+     * left gets noticed (QueueAdmissionSweeper.removeAbandoned).
+     */
+    @Scheduled(initialDelayString = "${queue.stream.seen-interval-ms:5000}", fixedDelayString = "${queue.stream.seen-interval-ms:5000}")
+    public void refreshSeen() {
+        Map<Long, List<String>> byEvent = new java.util.HashMap<>();
+        for (Stream stream : streams.values()) {
+            byEvent.computeIfAbsent(stream.eventId, k -> new ArrayList<>()).add(stream.queueToken);
+        }
+        byEvent.forEach((eventId, tokens) -> {
+            try {
+                queueService.touch(eventId, tokens);
+            } catch (RuntimeException e) {
+                log.warn("could not refresh who is still here for event {}", eventId, e);
+            }
+        });
+    }
+
     @Scheduled(initialDelayString = "${queue.stream.heartbeat-interval-ms:15000}", fixedDelayString = "${queue.stream.heartbeat-interval-ms:15000}")
     public void heartbeat() {
         for (Stream stream : new ArrayList<>(streams.values())) {
