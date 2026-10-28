@@ -3,6 +3,7 @@ package com.ticketing.backend.queue;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -67,6 +68,15 @@ class QueueStreamHttpTest {
         queueToken = queueService.enter(1L, eventId).queueToken();
 
         mockMvc.perform(get("/api/queue/stream").param("queueToken", queueToken)).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void anUnknownTokenGetsAnErrorBodyNotAServerError() throws Exception {
+        // the browser asks for text/event-stream, which has no converter for an error body
+        mockMvc.perform(get("/api/queue/stream").param("queueToken", "no-such-token")
+                        .header("Authorization", login()).accept(MediaType.TEXT_EVENT_STREAM))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
     }
 
     @Test

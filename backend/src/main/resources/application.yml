@@ -6,6 +6,13 @@ spring:
     name: backend
   autoconfigure:
     exclude: org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
+  # Scheduled work used to share one thread. The admission sweep runs every 300 ms and, with a big Redis keyspace, can take
+  # longer than that; it then always came first and the stream tasks (refresh, heartbeat, rank flush) never got a turn, so
+  # dead connections were never noticed. A few threads let them run side by side.
+  task:
+    scheduling:
+      pool:
+        size: 4
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:ticketing}?useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME:ticketing}
