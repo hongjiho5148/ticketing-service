@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { isAxiosError } from "axios";
 import { enterQueue, fetchQueueStatus, streamQueueStatus } from "../api/queue";
-import type { QueueStatusResult } from "../types";
+import type { ApiErrorBody, QueueStatusResult } from "../types";
 import { extractErrorMessage } from "../utils/error";
 import { isCaptchaEnabled } from "../utils/recaptcha";
 import { ReCaptcha } from "./ReCaptcha";
@@ -20,6 +21,10 @@ export function QueueWaitingRoom({ eventId, onPassed }: QueueWaitingRoomProps) {
   // that must not tear down a queue entry that is already waiting.
   const [enterToken, setEnterToken] = useState<string | null>(null);
   const [captchaKey, setCaptchaKey] = useState(0);
+  // The server takes people out of the line when it has not heard from them for a while (a closed laptop, a phone that
+  // lost signal). Coming back, they find their place gone and can join again at the back.
+  const [removedFromLine, setRemovedFromLine] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const onPassedRef = useRef(onPassed);
   onPassedRef.current = onPassed;
 
@@ -47,7 +52,13 @@ export function QueueWaitingRoom({ eventId, onPassed }: QueueWaitingRoomProps) {
       try {
         apply(await fetchQueueStatus(queueToken));
       } catch (err) {
-        if (!cancelled) setError(extractErrorMessage(err));
+        if (cancelled) return;
+        if (isAxiosError<ApiErrorBody>(err) && err.response?.data?.code === "QUEUE_TOKEN_NOT_FOUND") {
+          if (intervalId) window.clearInterval(intervalId);
+          setRemovedFromLine(true);
+          return;
+        }
+        setError(extractErrorMessage(err));
       }
     }
 
@@ -88,7 +99,7 @@ export function QueueWaitingRoom({ eventId, onPassed }: QueueWaitingRoomProps) {
       controller.abort();
       if (intervalId) window.clearInterval(intervalId);
     };
-  }, [eventId, enterToken]);
+  }, [eventId, enterToken, attempt]);
 
   if (isCaptchaEnabled && !enterToken) {
     return (
@@ -105,6 +116,33 @@ export function QueueWaitingRoom({ eventId, onPassed }: QueueWaitingRoomProps) {
             }}
           />
           {error && <p className="form-error">{error}</p>}
+        </div>
+      </div>
+    );
+  }
+
+  function joinAgain() {
+    setRemovedFromLine(false);
+    setError(null);
+    setRankNo(null);
+    if (isCaptchaEnabled) {
+      // The earlier token was spent, so the check has to be done again.
+      setEnterToken(null);
+      setCaptchaKey((k) => k + 1);
+    } else {
+      setAttempt((n) => n + 1);
+    }
+  }
+
+  if (removedFromLine) {
+    return (
+      <div className="queue-room">
+        <div className="queue-card">
+          <h2>줄에서 빠졌어요</h2>
+          <p className="page-status">한동안 연결이 없어서 대기열에서 자리가 정리됐어요. 다시 줄을 서면 맨 뒤에서 시작해요.</p>
+          <button type="button" onClick={joinAgain}>
+            다시 줄 서기
+          </button>
         </div>
       </div>
     );

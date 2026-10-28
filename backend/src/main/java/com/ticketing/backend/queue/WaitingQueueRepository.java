@@ -26,4 +26,11 @@ public interface WaitingQueueRepository extends JpaRepository<WaitingQueue, Long
     @Query("update WaitingQueue w set w.status = com.ticketing.backend.queue.QueueEntryStatus.PASSED, w.passedAt = :now"
             + " where w.queueToken in :tokens and w.status = com.ticketing.backend.queue.QueueEntryStatus.WAITING")
     int markPassed(@Param("tokens") Collection<String> tokens, @Param("now") LocalDateTime now);
+
+    /** The people who left the line without being let in: one statement for the batch, like markPassed. */
+    @Transactional
+    @Modifying(clearAutomatically = true)
+    @Query("update WaitingQueue w set w.status = com.ticketing.backend.queue.QueueEntryStatus.ABANDONED"
+            + " where w.queueToken in :tokens and w.status = com.ticketing.backend.queue.QueueEntryStatus.WAITING")
+    int markAbandoned(@Param("tokens") Collection<String> tokens);
 }

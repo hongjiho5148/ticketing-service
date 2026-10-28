@@ -8,6 +8,10 @@ import com.ticketing.backend.queue.dto.QueueStatusResponse;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.redisson.api.RAtomicLong;
 import org.redisson.api.RBucket;
@@ -67,6 +71,7 @@ public class QueueService {
 
         RBucket<Long> tokenEvent = redissonClient.getBucket(tokenEventKey(queueToken));
         tokenEvent.set(eventId, Duration.ofHours(1));
+        touch(eventId, List.of(queueToken)); // the person is here now; they have to keep showing it (see touch)
 
         long rankNo = rankOf(waiting, queueToken);
 
@@ -77,11 +82,41 @@ public class QueueService {
     }
 
     public QueueStatusResponse status(String queueToken) {
-        Long eventId = redissonClient.<Long>getBucket(tokenEventKey(queueToken)).get();
-        if (eventId == null) {
-            throw new ApiException(ErrorCode.QUEUE_TOKEN_NOT_FOUND);
-        }
+        return statusOf(eventOf(queueToken), queueToken);
+    }
 
+    /**
+     * What a browser without a stream asks every couple of seconds: the answer, and a note that this person is still
+     * there. Someone whose browser stops asking (and has no stream open either) is taken out of the line after
+     * queue.abandon-grace-ms, so the slot goes to someone who is still waiting.
+     */
+    public QueueStatusResponse poll(String queueToken) {
+        Long eventId = eventOf(queueToken);
+        QueueStatusResponse status = statusOf(eventId, queueToken);
+        if ("WAITING".equals(status.status())) {
+            touch(eventId, List.of(queueToken));
+        }
+        return status;
+    }
+
+    /**
+     * Notes that these waiting people are still here, as of now. One entry per person in a sorted set whose score is the
+     * time, so the sweep can pick out everyone not heard from since a given moment with one range query. Entries are
+     * removed when the person is let in or taken out of the line.
+     */
+    void touch(Long eventId, Collection<String> queueTokens) {
+        if (queueTokens.isEmpty()) {
+            return;
+        }
+        double now = System.currentTimeMillis();
+        Map<String, Double> seen = new HashMap<>();
+        for (String token : queueTokens) {
+            seen.put(token, now);
+        }
+        redissonClient.<String>getScoredSortedSet(seenKey(eventId)).addAll(seen);
+    }
+
+    private QueueStatusResponse statusOf(Long eventId, String queueToken) {
         RScoredSortedSet<String> active = redissonClient.getScoredSortedSet(activeKey(eventId));
         Double activeExpiresAt = active.getScore(queueToken);
         if (activeExpiresAt != null && activeExpiresAt > System.currentTimeMillis()) {
@@ -160,6 +195,11 @@ public class QueueService {
 
     static String activeKey(Long eventId) {
         return "queue:active:" + eventId;
+    }
+
+    /** When each waiting person was last known to be there (see touch). */
+    static String seenKey(Long eventId) {
+        return "queue:seen:" + eventId;
     }
 
     private String sequenceKey(Long eventId) {

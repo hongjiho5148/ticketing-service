@@ -1244,6 +1244,15 @@
           "expr": "sum(rate(queue_slots_released_total[1m]))",
           "legendFormat": "구매 후 슬롯 반환",
           "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(queue_abandoned_total[1m]))",
+          "legendFormat": "줄에서 정리(이탈)",
+          "refId": "D"
         }
       ]
     },
