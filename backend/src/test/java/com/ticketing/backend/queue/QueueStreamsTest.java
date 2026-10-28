@@ -167,6 +167,27 @@ class QueueStreamsTest {
     }
 
     @Test
+    void readingManyAtOnceAgreesWithReadingOneAtATime() {
+        List<String> line = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            line.add(join());
+        }
+        sweeper.admitForEvent(eventId); // capacity 2: the first two are let in, three wait
+        redissonClient.getScoredSortedSet(QueueService.waitingKey(eventId)).remove(line.get(3)); // one leaves the line
+        java.util.Map<String, Long> asked = new java.util.HashMap<>();
+        line.forEach(t -> asked.put(t, eventId));
+
+        java.util.Map<String, QueueStatusResponse> many = queueService.statusOfMany(asked);
+
+        assertThat(many).containsOnlyKeys(line.get(0), line.get(1), line.get(2), line.get(4)); // the one who left is missing
+        for (String token : many.keySet()) {
+            assertThat(many.get(token)).isEqualTo(queueService.status(token));
+        }
+        assertThat(many.get(line.get(2)).rankNo()).isEqualTo(1);
+        assertThat(many.get(line.get(4)).rankNo()).isEqualTo(2);
+    }
+
+    @Test
     void aLostAnnouncementIsMadeUpForByTheRefresh() {
         String a = join();
         String b = join();

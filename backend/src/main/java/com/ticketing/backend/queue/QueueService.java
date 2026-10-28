@@ -8,12 +8,14 @@ import com.ticketing.backend.queue.dto.QueueStatusResponse;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.redisson.api.RAtomicLong;
+import org.redisson.api.RBatch;
 import org.redisson.api.RBucket;
 import org.redisson.api.RScoredSortedSet;
 import org.redisson.api.RedissonClient;
@@ -28,6 +30,9 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class QueueService {
+
+    /** People read per round trip in statusOfMany (two commands each). */
+    private static final int STATUS_BATCH = 500;
 
     private final RedissonClient redissonClient;
     private final WaitingQueueRepository waitingQueueRepository;
@@ -97,6 +102,40 @@ public class QueueService {
             touch(eventId, List.of(queueToken));
         }
         return status;
+    }
+
+    /**
+     * Where each of these people stands, read in a few round trips instead of three per person: every connection's state
+     * is re-read on a timer, and one at a time that took seconds for a few thousand connections. A token that is neither
+     * let in nor waiting any more is missing from the result.
+     *
+     * @param eventByToken each person's queue token and the event it belongs to
+     */
+    Map<String, QueueStatusResponse> statusOfMany(Map<String, Long> eventByToken) {
+        Map<String, QueueStatusResponse> result = new HashMap<>();
+        List<String> tokens = new ArrayList<>(eventByToken.keySet());
+        for (int from = 0; from < tokens.size(); from += STATUS_BATCH) {
+            List<String> chunk = tokens.subList(from, Math.min(from + STATUS_BATCH, tokens.size()));
+            RBatch batch = redissonClient.createBatch();
+            for (String token : chunk) {
+                Long eventId = eventByToken.get(token);
+                batch.<String>getScoredSortedSet(activeKey(eventId)).getScoreAsync(token);
+                batch.<String>getScoredSortedSet(waitingKey(eventId)).rankAsync(token);
+            }
+            List<?> responses = batch.execute().getResponses();
+            long now = System.currentTimeMillis();
+            for (int i = 0; i < chunk.size(); i++) {
+                String token = chunk.get(i);
+                Double activeExpiresAt = (Double) responses.get(2 * i);
+                Integer rank = (Integer) responses.get(2 * i + 1);
+                if (activeExpiresAt != null && activeExpiresAt > now) {
+                    result.put(token, QueueStatusResponse.passed(token));
+                } else if (rank != null) {
+                    result.put(token, QueueStatusResponse.waiting(rank + 1L, estimateWaitSeconds(rank + 1L)));
+                }
+            }
+        }
+        return result;
     }
 
     /**
