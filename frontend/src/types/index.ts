@@ -228,6 +228,8 @@ export interface QueueStatusResult {
   status: QueueStatus;
   estimatedWaitSeconds: number | null;
   passToken: string | null;
+  /** For someone who was let in: how long the pass has left as of this answer, in seconds from now. */
+  passExpiresInSeconds: number | null;
 }
 
 export interface ApiErrorBody {

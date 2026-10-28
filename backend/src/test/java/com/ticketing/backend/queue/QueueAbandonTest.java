@@ -130,6 +130,30 @@ class QueueAbandonTest {
     }
 
     @Test
+    void someoneOnlyAskingForTheirStatusIsCreditedForLongerThanAnOpenConnection() {
+        String a = join();
+        String b = join();
+
+        queueService.poll(a); // no stream: a background tab may not ask again for a while
+        streams.register(b, new QueueStreamSink() {
+            @Override
+            public void send(String event, Object data) {}
+
+            @Override
+            public void heartbeat() {}
+
+            @Override
+            public void complete() {}
+        });
+        streams.refreshSeen(); // an open connection is refreshed every few seconds and needs no credit
+
+        double asking = (seen().getScore(a) - System.currentTimeMillis()) / 1000.0;
+        double connected = (seen().getScore(b) - System.currentTimeMillis()) / 1000.0;
+        assertThat(asking).isBetween(115.0, 121.0);
+        assertThat(connected).isBetween(-5.0, 1.0);
+    }
+
+    @Test
     void holdingAStreamOpenCountsAsBeingHere() {
         String a = join();
         join();

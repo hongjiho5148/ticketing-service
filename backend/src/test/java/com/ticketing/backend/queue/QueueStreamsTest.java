@@ -127,6 +127,7 @@ class QueueStreamsTest {
         await(() -> ra.completed && rb.completed);
         assertThat(ra.last().status()).isEqualTo("PASSED");
         assertThat(ra.last().passToken()).isEqualTo(a);
+        assertThat(ra.last().passExpiresInSeconds()).isBetween(295L, 300L); // the default five-minute pass, as it was told to the browser
         assertThat(rb.last().status()).isEqualTo("PASSED");
         // c and d are told their new places on the flush (at most once a second), not on every batch
         await(() -> rc.updates.size() == 1 && streams.connections() == 2);
@@ -181,7 +182,13 @@ class QueueStreamsTest {
 
         assertThat(many).containsOnlyKeys(line.get(0), line.get(1), line.get(2), line.get(4)); // the one who left is missing
         for (String token : many.keySet()) {
-            assertThat(many.get(token)).isEqualTo(queueService.status(token));
+            QueueStatusResponse one = queueService.status(token);
+            assertThat(many.get(token).status()).isEqualTo(one.status());
+            assertThat(many.get(token).rankNo()).isEqualTo(one.rankNo());
+            assertThat(many.get(token).passToken()).isEqualTo(one.passToken());
+            if (one.passExpiresInSeconds() != null) { // read a moment apart, so allow a second
+                assertThat(many.get(token).passExpiresInSeconds()).isBetween(one.passExpiresInSeconds() - 1, one.passExpiresInSeconds() + 1);
+            }
         }
         assertThat(many.get(line.get(2)).rankNo()).isEqualTo(1);
         assertThat(many.get(line.get(4)).rankNo()).isEqualTo(2);
@@ -230,6 +237,7 @@ class QueueStreamsTest {
         Recorder recorder = connect(a);
 
         assertThat(recorder.last().status()).isEqualTo("PASSED");
+        assertThat(recorder.last().passExpiresInSeconds()).isBetween(295L, 300L);
         assertThat(recorder.completed).isTrue();
         assertThat(streams.connections()).isEqualTo(before);
     }
