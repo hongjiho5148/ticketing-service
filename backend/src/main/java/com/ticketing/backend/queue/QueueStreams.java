@@ -6,6 +6,7 @@ import com.ticketing.backend.queue.dto.QueueStatusResponse;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -50,6 +51,7 @@ public class QueueStreams {
     private final Counter statusPushes;
     private final Counter passedPushes;
     private final Counter rejected;
+    private final Timer reconcileTimer;
     private final Map<String, Stream> streams = new ConcurrentHashMap<>();
 
     public QueueStreams(
@@ -68,6 +70,8 @@ public class QueueStreams {
                 .description("Updates pushed to waiting clients over SSE").register(meterRegistry);
         this.rejected = Counter.builder("queue_stream_rejected_total")
                 .description("Stream requests turned away because this instance was full").register(meterRegistry);
+        this.reconcileTimer = Timer.builder("queue_stream_reconcile_seconds")
+                .description("How long one pass of re-reading every open connection's state from Redis takes").register(meterRegistry);
         Gauge.builder("queue_stream_connections", streams, Map::size)
                 .description("Open queue SSE connections on this instance").register(meterRegistry);
     }
@@ -173,20 +177,36 @@ public class QueueStreams {
     /** The backstop for lost messages and ranks that drifted: re-reads each connection's real state from Redis. */
     @Scheduled(initialDelayString = "${queue.stream.reconcile-interval-ms:10000}", fixedDelayString = "${queue.stream.reconcile-interval-ms:10000}")
     public void reconcile() {
-        for (Stream stream : new ArrayList<>(streams.values())) {
-            try {
-                QueueStatusResponse status = queueService.status(stream.queueToken);
-                if ("WAITING".equals(status.status())) {
-                    stream.rank = status.rankNo();
-                    pushRank(stream);
-                } else {
-                    push(stream, status);
-                }
-            } catch (ApiException e) {
-                streams.remove(stream.queueToken); // the token is gone (expired); the client will find out by asking
+        reconcileTimer.record(this::reconcileAll);
+    }
+
+    private void reconcileAll() {
+        List<Stream> open = new ArrayList<>(streams.values());
+        if (open.isEmpty()) {
+            return;
+        }
+        Map<String, Long> eventByToken = new java.util.HashMap<>();
+        for (Stream stream : open) {
+            eventByToken.put(stream.queueToken, stream.eventId);
+        }
+        Map<String, QueueStatusResponse> states;
+        try {
+            states = queueService.statusOfMany(eventByToken);
+        } catch (RuntimeException e) {
+            log.warn("could not refresh queue streams", e);
+            return;
+        }
+        for (Stream stream : open) {
+            QueueStatusResponse status = states.get(stream.queueToken);
+            if (status == null) {
+                // gone from the queue (expired or taken out); the client will find out by asking
+                streams.remove(stream.queueToken);
                 stream.sink.complete();
-            } catch (RuntimeException e) {
-                log.warn("could not refresh queue stream", e);
+            } else if ("WAITING".equals(status.status())) {
+                stream.rank = status.rankNo();
+                pushRank(stream);
+            } else {
+                push(stream, status);
             }
         }
     }
