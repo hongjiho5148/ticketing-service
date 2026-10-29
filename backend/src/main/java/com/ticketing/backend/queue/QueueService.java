@@ -71,7 +71,12 @@ public class QueueService {
                 .description("Passes lengthened because their holder took a seat").register(meterRegistry);
     }
 
-    @Transactional
+    /**
+     * Deliberately not @Transactional: the event check is a call to another service and the queue state is in Redis, so a
+     * transaction around the method held a database connection for the whole of that call. When a few thousand people join
+     * at once that kept every connection in the pool busy waiting on event-service while MySQL itself sat idle. Only the
+     * history row needs the database, and saving it opens its own short transaction.
+     */
     public QueueEnterResponse enter(Long userId, Long eventId) {
         eventServiceClient.getEvent(eventId); // throws EVENT_NOT_FOUND (404) if it doesn't exist
 
