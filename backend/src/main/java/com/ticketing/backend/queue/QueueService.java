@@ -40,6 +40,9 @@ public class QueueService {
     private final int activeCapacity;
     private final long admissionIntervalMs;
     private final boolean releaseSlotOnPurchase;
+    private final long passExtensionMs;
+    private final long pollCreditMs;
+    private final Counter extendedCounter;
     private final Counter enteredCounter;
     private final Counter releasedCounter;
 
@@ -50,6 +53,8 @@ public class QueueService {
             @Value("${queue.active-capacity}") int activeCapacity,
             @Value("${queue.admission-interval-ms}") long admissionIntervalMs,
             @Value("${queue.release-slot-on-purchase:true}") boolean releaseSlotOnPurchase,
+            @Value("${queue.pass-extension-ms:300000}") long passExtensionMs,
+            @Value("${queue.poll-credit-ms:120000}") long pollCreditMs,
             MeterRegistry meterRegistry) {
         this.enteredCounter = Counter.builder("queue_entered_total").description("People who joined a queue").register(meterRegistry);
         this.releasedCounter = Counter.builder("queue_slots_released_total")
@@ -60,6 +65,10 @@ public class QueueService {
         this.activeCapacity = activeCapacity;
         this.admissionIntervalMs = admissionIntervalMs;
         this.releaseSlotOnPurchase = releaseSlotOnPurchase;
+        this.passExtensionMs = passExtensionMs;
+        this.pollCreditMs = pollCreditMs;
+        this.extendedCounter = Counter.builder("queue_passes_extended_total")
+                .description("Passes lengthened because their holder took a seat").register(meterRegistry);
     }
 
     @Transactional
@@ -99,7 +108,7 @@ public class QueueService {
         Long eventId = eventOf(queueToken);
         QueueStatusResponse status = statusOf(eventId, queueToken);
         if ("WAITING".equals(status.status())) {
-            touch(eventId, List.of(queueToken));
+            touch(eventId, List.of(queueToken), pollCreditMs);
         }
         return status;
     }
@@ -129,7 +138,7 @@ public class QueueService {
                 Double activeExpiresAt = (Double) responses.get(2 * i);
                 Integer rank = (Integer) responses.get(2 * i + 1);
                 if (activeExpiresAt != null && activeExpiresAt > now) {
-                    result.put(token, QueueStatusResponse.passed(token));
+                    result.put(token, QueueStatusResponse.passed(token, secondsUntil(activeExpiresAt)));
                 } else if (rank != null) {
                     result.put(token, QueueStatusResponse.waiting(rank + 1L, estimateWaitSeconds(rank + 1L)));
                 }
@@ -144,10 +153,20 @@ public class QueueService {
      * removed when the person is let in or taken out of the line.
      */
     void touch(Long eventId, Collection<String> queueTokens) {
+        touch(eventId, queueTokens, 0);
+    }
+
+    /**
+     * @param creditMs time added to the note, so the person counts as present that much longer. Someone who is only
+     *     asking for their status (no stream) is credited a couple of minutes because a browser slows the timers of a
+     *     background tab and may not ask again for the better part of a minute; an open connection needs no credit,
+     *     it is refreshed every few seconds and noticed at once when it dies.
+     */
+    void touch(Long eventId, Collection<String> queueTokens, long creditMs) {
         if (queueTokens.isEmpty()) {
             return;
         }
-        double now = System.currentTimeMillis();
+        double now = System.currentTimeMillis() + creditMs;
         Map<String, Double> seen = new HashMap<>();
         for (String token : queueTokens) {
             seen.put(token, now);
@@ -159,7 +178,7 @@ public class QueueService {
         RScoredSortedSet<String> active = redissonClient.getScoredSortedSet(activeKey(eventId));
         Double activeExpiresAt = active.getScore(queueToken);
         if (activeExpiresAt != null && activeExpiresAt > System.currentTimeMillis()) {
-            return QueueStatusResponse.passed(queueToken);
+            return QueueStatusResponse.passed(queueToken, secondsUntil(activeExpiresAt));
         }
 
         RScoredSortedSet<String> waiting = redissonClient.getScoredSortedSet(waitingKey(eventId));
@@ -216,6 +235,40 @@ public class QueueService {
             }
         }
         return released;
+    }
+
+    /**
+     * Lengthens the pass of someone who has just taken a seat, to at least pass-extension-ms from now. Passes are kept
+     * short so that a person who was let in and did nothing gives the slot back soon; this is what keeps a person who is
+     * actually buying from losing theirs in the middle (to pick another seat or to finish paying, if they go on to need
+     * it). Only a pass that is still valid is touched, and it is never shortened: a pass that has run out stays out.
+     * Safe to call repeatedly (a second seat, a redelivered event).
+     *
+     * @return how many passes were lengthened
+     */
+    @Transactional(readOnly = true)
+    public int extendPassesOfHolder(Long userId, Long eventId) {
+        if (passExtensionMs <= 0) {
+            return 0;
+        }
+        long now = System.currentTimeMillis();
+        double until = now + passExtensionMs;
+        RScoredSortedSet<String> active = redissonClient.getScoredSortedSet(activeKey(eventId));
+        int extended = 0;
+        for (WaitingQueue entry : waitingQueueRepository.findByUserIdAndEventId(userId, eventId)) {
+            Double expiresAt = active.getScore(entry.getQueueToken());
+            if (expiresAt != null && expiresAt > now && until > expiresAt) {
+                active.add(until, entry.getQueueToken());
+                extended++;
+                extendedCounter.increment();
+            }
+        }
+        return extended;
+    }
+
+    /** Whole seconds from now until a pass that runs out at this clock time (milliseconds), never below zero. */
+    static long secondsUntil(double expiresAtMs) {
+        return Math.max(0, (long) Math.ceil((expiresAtMs - System.currentTimeMillis()) / 1000.0));
     }
 
     private long rankOf(RScoredSortedSet<String> waiting, String queueToken) {

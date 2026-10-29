@@ -123,7 +123,7 @@ flowchart TB
 | 장애를 로그와 수작업 SQL로만 찾음 | **Prometheus + Grafana**: 요청·지연, DB 연결 풀, 서킷 상태, 아웃박스 적체, 대기열, 좌석 홀드·결제 결과를 한 화면에, 알림 규칙 5개. 장애 재현 때 그래프에 원인과 결과가 그대로 보임(수집 부담은 측정 오차 안) |
 
 설계 이유와 검증 방법은 [`docs/design-notes.md`](docs/design-notes.md)에 정리했습니다.
-동시성이 걸린 로직은 mock이 아니라 실제 MySQL에 붙는 통합 테스트로 검증하고, 테스트 메서드는 총 244개입니다.
+동시성이 걸린 로직은 mock이 아니라 실제 MySQL에 붙는 통합 테스트로 검증하고, 테스트 메서드는 총 249개입니다.
 
 ### 주요 기능
 
@@ -292,6 +292,7 @@ cd admin-frontend && npm install && npm run dev
 | `IDENTITY_VERIFICATION_REQUIRED` | 결제 전 구매자 확인 필수 여부 (기본 true) |
 | `JPA_SHOW_SQL` | `true`면 서비스들이 실행하는 SQL을 콘솔에 출력 (기본 false, 부하 시 초당 수만 줄이라 기본은 끔) |
 | `QUEUE_ACTIVE_CAPACITY` / `QUEUE_ADMISSION_INTERVAL_MS` | 대기열 동시 입장 수 / 입장 간격 |
+| `QUEUE_PASS_TOKEN_TTL_MS` / `QUEUE_PASS_EXTENSION_MS` | 입장권 길이(기본 5분) / 좌석을 잡은 사람의 입장권을 이만큼으로 연장(기본 5분, 0이면 끔) |
 | `QUEUE_RELEASE_SLOT_ON_PURCHASE` | `false`면 결제를 마친 사람도 입장권이 만료될 때까지 슬롯을 유지 (기본 true) |
 | `GRAFANA_ADMIN_PASSWORD` | Grafana 관리자 비밀번호 (기본값은 로컬 개발용, `127.0.0.1`에만 열려 있음) |
 

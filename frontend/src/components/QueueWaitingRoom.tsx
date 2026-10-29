@@ -8,7 +8,8 @@ import { ReCaptcha } from "./ReCaptcha";
 
 interface QueueWaitingRoomProps {
   eventId: number;
-  onPassed: (passToken: string) => void;
+  /** expiresInSeconds: how long the pass has left, when the server said. */
+  onPassed: (passToken: string, expiresInSeconds: number | null) => void;
 }
 
 const POLL_INTERVAL_MS = 2000;
@@ -40,7 +41,7 @@ export function QueueWaitingRoom({ eventId, onPassed }: QueueWaitingRoomProps) {
       if (status.status === "PASSED" && status.passToken) {
         if (intervalId) window.clearInterval(intervalId);
         controller.abort();
-        onPassedRef.current(status.passToken);
+        onPassedRef.current(status.passToken, status.passExpiresInSeconds);
         return true;
       }
       setRankNo(status.rankNo);
@@ -77,9 +78,18 @@ export function QueueWaitingRoom({ eventId, onPassed }: QueueWaitingRoomProps) {
       intervalId = window.setInterval(() => poll(queueToken), POLL_INTERVAL_MS);
     }
 
+    // A browser slows or pauses a tab that is out of sight, and a phone that slept may have lost the connection without
+    // noticing. When the tab is shown again, ask at once instead of waiting for the next tick or the next push.
+    let queueToken: string | null = null;
+    function onVisible() {
+      if (document.visibilityState === "visible" && queueToken) void poll(queueToken);
+    }
+    document.addEventListener("visibilitychange", onVisible);
+
     enterQueue(eventId, enterToken ?? undefined)
       .then((entered) => {
         if (cancelled) return;
+        queueToken = entered.queueToken;
         setRankNo(entered.rankNo);
         setEstimatedWaitSeconds(entered.estimatedWaitSeconds);
         void watch(entered.queueToken);
@@ -96,6 +106,7 @@ export function QueueWaitingRoom({ eventId, onPassed }: QueueWaitingRoomProps) {
 
     return () => {
       cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
       controller.abort();
       if (intervalId) window.clearInterval(intervalId);
     };

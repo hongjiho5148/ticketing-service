@@ -67,6 +67,32 @@ export function HoldTimer({ expireAt, onExpire }: HoldTimerProps) {
   );
 }
 
+interface PassTimerProps {
+  /** Local clock time (ms) at which the queue pass runs out. */
+  deadline: number;
+  onExpire: () => void;
+}
+
+/**
+ * How long the queue pass has left. The pass is short on purpose (a slot is held for whoever has it), so the person
+ * choosing seats should see the clock instead of being turned away without warning. Goes urgent in the last minute and
+ * hands over to onExpire at zero.
+ */
+export function PassTimer({ deadline, onExpire }: PassTimerProps) {
+  const remaining = useRemaining(new Date(deadline).toISOString(), onExpire);
+  const urgent = remaining < 60_000;
+
+  return (
+    <div className={`hold-timer ${urgent ? "urgent" : ""}`} role="timer" aria-live="off">
+      <div className="hold-timer-row">
+        <span>좌석을 잡을 수 있는 시간</span>
+        <strong>{formatRemaining(remaining)}</strong>
+      </div>
+      {urgent && <small>시간이 끝나면 줄을 다시 서야 해요. 좌석을 잡으면 시간이 늘어나요.</small>}
+    </div>
+  );
+}
+
 /** "03:12 남음" as inline text, for tight spaces like a table cell. */
 export function HoldRemaining({ expireAt, onExpire }: HoldTimerProps) {
   const remaining = useRemaining(expireAt, onExpire);

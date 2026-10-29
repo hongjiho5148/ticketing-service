@@ -138,21 +138,24 @@ public class QueueStreams {
     }
 
     /** Called on the instance that ran the sweep; reaches every instance's connections through Redis. */
-    public void announceAdmitted(Long eventId, java.util.Collection<String> tokens) {
+    public void announceAdmitted(Long eventId, long passExpiresAt, java.util.Collection<String> tokens) {
         if (tokens.isEmpty()) {
             return;
         }
-        redissonClient.getTopic(ADMITTED_TOPIC, StringCodec.INSTANCE).publish(eventId + ":" + String.join(",", tokens));
+        redissonClient.getTopic(ADMITTED_TOPIC, StringCodec.INSTANCE)
+                .publish(eventId + ":" + passExpiresAt + ":" + String.join(",", tokens));
     }
 
     void onAdmitted(String message) {
-        int split = message.indexOf(':');
-        Long eventId = Long.valueOf(message.substring(0, split));
-        List<String> tokens = Arrays.asList(message.substring(split + 1).split(","));
+        int first = message.indexOf(':');
+        int second = message.indexOf(':', first + 1);
+        Long eventId = Long.valueOf(message.substring(0, first));
+        long passExpiresAt = Long.parseLong(message.substring(first + 1, second));
+        List<String> tokens = Arrays.asList(message.substring(second + 1).split(","));
         for (String token : tokens) {
             Stream stream = streams.get(token);
             if (stream != null) {
-                push(stream, QueueStatusResponse.passed(token));
+                push(stream, QueueStatusResponse.passed(token, QueueService.secondsUntil(passExpiresAt)));
             }
         }
         for (Stream stream : streams.values()) {

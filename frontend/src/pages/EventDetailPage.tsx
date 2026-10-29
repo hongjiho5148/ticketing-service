@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { isAxiosError } from "axios";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { fetchEventDetail, fetchEventSeats } from "../api/events";
+import { fetchQueueStatus } from "../api/queue";
 import { cancelReservation, createReservation } from "../api/reservations";
 import {
   applyCoupon,
@@ -22,7 +24,7 @@ import { useToast } from "../context/ToastContext";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { AlertSubscribeCard } from "../components/AlertSubscribeCard";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-import { HoldTimer, OpenCountdown } from "../components/Countdown";
+import { HoldTimer, OpenCountdown, PassTimer } from "../components/Countdown";
 import { VenueSeatMap } from "../components/VenueSeatMap";
 import { SeatGrid } from "../components/SeatGrid";
 import { QueueWaitingRoom } from "../components/QueueWaitingRoom";
@@ -31,7 +33,7 @@ import { couponBenefitLabel } from "../utils/coupon";
 import { posterGlyph, posterThemeClass } from "../utils/poster";
 import { CATEGORY_LABEL } from "../utils/category";
 import { availablePayMethods, requestPayment, type PayMethod } from "../utils/portone";
-import type { AvailableCoupon, EventDetail, Order, Reservation, ReviewListResponse, Seat } from "../types";
+import type { ApiErrorBody, AvailableCoupon, EventDetail, Order, Reservation, ReviewListResponse, Seat } from "../types";
 
 const GRADE_ORDER = ["VIP", "R", "S"];
 
@@ -51,6 +53,9 @@ export function EventDetailPage() {
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [seats, setSeats] = useState<Seat[]>([]);
   const [passToken, setPassToken] = useState<string | null>(null);
+  // Local clock time at which the pass runs out; null when the server did not say.
+  const [passDeadline, setPassDeadline] = useState<number | null>(null);
+  const hadReservation = useRef(false);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
   const [reservation, setReservation] = useState<Reservation | null>(null);
@@ -88,6 +93,40 @@ export function EventDetailPage() {
   useEffect(() => {
     setIdentityConfirmed(false);
   }, [reservation?.reservationId]);
+
+  // Taking a seat lengthens the pass, but the page learns of it only by asking. When the reservation is gone again
+  // (cancelled, or the hold ran out) ask how long the pass has left, after a moment so the lengthening has been applied.
+  useEffect(() => {
+    const had = hadReservation.current;
+    hadReservation.current = reservation !== null;
+    if (reservation !== null) {
+      setPassDeadline(null); // being lengthened; unknown until asked, so show no clock rather than an old one
+      return;
+    }
+    if (!had || !passToken) return;
+    const token = passToken;
+    const id = window.setTimeout(() => {
+      fetchQueueStatus(token)
+        .then((status) => {
+          if (status.status === "PASSED" && status.passExpiresInSeconds != null) {
+            setPassDeadline(Date.now() + status.passExpiresInSeconds * 1000);
+          } else {
+            handlePassExpired();
+          }
+        })
+        .catch(() => handlePassExpired());
+    }, 2000);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reservation, passToken]);
+
+  function handlePassExpired() {
+    // Back to the queue: the pass is gone, so a seat can no longer be taken with it.
+    setPassToken(null);
+    setPassDeadline(null);
+    setSelectedSeat(null);
+    showToast("입장 시간이 지났어요. 다시 줄을 서 주세요.");
+  }
 
   useEffect(() => {
     if (!eventId) return;
@@ -195,6 +234,11 @@ export function EventDetailPage() {
       const created = await createReservation(selectedSeat.id, passToken);
       setReservation(created);
     } catch (err) {
+      if (isAxiosError<ApiErrorBody>(err) && err.response?.data?.code === "PASS_TOKEN_REQUIRED") {
+        // The pass ran out while they were choosing: back to the queue rather than a message with nowhere to go.
+        handlePassExpired();
+        return;
+      }
       setError(extractErrorMessage(err));
     } finally {
       setIsProcessing(false);
@@ -510,7 +554,15 @@ export function EventDetailPage() {
   }
 
   if (!passToken && !resumed) {
-    return <QueueWaitingRoom eventId={event.id} onPassed={setPassToken} />;
+    return (
+      <QueueWaitingRoom
+        eventId={event.id}
+        onPassed={(token, expiresInSeconds) => {
+          setPassToken(token);
+          setPassDeadline(expiresInSeconds != null ? Date.now() + expiresInSeconds * 1000 : null);
+        }}
+      />
+    );
   }
 
   return (
@@ -593,9 +645,12 @@ export function EventDetailPage() {
           </div>
 
           {!reservation ? (
-            <button type="button" onClick={handleReserve} disabled={!selectedSeat || isProcessing}>
-              좌석 예약하기
-            </button>
+            <>
+              {passDeadline !== null && !resumed && <PassTimer deadline={passDeadline} onExpire={handlePassExpired} />}
+              <button type="button" onClick={handleReserve} disabled={!selectedSeat || isProcessing}>
+                좌석 예약하기
+              </button>
+            </>
           ) : (
             <div className="reservation-panel">
               <p>

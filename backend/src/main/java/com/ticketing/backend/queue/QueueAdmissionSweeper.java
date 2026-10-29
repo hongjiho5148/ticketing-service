@@ -156,7 +156,7 @@ public class QueueAdmissionSweeper {
         redissonClient.getScoredSortedSet(QueueService.seenKey(eventId)).removeAll(toAdmit);
         // Tell the connections waiting on any instance. A failure here only means they hear it at the next refresh.
         try {
-            queueStreams.announceAdmitted(eventId, toAdmit);
+            queueStreams.announceAdmitted(eventId, expiresAt, toAdmit);
         } catch (RuntimeException e) {
             log.warn("could not announce {} admitted entries of event {}", toAdmit.size(), eventId, e);
         }
