@@ -18,6 +18,11 @@ spring:
     username: ${DB_USERNAME:ticketing}
     password: ${DB_PASSWORD:ticketing}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      # Connections this service may hold to its database (HikariCP's default is 10). More lets more requests work at the same
+      # time but every one is a connection MySQL has to serve, and MySQL's own limit (max_connections, 151 by default) is shared
+      # by all services and all replicas - raise them together. Measured under a 2,500-person spike: docs/design-notes.md.
+      maximum-pool-size: ${DB_POOL_SIZE:10}
   jpa:
     hibernate:
       ddl-auto: validate
