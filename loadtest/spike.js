@@ -49,6 +49,12 @@ export const options = {
   },
 };
 
+// 실패한 요청은 어떤 요청이 어떤 상태로 실패했는지 한 줄씩 남긴다(status 0은 응답을 못 받은 것: 시간 초과나 연결 오류).
+// 끝난 뒤 `docker logs <k6 컨테이너> | grep "ERR " | sort | uniq -c`로 센다.
+function logFailure(name, res) {
+  console.warn(`ERR ${name} status=${res.status} ${res.error_code || ""} ${String(res.body || "").slice(0, 60).replace(/\s+/g, " ")}`);
+}
+
 function authHeaders(token, extra) {
   return { headers: Object.assign({ "Content-Type": "application/json", Authorization: `Bearer ${token}` }, extra || {}) };
 }
@@ -84,6 +90,7 @@ export default function (data) {
   const entered = http.post(`${BASE_URL}/queue/enter`, JSON.stringify({ eventId: EVENT_ID }), Object.assign({ tags: { name: "queue_enter" } }, authHeaders(token)));
   queueEnter.add(entered.timings.duration);
   if (entered.status !== 200) {
+    logFailure("queue_enter", entered);
     enterFailed.add(1);
     return;
   }
@@ -97,6 +104,7 @@ export default function (data) {
       passToken = status.json("passToken");
       break;
     }
+    if (status.status !== 200) logFailure("queue_status", status);
     sleep(POLL_S * (0.8 + Math.random() * 0.4));
   }
   if (!passToken) {
@@ -109,6 +117,7 @@ export default function (data) {
   let reservationId = null;
   for (let attempt = 0; attempt < 3 && reservationId === null; attempt++) {
     const list = http.get(`${BASE_URL}/events/${EVENT_ID}/seats`, { headers: { "Accept-Encoding": "gzip" }, tags: { name: "seat_list" } });
+    if (list.status !== 200) logFailure("seat_list", list);
     const seats = list.status === 200 ? list.json() : [];
     const available = (Array.isArray(seats) ? seats : seats.seats || []).filter((s) => s.status === "AVAILABLE");
     if (available.length === 0) {
@@ -122,6 +131,7 @@ export default function (data) {
       reservationId = res.json("reservationId");
       reserved.add(1);
     } else if (res.status !== 409) {
+      logFailure("reserve", res);
       reserveError.add(1);
       break;
     } else if (attempt === 2) {
