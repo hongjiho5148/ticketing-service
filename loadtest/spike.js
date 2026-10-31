@@ -53,7 +53,17 @@ function authHeaders(token, extra) {
   return { headers: Object.assign({ "Content-Type": "application/json", Authorization: `Bearer ${token}` }, extra || {}) };
 }
 
+// 예매는 공연 시작 2시간 전까지만 되므로, 마감된 공연으로 돌리면 모든 요청이 410(SALES_CLOSED)으로 끝난다. 시작하기 전에 알려 준다.
+// 판매 중인 공연의 id를 EVENT_ID로 준다(데모 공연은 scripts/seed_demo_events.sql로 만들 수 있다).
+function assertOnSale(baseUrl, eventId) {
+  const res = http.get(`${baseUrl}/events/${eventId}`);
+  if (res.status !== 200 || res.json("status") === "CLOSED") {
+    throw new Error(`event ${eventId} is not on sale (status ${res.status === 200 ? res.json("status") : res.status}) - pass a show that can still be booked as EVENT_ID`);
+  }
+}
+
 export function setup() {
+  assertOnSale(BASE_URL, EVENT_ID);
   const tokens = [];
   for (let from = 1; from <= USERS; from += 50) {
     const requests = [];

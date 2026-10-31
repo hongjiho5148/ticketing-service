@@ -446,6 +446,18 @@ export function EventDetailPage() {
     return <p className="page-status">{error ?? "불러오는 중..."}</p>;
   }
 
+  if (!user && (event.status === "CLOSED" || new Date(event.salesCloseAt).getTime() <= Date.now())) {
+    // No point asking someone to log in for a show nobody can book any more.
+    return (
+      <div className="queue-room">
+        <div className="queue-card">
+          <h2>예매가 마감된 공연이에요</h2>
+          <p className="page-status">공연 시작 2시간 전({formatDateTime(event.salesCloseAt)})까지 예매할 수 있어요.</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!user) {
     return (
       <div className="queue-room">
@@ -523,6 +535,25 @@ export function EventDetailPage() {
   const totalSeats = event.sectionSummary.reduce((sum, s) => sum + s.totalCount, 0);
   const availableSeats = event.sectionSummary.reduce((sum, s) => sum + s.availableCount, 0);
   const isSoldOut = event.status === "OPEN" && totalSeats > 0 && availableSeats === 0;
+  // Seats can be taken until two hours before the show. The server judges this by its clock (and refuses later bookings);
+  // the page only has to say so instead of offering a queue that would lead nowhere. Someone already holding a seat or
+  // finishing an earlier order is not turned away mid-way.
+  const isSalesClosed = event.status === "CLOSED" || new Date(event.salesCloseAt).getTime() <= Date.now();
+
+  if (isSalesClosed && !resumed && !reservation) {
+    return (
+      <div>
+        {header}
+        <div className="gate-panel">
+          <div className="open-countdown">
+            <span>현재</span>
+            <strong>예매 마감</strong>
+          </div>
+          <p className="gate-panel-note">공연 시작 2시간 전({formatDateTime(event.salesCloseAt)})까지 예매할 수 있어요.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (isPreOpen && !resumed) {
     return (

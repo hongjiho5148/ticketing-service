@@ -143,7 +143,7 @@ class OutboxRelayTest {
         long eventId = 8_000_000_000L + SEQ.incrementAndGet() % 1_000_000;
         long userId = 9_000_000_000L + SEQ.incrementAndGet() % 1_000_000;
         when(queueServiceClient.isPassTokenValid(anyLong(), any())).thenReturn(true);
-        SeatDetailResponse seat = new SeatDetailResponse(seatId, eventId, "공연", "홀", LocalDateTime.now().plusDays(10),
+        SeatDetailResponse seat = new SeatDetailResponse(seatId, eventId, "공연", "홀", LocalDateTime.now().plusDays(10), false,
                 "R", "A", 1, 1, "1열 1번", 10000, "AVAILABLE");
         when(eventServiceClient.getSeat(anyLong())).thenReturn(seat);
         when(eventServiceClient.hold(anyLong(), any())).thenReturn(seat);

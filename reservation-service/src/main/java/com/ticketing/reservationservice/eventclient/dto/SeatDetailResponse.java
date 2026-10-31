@@ -9,6 +9,7 @@ public record SeatDetailResponse(
         String eventTitle,
         String venue,
         LocalDateTime eventStartAt,
+        boolean salesClosed,
         String grade,
         String section,
         Integer rowNo,

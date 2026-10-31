@@ -57,6 +57,10 @@ public class ReservationService {
 
     public ReservationResponse reserve(Long userId, ReservationCreateRequest request, String passToken) {
         SeatDetailResponse requestedSeat = eventServiceClient.getSeat(request.seatId());
+        if (requestedSeat.salesClosed()) {
+            // event-service judges this from its own clock: seats can be taken until 2 hours before the show starts
+            throw new ApiException(ErrorCode.SALES_CLOSED);
+        }
         if (!queueServiceClient.isPassTokenValid(requestedSeat.eventId(), passToken)) {
             throw new ApiException(ErrorCode.PASS_TOKEN_REQUIRED);
         }

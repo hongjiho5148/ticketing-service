@@ -12,6 +12,7 @@ public record EventSummaryResponse(
         EventCategory category,
         LocalDateTime startAt,
         LocalDateTime openAt,
+        LocalDateTime salesCloseAt,
         EventStatus status,
         Double averageRating,
         long reviewCount) {
@@ -28,6 +29,7 @@ public record EventSummaryResponse(
                 event.getCategory(),
                 event.getStartAt(),
                 event.getOpenAt(),
+                event.getSalesCloseAt(),
                 event.getStatus(),
                 rating.averageRating(),
                 rating.reviewCount());
