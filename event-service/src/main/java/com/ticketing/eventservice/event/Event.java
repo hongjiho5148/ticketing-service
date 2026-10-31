@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -20,6 +21,12 @@ import org.hibernate.annotations.CreationTimestamp;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Event {
+
+    /**
+     * Seats can be taken until this long before the show starts. It is the same moment the QR tickets are issued and the
+     * last moment a ticket can be handed over, so nothing is sold that could not be used or passed on in time.
+     */
+    public static final Duration SALES_CLOSE_BEFORE_START = Duration.ofHours(2);
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -84,6 +91,23 @@ public class Event {
         return externalId == null
                 ? null
                 : "https://www.kopis.or.kr/por/db/pblprfr/pblprfrView.do?menuId=MNU_00020&mt20Id=" + externalId;
+    }
+
+    /** The last moment, exclusive, at which a seat of this show can be taken. */
+    public LocalDateTime getSalesCloseAt() {
+        return startAt.minus(SALES_CLOSE_BEFORE_START);
+    }
+
+    /**
+     * Whether booking is over: the show's sales window has ended, or somebody marked it closed. Judged from the clock rather
+     * than the stored status, because the status only catches up with the clock on the next sweeper tick.
+     */
+    public boolean isSalesClosed(LocalDateTime now) {
+        return status == EventStatus.CLOSED || !now.isBefore(getSalesCloseAt());
+    }
+
+    public void close() {
+        this.status = EventStatus.CLOSED;
     }
 
     /** Flipped by OpenAlertSweeper once openAt has passed, so the list/detail pages stop saying "오픈예정". */

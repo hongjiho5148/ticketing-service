@@ -10,6 +10,7 @@ public enum ErrorCode {
     RESERVATION_NOT_CANCELLABLE(HttpStatus.CONFLICT, "취소할 수 없는 예약 상태입니다."),
     PASS_TOKEN_REQUIRED(HttpStatus.FORBIDDEN, "대기열을 통과한 뒤에만 예약할 수 있습니다."),
     SEAT_NOT_FOUND(HttpStatus.NOT_FOUND, "좌석을 찾을 수 없습니다."),
+    SALES_CLOSED(HttpStatus.GONE, "예매가 마감된 공연입니다. 공연 시작 2시간 전까지 예매할 수 있어요."),
     SEAT_ALREADY_RESERVED(HttpStatus.CONFLICT, "이미 예약된 좌석입니다."),
     HOLD_EXPIRED(HttpStatus.GONE, "좌석 홀드가 만료돼 예약을 확정할 수 없습니다."),
     SEAT_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "한 공연당 예매할 수 있는 좌석 수를 초과했어요."),

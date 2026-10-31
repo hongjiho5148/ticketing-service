@@ -1,4 +1,5 @@
 package com.ticketing.backend.eventclient.dto;
 
-public record EventExistsResponse(Long id, String title) {
+/** salesClosed: booking for this show is over (seats can be taken until 2 hours before it starts). */
+public record EventExistsResponse(Long id, String title, boolean salesClosed) {
 }

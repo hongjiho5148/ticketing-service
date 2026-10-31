@@ -59,7 +59,7 @@ class SeatLimitTest {
     }
 
     private static SeatDetailResponse seat(Long seatId, Long eventId) {
-        return new SeatDetailResponse(seatId, eventId, "공연", "홀", LocalDateTime.now().plusDays(10),
+        return new SeatDetailResponse(seatId, eventId, "공연", "홀", LocalDateTime.now().plusDays(10), false,
                 "R", "A", 1, 1, "1열 1번", 10000, "AVAILABLE");
     }
 

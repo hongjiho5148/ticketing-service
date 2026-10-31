@@ -3,6 +3,7 @@ package com.ticketing.backend.queue;
 import com.ticketing.backend.common.ApiException;
 import com.ticketing.backend.common.ErrorCode;
 import com.ticketing.backend.eventclient.EventServiceClient;
+import com.ticketing.backend.eventclient.dto.EventExistsResponse;
 import com.ticketing.backend.queue.dto.QueueEnterResponse;
 import com.ticketing.backend.queue.dto.QueueStatusResponse;
 import io.micrometer.core.instrument.Counter;
@@ -78,7 +79,10 @@ public class QueueService {
      * history row needs the database, and saving it opens its own short transaction.
      */
     public QueueEnterResponse enter(Long userId, Long eventId) {
-        eventServiceClient.getEvent(eventId); // throws EVENT_NOT_FOUND (404) if it doesn't exist
+        EventExistsResponse event = eventServiceClient.getEvent(eventId); // throws EVENT_NOT_FOUND (404) if it doesn't exist
+        if (event != null && event.salesClosed()) {
+            throw new ApiException(ErrorCode.SALES_CLOSED); // nobody should wait in line for a show nobody can book any more
+        }
 
         String queueToken = UUID.randomUUID().toString();
 

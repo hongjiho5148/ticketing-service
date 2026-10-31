@@ -33,6 +33,8 @@ export interface EventSummary {
   reviewCount: number;
   startAt: string;
   openAt: string;
+  /** The last moment a seat can be taken: two hours before the show starts. */
+  salesCloseAt: string;
   status: EventStatus;
 }
 
@@ -65,6 +67,7 @@ export interface EventDetail {
   description: string | null;
   startAt: string;
   openAt: string;
+  salesCloseAt: string;
   status: EventStatus;
   sourceUrl: string | null;
   seatSummary: SeatGradeSummary[];

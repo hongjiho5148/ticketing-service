@@ -14,6 +14,9 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     List<Event> findByStatusAndOpenAtLessThanEqual(EventStatus status, LocalDateTime openAt);
 
+    /** Shows that are not marked closed yet but whose start is at or before the given moment. */
+    List<Event> findByStatusNotAndStartAtLessThanEqual(EventStatus status, LocalDateTime startAt);
+
     /** Every filter is optional (null = don't filter on it); startAt is matched as {@code from <= startAt < to}. */
     @Query("select e from Event e where (:status is null or e.status = :status) "
             + "and (:category is null or e.category = :category) "

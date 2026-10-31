@@ -56,6 +56,10 @@ redis:
 seat:
   hold-expiry-sweep-cron: "0 * * * * *"
 
+event:
+  # How often to mark shows whose sales window is over as closed (the booking rule itself is judged from the clock).
+  sales-close-sweep-cron: "0 * * * * *"
+
 order:
   service:
     uri: ${ORDER_SERVICE_URI:http://order-service:8080}

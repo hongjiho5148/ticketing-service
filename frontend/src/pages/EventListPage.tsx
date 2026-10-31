@@ -42,7 +42,9 @@ export function EventListPage() {
 
   const [keywordInput, setKeywordInput] = useState("");
   const [keyword, setKeyword] = useState("");
-  const [status, setStatus] = useState<EventStatus | undefined>(undefined);
+  // Opens on the shows that can be booked now; shows whose sales are over (they start in under two hours or have started)
+  // would otherwise come first when sorted by date. "전체" and "예매종료" are one click away.
+  const [status, setStatus] = useState<EventStatus | undefined>("OPEN");
   const [category, setCategory] = useState<EventCategory | undefined>(undefined);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
