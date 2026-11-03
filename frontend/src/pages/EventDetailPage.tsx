@@ -62,6 +62,8 @@ export function EventDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  // Why the queue screen is showing again; a toast is gone in 3 seconds and an error banner sits on a page that is replaced.
+  const [queueNotice, setQueueNotice] = useState<string | null>(null);
   const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
   // Set when the open countdown reaches zero, so the page moves on without waiting for the
   // server-side UPCOMING -> OPEN status flip (which only lands on the next sweeper tick).
@@ -125,7 +127,8 @@ export function EventDetailPage() {
     setPassToken(null);
     setPassDeadline(null);
     setSelectedSeat(null);
-    showToast("입장 시간이 지났어요. 다시 줄을 서 주세요.");
+    // A more specific reason (the payment was refunded because the hold ran out) is not replaced by the generic one.
+    setQueueNotice((prev) => prev ?? "입장 시간이 지났어요. 다시 줄을 서 주세요.");
   }
 
   useEffect(() => {
@@ -233,6 +236,7 @@ export function EventDetailPage() {
     try {
       const created = await createReservation(selectedSeat.id, passToken);
       setReservation(created);
+      setQueueNotice(null);
     } catch (err) {
       if (isAxiosError<ApiErrorBody>(err) && err.response?.data?.code === "PASS_TOKEN_REQUIRED") {
         // The pass ran out while they were choosing: back to the queue rather than a message with nowhere to go.
@@ -427,11 +431,12 @@ export function EventDetailPage() {
         navigate("/tickets?tab=orders");
         return;
       }
-      setError(
-        holdLost
-          ? "좌석 예약 시간이 지나 결제가 자동으로 환불됐어요. 다시 예약해주세요."
-          : "결제가 거절됐어요. 좌석이 해제됐으니 다시 예약해주세요.",
-      );
+      const lostMessage = holdLost
+        ? "좌석 예약 시간이 지나 결제가 자동으로 환불됐어요. 다시 예약해주세요."
+        : "결제가 거절됐어요. 좌석이 해제됐으니 다시 예약해주세요.";
+      setError(lostMessage);
+      // The queue pass has usually run out by now, which sends them back to the queue screen where `error` is not shown.
+      setQueueNotice(lostMessage);
       setReservation(null);
       setSelectedSeat(null);
       setOrder(null);
@@ -588,7 +593,9 @@ export function EventDetailPage() {
     return (
       <QueueWaitingRoom
         eventId={event.id}
+        notice={queueNotice}
         onPassed={(token, expiresInSeconds) => {
+          setQueueNotice(null);
           setPassToken(token);
           setPassDeadline(expiresInSeconds != null ? Date.now() + expiresInSeconds * 1000 : null);
         }}
