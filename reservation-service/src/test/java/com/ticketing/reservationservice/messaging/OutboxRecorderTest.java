@@ -11,8 +11,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.IllegalTransactionStateException;
 
 /**
- * An event may only be recorded inside the transaction of the change it describes. Deliberately NOT @Transactional, so
- * there is no transaction here. Compose MySQL; run inside the compose network with DB_HOST=mysql.
+ * 이벤트는 그것이 설명하는 변경의 트랜잭션 안에서만 기록할 수 있다. 일부러 @Transactional로 하지 않아서
+ * 여기에는 트랜잭션이 없다. compose MySQL을 쓰고, compose 네트워크 안에서 DB_HOST=mysql로 실행한다.
  */
 @SpringBootTest(properties = {
     "reservation.hold-expire-sweep-cron=-",

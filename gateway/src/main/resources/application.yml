@@ -1,16 +1,16 @@
 server:
   port: 8080
-  # Trust nginx's X-Forwarded-Host/Proto so this gateway resolves its own "current request" as
-  # localhost:8080 - it then re-emits fresh X-Forwarded-* headers reflecting that when proxying
-  # onward, which is what lets auth-service build a correct OAuth2 redirect-uri in turn.
+  # nginx의 X-Forwarded-Host/Proto를 믿어서 이 게이트웨이가 자기 "현재 요청"을 localhost:8080으로
+  # 해석하게 한다. 그러면 프록시로 넘길 때 그것을 반영한 새 X-Forwarded-* 헤더를 다시 내보내고, 그것이
+  # 다시 auth-service가 올바른 OAuth2 리다이렉트 URI를 만들 수 있게 한다.
   forward-headers-strategy: framework
 
 spring:
   application:
     name: gateway
-  # How long the gateway waits on a service it proxies to. Without these it waited forever (the nginx in front gave up
-  # after 60s), so a service that stopped answering tied up a gateway thread per request. Thirty seconds is above the
-  # slowest legitimate call (an admin KOPIS import of up to 30 shows); services call each other with much shorter limits.
+  # 게이트웨이가 프록시하는 서비스를 얼마나 기다리는지다. 이 설정이 없을 때는 영원히 기다렸고(앞단 nginx가 60초 뒤에
+  # 포기했다), 그래서 응답을 멈춘 서비스가 요청마다 게이트웨이 스레드를 하나씩 묶었다. 30초는 가장 느린 정상 호출
+  # (최대 30개 공연의 관리자 KOPIS 가져오기)보다 길고, 서비스끼리는 훨씬 짧은 한도로 서로를 호출한다.
   http:
     clients:
       connect-timeout: 2s
@@ -19,13 +19,13 @@ spring:
     gateway:
       server:
         webmvc:
-          # Without this, the gateway won't honor/re-emit X-Forwarded-* from nginx at all - every
-          # hop is inside our own docker network here, so trusting all of it is fine.
+          # 이 설정이 없으면 게이트웨이가 nginx의 X-Forwarded-*를 인정하지도 다시 내보내지도 않는다. 여기서는 모든
+          # 홉이 우리 docker 네트워크 안에 있으므로 전부 믿어도 된다.
           trusted-proxies: .*
           routes:
-            # Remaining routes still point at the monolith - splitting each domain out is just
-            # swapping that route's `uri` for the new service's address (see docs/02_엔티티설계서.docx §3
-            # for the target service/table ownership this mirrors). auth-service was the first cut.
+            # 나머지 라우트는 아직 모놀리스를 가리킨다. 도메인을 하나씩 떼어 낼 때는 그 라우트의 `uri`를 새 서비스의
+            # 주소로 바꾸면 된다(대상 서비스/테이블 소유권은 docs/02_엔티티설계서.docx §3 참고, 이것이 그것을 따른다).
+            # auth-service가 첫 분리였다.
             - id: auth-service
               uri: ${AUTH_SERVICE_URI:http://auth-service:8080}
               predicates:
@@ -34,18 +34,17 @@ spring:
               uri: ${EVENT_SERVICE_URI:http://event-service:8080}
               predicates:
                 - Path=/api/events/**
-            # Wishlist is a sibling of /api/events/** (not /api/events/{id}/wishlist), same reason
-            # order-service-admin below needs its own route rather than riding another service's.
+            # 위시리스트는 /api/events/{id}/wishlist가 아니라 /api/events/**와 같은 레벨이다. 아래의
+            # order-service-admin이 다른 서비스의 라우트에 얹히지 않고 자기 라우트가 필요한 것과 같은 이유다.
             - id: event-service-wishlist
               uri: ${EVENT_SERVICE_URI:http://event-service:8080}
               predicates:
                 - Path=/api/wishlist/**
             - id: queue-service
-              # Through nginx's backend load-balancer port (8081), not straight to backend:8080 -
-              # backend is the one service that actually gets scaled, and this gateway's own HTTP
-              # client doesn't spread requests across replicas on its own (confirmed by testing:
-              # every request landed on the same container). nginx re-resolves `backend` per
-              # request instead and picks up whichever replicas are currently up.
+              # backend:8080으로 바로 가지 않고 nginx의 backend 로드밸런서 포트(8081)를 거친다. backend는 실제로 스케일하는
+              # 유일한 서비스인데, 이 게이트웨이의 HTTP 클라이언트는 스스로 복제본에 요청을 나누지 않는다(테스트로 확인했다.
+              # 모든 요청이 같은 컨테이너로 갔다). nginx는 요청마다 `backend`를 다시 해석해서
+              # 그 순간 떠 있는 복제본으로 보낸다.
               uri: ${BACKEND_URI:http://nginx:8081}
               predicates:
                 - Path=/api/queue/**
@@ -57,27 +56,25 @@ spring:
               uri: ${ORDER_SERVICE_URI:http://order-service:8080}
               predicates:
                 - Path=/api/orders/**
-            # order-service's admin endpoints (ticket scan, and more to come - order summary,
-            # coupons) live under /api/admin/**, a sibling of /api/orders/** rather than a
-            # subpath of it, so they need their own route. event-service's admin endpoints don't
-            # need one of their own since they're nested under /api/events/admin/**, already
-            # covered by the event-service route above.
+            # order-service의 관리자 엔드포인트(티켓 스캔과 앞으로의 주문 요약, 쿠폰)는 /api/orders/**의 하위 경로가 아니라
+            # 같은 레벨인 /api/admin/** 아래에 있어서 자기 라우트가 필요하다. event-service의 관리자 엔드포인트는
+            # /api/events/admin/** 아래에 중첩되어 있어서 위의 event-service 라우트가 이미 덮으므로 따로 필요 없다.
             - id: order-service-admin
               uri: ${ORDER_SERVICE_URI:http://order-service:8080}
               predicates:
                 - Path=/api/admin/**
 
-# Per-client (IP) throttling at the edge - see RateLimitFilter. Token buckets: capacity is the burst
-# a client may spend at once, per-minute is how fast it earns tokens back. The first rule matching a
-# request applies, and the request is also charged to the global bucket unless the rule says skip-global.
-# Turn it off for load tests (RATE_LIMIT_ENABLED=false): one load generator is one IP.
+# 가장자리에서 하는 클라이언트(IP)별 제한이다. RateLimitFilter 참고. 토큰 버킷이며, capacity는 클라이언트가 한 번에
+# 쓸 수 있는 버스트이고 per-minute은 토큰을 얼마나 빨리 다시 얻는지다. 요청에 맞는 첫 규칙이 적용되고, 규칙이
+# skip-global이라고 하지 않으면 요청은 전체 버킷에도 올라간다. 부하 테스트에서는 끈다(RATE_LIMIT_ENABLED=false).
+# 부하 생성기 하나는 IP 하나이기 때문이다.
 rate-limit:
   enabled: ${RATE_LIMIT_ENABLED:true}
   global:
     capacity: 600
     per-minute: 600
   rules:
-    # Password guessing. Admin login is the one worth the most, so it gets the tightest limit.
+    # 비밀번호 추측이다. 관리자 로그인이 가장 중요하므로 가장 빡빡한 제한을 건다.
     - name: admin-login
       methods: POST
       paths: /api/auth/admin/login
@@ -93,20 +90,20 @@ rate-limit:
       paths: /api/auth/signup
       capacity: 5
       per-minute: 5
-    # Each call can mail someone, so it is kept tight (the server also refuses a repeat within a minute).
+    # 호출마다 누군가에게 메일이 갈 수 있어서 빡빡하게 둔다(서버도 1분 안의 반복은 거절한다).
     - name: resend-verification
       methods: POST
       paths: /api/auth/resend-verification
       capacity: 3
       per-minute: 3
-    # Queue and seat grabbing - the endpoints ticket bots hammer.
+    # 대기열과 좌석 선점이다. 티켓 봇이 두드리는 엔드포인트다.
     - name: queue-enter
       methods: POST
       paths: /api/queue/enter
       capacity: 20
       per-minute: 20
-    # A waiting client polls this every 2 seconds (~30/min), so it gets its own roomy bucket and
-    # doesn't eat into the global one.
+    # 기다리는 클라이언트가 이것을 2초마다(분당 약 30회) 폴링하므로 자기 몫의 넉넉한 버킷을 주고
+    # 전체 버킷은 건드리지 않게 한다.
     - name: queue-status
       methods: GET
       paths: /api/queue/status
@@ -118,7 +115,7 @@ rate-limit:
       paths: /api/reservations
       capacity: 10
       per-minute: 20
-    # Guessing coupon codes / probing which emails have accounts.
+    # 쿠폰 코드를 추측하거나 어떤 이메일에 계정이 있는지 떠보는 것이다.
     - name: coupon-apply
       methods: POST
       paths: /api/orders/*/apply-coupon
@@ -131,11 +128,11 @@ rate-limit:
       per-minute: 5
 
 cors:
-  # 5173 = public site, 5174 = admin app (separate origin on purpose, so the two never share storage).
+  # 5173 = 공개 사이트, 5174 = 관리자 앱(일부러 다른 오리진이라서 둘이 저장소를 공유하지 않는다).
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174}
 
-# Metrics for Prometheus, on a separate port that only exists inside the docker network: nothing routes to it (the
-# gateway forwards /api/** only), so it is never reachable from outside and needs no authentication of its own.
+# Prometheus용 메트릭이며 docker 네트워크 안에만 있는 별도 포트로 내보낸다. 그 포트로 가는 라우트가 없어서
+# (게이트웨이는 /api/**만 전달한다) 밖에서는 닿지 않으므로 자체 인증이 필요 없다.
 management:
   server:
     port: 9090

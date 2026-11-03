@@ -20,11 +20,10 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Deliberately NOT @Transactional as a whole: reserve() and cancel() talk to event-service and the queue over
- * HTTP, and a transaction around those calls keeps a DB connection checked out while the thread just waits on
- * the network. With a small pool (Hikari's default is 10) that capped concurrent reservations at roughly the pool
- * size and made everyone else queue for a connection. Each repository call below runs in its own short
- * transaction instead, so a connection is only borrowed while it is actually being used.
+ * 전체를 @Transactional로 하지 않은 것은 일부러다. reserve()와 cancel()은 event-service와 대기열을 HTTP로
+ * 호출하는데, 그 호출을 감싼 트랜잭션은 스레드가 네트워크만 기다리는 동안 DB 커넥션을 붙잡는다. 풀이 작으면
+ * (Hikari 기본값은 10) 동시 예약이 대략 풀 크기로 제한되고 나머지는 커넥션을 기다리며 줄을 서게 된다. 그래서
+ * 아래의 리포지토리 호출은 각각 자기 짧은 트랜잭션에서 실행되고, 커넥션은 실제로 쓰는 동안에만 빌린다.
  */
 @Service
 public class ReservationService {
@@ -58,7 +57,7 @@ public class ReservationService {
     public ReservationResponse reserve(Long userId, ReservationCreateRequest request, String passToken) {
         SeatDetailResponse requestedSeat = eventServiceClient.getSeat(request.seatId());
         if (requestedSeat.salesClosed()) {
-            // event-service judges this from its own clock: seats can be taken until 2 hours before the show starts
+            // event-service가 자기 시계로 판정한다. 좌석은 공연 시작 2시간 전까지 잡을 수 있다
             throw new ApiException(ErrorCode.SALES_CLOSED);
         }
         if (!queueServiceClient.isPassTokenValid(requestedSeat.eventId(), passToken)) {
@@ -69,15 +68,15 @@ public class ReservationService {
             throw new ApiException(ErrorCode.SEAT_LIMIT_EXCEEDED);
         }
 
-        // event-service holds the same per-seat Redis lock this used to wrap locally, then does
-        // the status-check + hold atomically on its side - see EventServiceClient.hold().
+        // event-service가 예전에 여기서 로컬로 감싸던 것과 같은 좌석별 Redis 잠금을 쥐고, 자기 쪽에서
+        // 상태 확인과 홀드를 원자적으로 한다. EventServiceClient.hold() 참고.
         LocalDateTime holdExpireAt = LocalDateTime.now().plus(HOLD_DURATION);
         SeatDetailResponse heldSeat = eventServiceClient.hold(request.seatId(), holdExpireAt);
 
         Reservation reservation = new Reservation(userId, request.seatId(), heldSeat.eventId(), holdExpireAt);
-        // The reservation and the event announcing it are saved in one short transaction: either both exist or neither,
-        // so the event can't be lost (or announce a reservation that was never saved). OutboxRelay sends it to Kafka
-        // afterwards - the broker is not part of this request.
+        // 예약과 그것을 알리는 이벤트를 짧은 트랜잭션 하나로 저장한다. 둘 다 있거나 둘 다 없으므로
+        // 이벤트가 사라지거나(또는 저장되지 않은 예약을 알리거나) 하지 않는다. OutboxRelay가 그 뒤에 Kafka로
+        // 보낸다. 브로커는 이 요청의 일부가 아니다.
         Reservation saved;
         try {
             saved = transactionTemplate.execute(status -> {
@@ -94,8 +93,8 @@ public class ReservationService {
                 return created;
             });
         } catch (RuntimeException e) {
-            // The seat is already held in event-service; without a reservation row nobody can cancel or pay for it,
-            // so give it back now instead of leaving it stuck until the hold lapses.
+            // 좌석은 이미 event-service에서 잡혀 있다. 예약 행이 없으면 아무도 그것을 취소하거나 결제할 수 없으므로,
+            // 홀드가 끝날 때까지 막아 두지 않고 지금 돌려준다.
             releaseQuietly(request.seatId(), holdExpireAt);
             throw e;
         }
@@ -112,8 +111,8 @@ public class ReservationService {
         if (reservation.getStatus() != ReservationStatus.HOLDING) {
             throw new ApiException(ErrorCode.RESERVATION_NOT_CANCELLABLE);
         }
-        // Release first, then record the cancellation. If the release fails nothing has changed and the user can
-        // retry; if saving fails afterwards the retry finds the seat already free (release is idempotent).
+        // 먼저 풀고 그다음에 취소를 기록한다. 풀기가 실패하면 아무것도 바뀌지 않았으니 사용자가 다시 시도할 수 있고,
+        // 그 뒤에 저장이 실패하면 재시도 때 좌석이 이미 풀려 있다(해제는 멱등하다).
         eventServiceClient.release(reservation.getSeatId(), reservation.getHoldExpireAt());
         reservation.cancel();
         reservationRepository.save(reservation);
@@ -123,7 +122,7 @@ public class ReservationService {
         try {
             eventServiceClient.release(seatId, holdExpireAt);
         } catch (RuntimeException e) {
-            // The hold-expiry sweepers free it within a few minutes anyway.
+            // 홀드 만료 스위퍼가 어차피 몇 분 안에 풀어 준다.
             log.warn("Could not release seat {} after a failed reservation save: {}", seatId, e.getMessage());
         }
     }

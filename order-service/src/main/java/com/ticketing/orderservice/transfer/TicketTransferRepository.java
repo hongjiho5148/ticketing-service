@@ -26,8 +26,8 @@ public interface TicketTransferRepository extends JpaRepository<TicketTransfer, 
     List<TicketTransfer> findInvolving(@Param("userId") Long userId, Pageable pageable);
 
     /**
-     * Closes a still-PENDING transfer in one statement. Of several concurrent answers (accept,
-     * decline, cancel) only the first matches the WHERE clause; the rest get 0 rows and are refused.
+     * 아직 PENDING인 양도를 한 문장으로 닫는다. 동시에 들어온 여러 응답(수락, 거절, 취소) 중 첫 번째만
+     * WHERE 절에 맞고, 나머지는 0행이라 거절된다.
      */
     @Modifying
     @Transactional

@@ -1,4 +1,4 @@
-// Minimal typing for the bits of Google's reCAPTCHA v2 API this app uses.
+// 이 앱이 쓰는 Google reCAPTCHA v2 API 부분에 대한 최소한의 타입이다.
 interface Grecaptcha {
   ready: (callback: () => void) => void;
   render: (
@@ -18,8 +18,8 @@ declare global {
   }
 }
 
-// The site key is public by design. With none configured the widget is skipped entirely, which
-// matches the server (no secret key = no check), so the app still runs without captcha.
+// 사이트 키는 원래 공개다. 설정된 것이 없으면 위젯을 아예 건너뛰는데, 서버와 같은 동작이다(시크릿 키가 없으면
+// 검사도 없다). 그래서 캡차 없이도 앱이 돈다.
 export const RECAPTCHA_SITE_KEY = (import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined) ?? "";
 export const isCaptchaEnabled = RECAPTCHA_SITE_KEY !== "";
 
@@ -27,7 +27,7 @@ const SCRIPT_URL = "https://www.google.com/recaptcha/api.js?render=explicit";
 
 let loading: Promise<Grecaptcha> | null = null;
 
-/** Loads Google's script once and resolves when grecaptcha is ready to render widgets. */
+/** Google의 스크립트를 한 번만 불러오고 grecaptcha가 위젯을 그릴 준비가 되면 resolve한다. */
 export function loadRecaptcha(): Promise<Grecaptcha> {
   if (loading) return loading;
   loading = new Promise<Grecaptcha>((resolve, reject) => {
@@ -46,7 +46,7 @@ export function loadRecaptcha(): Promise<Grecaptcha> {
     script.onerror = () => reject(new Error("Failed to load reCAPTCHA"));
     document.head.appendChild(script);
   }).catch((err) => {
-    // Let a later attempt retry instead of caching the failure forever (ad blockers, flaky network).
+    // 실패를 영원히 캐시하지 않고 나중의 시도가 재시도할 수 있게 한다(광고 차단기, 불안정한 네트워크).
     loading = null;
     document.querySelectorAll(`script[src="${SCRIPT_URL}"]`).forEach((el) => el.remove());
     throw err;

@@ -10,10 +10,10 @@ import com.ticketing.reservationservice.remote.RemoteServices;
 import org.springframework.web.client.RestClientException;
 
 /**
- * Talks to backend's queue domain directly over the docker network - queue wasn't split out in
- * this phase, so validating a pass token means calling back into backend's internal API.
- * Fails closed: if backend can't be reached, we refuse the reservation rather than let an
- * unverified pass token through.
+ * docker 네트워크로 backend의 대기열 도메인과 직접 통신한다. 이 단계에서는 대기열을 분리하지 않았으므로
+ * 입장권 토큰을 검증하려면 backend의 내부 API를 다시 호출해야 한다.
+ * 실패하면 닫는다(fail closed). backend에 닿지 못하면 검증되지 않은 입장권 토큰을 통과시키지 않고
+ * 예약을 거절한다.
  */
 @Component
 public class QueueServiceClient {

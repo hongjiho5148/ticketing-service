@@ -14,7 +14,7 @@ public interface OpenAlertSubscriptionRepository extends JpaRepository<OpenAlert
 
     void deleteByUserIdAndEventId(Long userId, Long eventId);
 
-    /** Un-notified subscribers of events whose booking window has already opened. */
+    /** 예매 시작 시각이 이미 지난 공연의, 아직 알림을 받지 못한 구독자들이다. */
     @Query("select s from OpenAlertSubscription s, Event e where s.eventId = e.id "
             + "and s.notifiedAt is null and e.openAt <= :now order by s.id")
     List<OpenAlertSubscription> findDue(@Param("now") LocalDateTime now, Pageable pageable);

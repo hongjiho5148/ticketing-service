@@ -12,8 +12,8 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 /**
- * Sends the mails as multipart/alternative: an HTML version (see MailTemplate) for normal clients and a
- * plain-text version for the ones that don't render HTML, which also keeps spam filters happier.
+ * 메일을 multipart/alternative로 보낸다. 일반 클라이언트용 HTML 본문(MailTemplate 참고)과 HTML을 그리지 못하는
+ * 클라이언트용 텍스트 본문을 함께 담으며, 스팸 필터도 덜 까다롭게 반응한다.
  */
 @Service
 public class MailService {

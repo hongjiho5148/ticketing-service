@@ -171,8 +171,8 @@ services:
       DB_PASSWORD: ticketing
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       EVENT_SERVICE_URI: http://event-service:8080
-      # Through nginx's backend load-balancer port (8081), not straight to backend:8080 - see the
-      # comment on that nginx server block for why backend specifically needs a resolver in front.
+      # nginx의 backend 로드밸런서 포트(8081)를 거치며 backend:8080으로 바로 가지 않는다. backend에만 앞단 리졸버가
+      # 필요한 이유는 그 nginx server 블록의 주석을 참고.
       BACKEND_URI: http://nginx:8081
     expose:
       - "8080"
@@ -188,16 +188,15 @@ services:
       - reservation-service
       - order-service
     environment:
-      # Per-IP throttling is on by default; a load test is one IP, so switch it off for those runs.
+      # IP별 제한은 기본으로 켜져 있다. 부하 테스트는 IP 하나이므로 그런 실행에서는 끈다.
       RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
     expose:
       - "8080"
-    # Pinned so nginx can reach gateway by IP instead of by DNS name - see nginx.conf's
-    # gateway_upstream comment for why. gateway is never scaled (container_name above already
-    # forces that), so one fixed address is safe and never goes stale across redeploys.
-    # .100 is deliberately far from Docker's auto-assigned range (it hands out .2, .3, .4... to
-    # every other service in this file) so nothing else can grab this address out from under
-    # gateway before it starts.
+    # nginx가 DNS 이름이 아니라 IP로 gateway에 닿을 수 있도록 고정한다. 이유는 nginx.conf의
+    # gateway_upstream 주석 참고. gateway는 스케일하지 않으므로(위의 container_name이 이미 그렇게 강제한다)
+    # 고정 주소 하나면 안전하고, 재배포를 거쳐도 낡을 일이 없다.
+    # .100은 일부러 Docker가 자동 배정하는 범위에서 멀리 떨어뜨렸다(이 파일의 다른 모든 서비스에는 .2, .3, .4...를
+    # 나눠 준다). 그래서 gateway가 시작하기 전에 다른 것이 이 주소를 가로챌 수 없다.
     networks:
       default:
         ipv4_address: 172.28.0.100
@@ -216,8 +215,8 @@ services:
     expose:
       - "8081"
 
-  # Metrics and dashboards. Both are bound to localhost only: open Grafana at http://localhost:3030 (Prometheus: 9091).
-  # Grafana lets anyone on this machine look at the dashboards (anonymous viewer); changing them needs the admin login.
+  # 메트릭과 대시보드. 둘 다 localhost에만 바인딩한다. Grafana는 http://localhost:3030(Prometheus는 9091)에서 연다.
+  # Grafana는 이 PC의 누구나 대시보드를 볼 수 있게 한다(익명 뷰어). 대시보드를 바꾸려면 관리자 로그인이 필요하다.
   prometheus:
     image: prom/prometheus:v3.1.0
     container_name: ticketing-prometheus

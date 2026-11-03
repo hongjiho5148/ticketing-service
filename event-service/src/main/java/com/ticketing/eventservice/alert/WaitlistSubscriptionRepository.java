@@ -19,15 +19,15 @@ public interface WaitlistSubscriptionRepository extends JpaRepository<WaitlistSu
     List<WaitlistSubscription> findByEventIdAndNotifiedAtIsNullOrderByIdAsc(Long eventId, Pageable pageable);
 
     /**
-     * Claims a subscription for notification. Of several concurrent seat releases, only the one
-     * whose UPDATE flips notified_at from NULL gets rows-affected = 1 and sends the mail.
+     * 알림을 보내기 위해 구독을 가져간다. 동시에 일어난 여러 좌석 해제 중 notified_at을 NULL에서 바꾸는
+     * UPDATE를 한 쪽만 영향받은 행 수가 1이 되어 메일을 보낸다.
      */
     @Modifying
     @Transactional
     @Query("update WaitlistSubscription s set s.notifiedAt = :now where s.id = :id and s.notifiedAt is null")
     int claim(@Param("id") Long id, @Param("now") LocalDateTime now);
 
-    /** Puts a claimed subscription back in line after its mail failed to send. */
+    /** 메일 전송에 실패한 뒤, 가져간 구독을 다시 대기열에 돌려놓는다. */
     @Modifying
     @Transactional
     @Query("update WaitlistSubscription s set s.notifiedAt = null where s.id = :id")

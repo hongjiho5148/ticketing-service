@@ -60,7 +60,7 @@ class CaptchaVerifierTest {
     void aMissingTokenIsRefusedWithoutCallingGoogle() {
         expectError(null, ErrorCode.CAPTCHA_REQUIRED);
         expectError("  ", ErrorCode.CAPTCHA_REQUIRED);
-        google.verify(); // no request was expected, none was made
+        google.verify(); // 요청이 올 것으로 기대하지 않았고, 오지 않았다
     }
 
     @Test

@@ -8,7 +8,7 @@ import type { EventSummary } from "../types";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
-// Built from local date parts, not toISOString() - that converts to UTC and shifts dates by a day in KST.
+// toISOString()이 아니라 로컬 날짜 부분으로 만든다. toISOString()은 UTC로 바꿔서 KST에서는 날짜가 하루씩 밀린다.
 function dateKey(year: number, month: number, day: number) {
   return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }

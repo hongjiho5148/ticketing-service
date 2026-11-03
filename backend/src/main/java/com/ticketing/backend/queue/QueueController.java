@@ -35,7 +35,7 @@ public class QueueController {
     public QueueEnterResponse enter(
             @Valid @RequestBody QueueEnterRequest request,
             @RequestHeader(value = "X-Captcha-Token", required = false) String captchaToken) {
-        // Entering the queue is what bots spam to grab a spot, so it is gated on a solved captcha.
+        // 대기열 입장은 봇이 자리를 잡으려고 마구 호출하는 것이므로, 푼 캡차가 있어야 한다.
         captchaVerifier.verify(captchaToken);
         return queueService.enter(SecurityUtil.getCurrentUserId(), request.eventId());
     }
@@ -46,12 +46,12 @@ public class QueueController {
     }
 
     /**
-     * The same answer as /status, pushed when it changes instead of asked for every two seconds. /status stays: it is
-     * the fallback for a client whose stream is refused or cut.
+     * /status와 같은 답을 2초마다 묻는 대신 바뀔 때 밀어 준다. /status는 남는다. 스트림이 거절됐거나 끊긴 클라이언트를
+     * 위한 대체 경로다.
      */
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream(@RequestParam String queueToken, HttpServletResponse response) {
-        response.setHeader("X-Accel-Buffering", "no"); // nginx: do not hold the events back in a buffer
+        response.setHeader("X-Accel-Buffering", "no"); // nginx: 이벤트를 버퍼에 붙잡아 두지 않는다
         response.setHeader("Cache-Control", "no-cache");
         return queueStreams.open(queueToken);
     }

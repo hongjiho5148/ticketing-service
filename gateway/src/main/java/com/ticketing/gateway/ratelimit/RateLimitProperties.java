@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-/** The rate-limit.* settings in application.yml: a per-client default plus stricter rules for abuse-prone endpoints. */
+/** application.yml의 rate-limit.* 설정이다. 클라이언트별 기본값과, 악용되기 쉬운 엔드포인트를 위한 더 엄격한 규칙이다. */
 @ConfigurationProperties(prefix = "rate-limit")
 public class RateLimitProperties {
 
@@ -59,11 +59,11 @@ public class RateLimitProperties {
 
     public static class Rule extends Limit {
         private String name;
-        /** Empty means any method. */
+        /** 비어 있으면 모든 메서드다. */
         private List<String> methods = new ArrayList<>();
-        /** Ant-style patterns, e.g. /api/orders/*&#47;transfer. */
+        /** Ant 스타일 패턴이다. 예: /api/orders/*&#47;transfer. */
         private List<String> paths = new ArrayList<>();
-        /** For endpoints a normal client hits constantly (queue polling): don't also charge them to the global limit. */
+        /** 정상 클라이언트가 계속 두드리는 엔드포인트(대기열 폴링)용이다. 이것까지 전체 제한에 올리지 않는다. */
         private boolean skipGlobal;
 
         public String getName() {

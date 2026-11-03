@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-// Under /api/orders/** (not /api/account/**) so the existing order-service gateway route already covers it.
+// /api/account/**가 아니라 /api/orders/** 아래에 두어서 기존 order-service 게이트웨이 라우트가 그대로 적용된다.
 @RestController
 @RequestMapping("/api/orders/points")
 public class PointController {

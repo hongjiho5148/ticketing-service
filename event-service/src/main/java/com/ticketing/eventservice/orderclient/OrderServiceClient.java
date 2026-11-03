@@ -9,7 +9,7 @@ import com.ticketing.eventservice.remote.RemoteService;
 import com.ticketing.eventservice.remote.RemoteServices;
 import org.springframework.web.client.RestClientException;
 
-/** Talks to order-service directly over the docker network - never through the public Gateway. */
+/** 공개 게이트웨이를 거치지 않고 docker 네트워크로 order-service와 직접 통신한다. */
 @Component
 public class OrderServiceClient {
 

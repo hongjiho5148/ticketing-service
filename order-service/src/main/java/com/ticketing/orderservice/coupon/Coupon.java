@@ -30,7 +30,7 @@ public class Coupon {
     @Column(nullable = false, length = 20)
     private DiscountType discountType;
 
-    /** Won off for FLAT, whole percent (1-100) for PERCENT. */
+    /** FLAT은 깎는 원화 금액, PERCENT는 정수 퍼센트(1~100)다. */
     @Column(nullable = false)
     private Integer discountValue;
 
@@ -43,8 +43,8 @@ public class Coupon {
     @Column(nullable = false)
     private Integer maxUses;
 
-    // Only ever bumped through CouponRepository.markUsed (one atomic UPDATE ... WHERE usedCount <
-    // maxUses), never by setting this field - two simultaneous payments must not both take the last use.
+    // CouponRepository.markUsed(usedCount < maxUses 조건의 UPDATE 한 번)로만 올리고 이 필드를 직접 바꾸지
+    // 않는다. 동시에 결제하는 두 사람이 마지막 한 장을 함께 가져가면 안 된다.
     @Column(nullable = false)
     private Integer usedCount;
 

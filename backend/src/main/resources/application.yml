@@ -6,9 +6,9 @@ spring:
     name: backend
   autoconfigure:
     exclude: org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
-  # Scheduled work used to share one thread. The admission sweep runs every 300 ms and, with a big Redis keyspace, can take
-  # longer than that; it then always came first and the stream tasks (refresh, heartbeat, rank flush) never got a turn, so
-  # dead connections were never noticed. A few threads let them run side by side.
+  # 예약된 작업이 스레드 하나를 같이 썼다. 입장 스윕은 300ms마다 돌고 Redis 키 공간이 크면 그보다 오래 걸릴 수 있다.
+  # 그러면 항상 그 작업이 먼저 와서 스트림 작업(갱신, 하트비트, 순번 반영)이 차례를 얻지 못했고, 그래서 죽은 연결이
+  # 알려지지 않았다. 스레드 몇 개면 나란히 돌 수 있다.
   task:
     scheduling:
       pool:
@@ -19,9 +19,9 @@ spring:
     password: ${DB_PASSWORD:ticketing}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
-      # Connections this service may hold to its database (HikariCP's default is 10). More lets more requests work at the same
-      # time but every one is a connection MySQL has to serve, and MySQL's own limit (max_connections, 151 by default) is shared
-      # by all services and all replicas - raise them together. Measured under a 2,500-person spike: docs/design-notes.md.
+      # 이 서비스가 DB에 열어 둘 수 있는 연결 수다(HikariCP 기본값은 10). 늘리면 더 많은 요청이 동시에 일하지만 하나하나가
+      # MySQL이 맡아야 하는 연결이고, MySQL 자체의 한도(max_connections, 기본 151)는 모든 서비스와 모든 복제본이
+      # 나눠 쓰므로 함께 올려야 한다. 2,500명 폭주에서 측정한 결과는 docs/design-notes.md 참고.
       maximum-pool-size: ${DB_POOL_SIZE:10}
   jpa:
     hibernate:
@@ -31,9 +31,9 @@ spring:
       hibernate:
         format_sql: ${JPA_SHOW_SQL:false}
     show-sql: ${JPA_SHOW_SQL:false}
-  # Schema changes are versioned SQL in db/migration (Flyway), not whatever Hibernate decides at startup.
-  # baseline-on-migrate lets a database that predates Flyway (built by the old ddl-auto: update) adopt V1 as
-  # already applied instead of failing on a non-empty schema; a brand-new database runs V1 to create everything.
+  # 스키마 변경은 Hibernate가 시작할 때 알아서 정하는 것이 아니라 db/migration(Flyway)의 버전 있는 SQL로 한다.
+  # baseline-on-migrate는 Flyway 이전에 만들어진 DB(예전 ddl-auto: update로 만든 것)가 비어 있지 않은 스키마에서 실패하지 않고
+  # V1을 이미 적용된 것으로 받아들이게 한다. 완전히 새로운 DB는 V1을 실행해서 모든 것을 만든다.
   flyway:
     baseline-on-migrate: true
     baseline-version: 1
@@ -51,11 +51,11 @@ spring:
       properties:
         spring.json.trusted.packages: com.ticketing.backend.messaging
 
-# Verification only here (auth-service is the one that mints tokens) - secret must match
-# auth-service's exactly since that's what makes a JWT it signs valid here too.
+# 여기서는 검증만 한다(토큰을 발급하는 것은 auth-service). 시크릿은 auth-service와 정확히 같아야 한다.
+# 그래야 그쪽에서 서명한 JWT가 여기서도 유효하다.
 jwt:
-  # Deliberately no default: a secret baked into the source is a secret everyone has, and whoever holds it can
-  # forge tokens. The service refuses to start until JWT_SECRET is set (see .env.example).
+  # 일부러 기본값이 없다. 소스에 박아 둔 시크릿은 모두가 가진 시크릿이고, 그것을 가진 사람은 토큰을 위조할 수 있다.
+  # JWT_SECRET이 설정될 때까지 서비스는 시작을 거부한다(.env.example 참고).
   secret: ${JWT_SECRET}
   access-token-expiration-ms: ${JWT_ACCESS_EXPIRATION_MS:1800000}
   refresh-token-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000}
@@ -65,32 +65,30 @@ event:
     uri: ${EVENT_SERVICE_URI:http://event-service:8080}
 
 queue:
-  # Sized from a 5000-VU k6 load test (loadtest/reserve_flow.js): with more than ~500 concurrent
-  # reservation-fighters, seat-lock contention pushed p95 reservation latency past 3.5s; at 500 it
-  # stayed under 800ms with near-zero lock conflicts. Lower this for a local demo of the waiting
-  # room UI (e.g. QUEUE_ACTIVE_CAPACITY=3 via .env) - it's still fully overridable per environment.
+  # 5000-VU k6 부하 테스트(loadtest/reserve_flow.js)로 정한 값이다. 동시에 예약을 다투는 사람이 약 500명을 넘으면
+  # 좌석 잠금 경합 때문에 예약 지연의 p95가 3.5초를 넘었고, 500명에서는 잠금 충돌이 거의 없이 800ms 아래에 머물렀다.
+  # 대기실 화면을 로컬에서 시연하려면 이 값을 낮춘다(예: .env에서 QUEUE_ACTIVE_CAPACITY=3). 환경마다 얼마든지 덮어쓸 수 있다.
   active-capacity: ${QUEUE_ACTIVE_CAPACITY:500}
   admission-interval-ms: ${QUEUE_ADMISSION_INTERVAL_MS:300}
-  # How long a pass lasts after being let in. Five minutes: someone who is let in and then does nothing keeps a slot for
-  # that long, so the shorter the better - but someone who is still choosing seats must not lose it, which is what
-  # pass-extension-ms is for. The 5 minutes is a starting value, not a measured one (see AdmissionUseTracker for the
-  # numbers that would settle it).
+  # 입장한 뒤 입장권이 얼마나 유효한지다. 5분이다. 입장하고 아무것도 하지 않는 사람은 그만큼 슬롯을 차지하므로 짧을수록
+  # 좋지만, 아직 좌석을 고르는 사람이 입장권을 잃으면 안 된다. 그것을 위한 것이 pass-extension-ms다. 5분은 측정한 값이
+  # 아니라 시작값이다(그것을 정할 수 있는 숫자는 AdmissionUseTracker 참고).
   pass-token-ttl-ms: ${QUEUE_PASS_TOKEN_TTL_MS:300000}
-  # When a person holds a seat, their pass is lengthened to at least this much from that moment (about the time a seat is
-  # held), so that finishing the purchase or choosing another seat does not send them back to the queue. 0 turns it off.
+  # 사람이 좌석을 잡으면 입장권을 그 순간부터 최소 이만큼으로 연장한다(좌석을 잡아 두는 시간 정도). 그래서 구매를 마치거나
+  # 다른 좌석을 고르는 동안 대기열로 쫓겨나지 않는다. 0이면 끈다.
   pass-extension-ms: ${QUEUE_PASS_EXTENSION_MS:300000}
-  # A buyer who has paid gives their slot back right away instead of holding it until the pass token expires.
+  # 결제를 마친 구매자는 입장권 토큰이 만료될 때까지 슬롯을 쥐고 있지 않고 곧바로 돌려준다.
   release-slot-on-purchase: ${QUEUE_RELEASE_SLOT_ON_PURCHASE:true}
 
-# reCAPTCHA v2 server-side check (see CaptchaVerifier). No secret = captcha off; CAPTCHA_ENABLED=false
-# switches it off even when a secret is set (load tests).
+# reCAPTCHA v2 서버 쪽 검사(CaptchaVerifier 참고). 시크릿이 없으면 캡차는 꺼진다. CAPTCHA_ENABLED=false는
+# 시크릿이 있어도 캡차를 끈다(부하 테스트용).
 captcha:
   enabled: ${CAPTCHA_ENABLED:true}
   secret: ${RECAPTCHA_SECRET_KEY:}
   verify-url: https://www.google.com/recaptcha/api/siteverify
 
-# Metrics for Prometheus, on a separate port that only exists inside the docker network: nothing routes to it (the
-# gateway forwards /api/** only), so it is never reachable from outside and needs no authentication of its own.
+# Prometheus용 메트릭이며 docker 네트워크 안에만 있는 별도 포트로 내보낸다. 그 포트로 가는 라우트가 없어서
+# (게이트웨이는 /api/**만 전달한다) 밖에서는 닿지 않으므로 자체 인증이 필요 없다.
 management:
   server:
     port: 9090

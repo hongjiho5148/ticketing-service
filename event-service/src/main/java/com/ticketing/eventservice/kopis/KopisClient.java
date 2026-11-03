@@ -20,7 +20,7 @@ public class KopisClient {
 
     private static final DateTimeFormatter PARAM_DATE = DateTimeFormatter.ofPattern("yyyyMMdd");
 
-    // KOPIS suspends keys that exceed 10 calls per second; staying at ~5/s leaves a wide margin.
+    // KOPIS는 초당 10회를 넘는 키를 정지시킨다. 초당 약 5회를 유지하면 여유가 넉넉하다.
     private static final long MIN_INTERVAL_MS = 200;
 
     private final HttpClient http = HttpClient.newBuilder()
@@ -50,7 +50,7 @@ public class KopisClient {
         return KopisXmlParser.parse(get("/pblprfr?" + query));
     }
 
-    /** The detail call is the only one that carries prices, cast and the synopsis. */
+    /** 가격, 출연진, 줄거리를 담고 있는 호출은 상세 호출뿐이다. */
     public KopisPerformance fetchDetail(String id) {
         List<KopisPerformance> parsed =
                 KopisXmlParser.parse(get("/pblprfr/" + encode(id) + "?service=" + encode(serviceKey)));
@@ -89,7 +89,7 @@ public class KopisClient {
             }
             return response.body();
         } catch (IOException e) {
-            // Deliberately not chained: the request URL carries the service key and must not reach the logs.
+            // 일부러 이어 붙이지 않았다. 요청 URL에 서비스 키가 들어 있어서 로그에 남으면 안 된다.
             throw new KopisException("KOPIS에 연결하지 못했어요.");
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

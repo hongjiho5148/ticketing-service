@@ -44,7 +44,7 @@ public class AdminOrderService {
         this.authServiceClient = authServiceClient;
     }
 
-    /** Joins each order with its seat/event (event-service), payment and buyer (auth-service) for the admin list. */
+    /** 관리자 목록용으로 주문마다 좌석·공연(event-service), 결제, 구매자(auth-service)를 붙인다. */
     public AdminOrderListResponse listOrders(OrderStatus status, Pageable pageable) {
         Page<Orders> page = orderRepository.findAllByOptionalStatus(status, pageable);
         List<Orders> orders = page.getContent();
@@ -61,13 +61,13 @@ public class AdminOrderService {
                 : paymentRepository.findByOrderIdIn(orderIds).stream()
                         .collect(Collectors.toMap(p -> p.getOrder().getId(), Function.identity()));
 
-        // A page holds at most one page-size of buyers; a failed lookup just leaves that buyer unnamed.
+        // 한 페이지에는 페이지 크기만큼의 구매자만 들어 있다. 조회에 실패하면 그 구매자만 이름 없이 둔다.
         Map<Long, UserInternalResponse> buyers = new HashMap<>();
         for (Long userId : orders.stream().map(Orders::getUserId).distinct().toList()) {
             try {
                 buyers.put(userId, authServiceClient.getUser(userId));
             } catch (RuntimeException e) {
-                // leave unresolved
+                // 확인하지 못한 채로 둔다
             }
         }
 
@@ -86,7 +86,7 @@ public class AdminOrderService {
     }
 
     public List<OrderSummaryResponse> summaryByEvent() {
-        // eventId -> [paidCount, cancelledCount, paidRevenue]
+        // eventId -> [결제 건수, 취소 건수, 결제 매출]
         Map<Long, long[]> byEvent = new LinkedHashMap<>();
         for (Object[] row : orderRepository.aggregateByEventAndStatus()) {
             Long eventId = (Long) row[0];
@@ -101,7 +101,7 @@ public class AdminOrderService {
             } else if (status == OrderStatus.CANCELLED) {
                 acc[1] += count;
             } else if (status == OrderStatus.PARTIALLY_REFUNDED) {
-                // Cancelled, but the cancellation fee stays as revenue.
+                // 취소됐어도 취소 수수료는 매출로 남는다.
                 acc[1] += count;
                 acc[2] += total - refunded;
             }

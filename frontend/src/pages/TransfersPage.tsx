@@ -73,7 +73,7 @@ export function TransfersPage() {
       showToast(extractErrorMessage(err), "error");
     } finally {
       setBusyId(null);
-      // Reload either way: a refused answer usually means the transfer already changed state.
+      // 어느 쪽이든 다시 불러온다. 거절된 응답은 대개 양도의 상태가 이미 바뀌었다는 뜻이다.
       await load();
     }
   }

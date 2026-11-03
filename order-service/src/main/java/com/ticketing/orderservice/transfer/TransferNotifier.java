@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
-/** Sends the "you were sent a ticket" mail off the request thread, so a slow SMTP server never slows a transfer down. */
+/** "티켓을 받았어요" 메일을 요청 스레드 밖에서 보낸다. SMTP 서버가 느려도 양도가 느려지지 않는다. */
 @Component
 public class TransferNotifier {
 
@@ -25,7 +25,7 @@ public class TransferNotifier {
         try {
             mailService.sendTransferRequestedEmail(toEmail, toName, fromName, eventTitle, eventStartAt);
         } catch (Exception e) {
-            // The request is already saved and shows up in the recipient's transfer box; the mail is a courtesy.
+            // 요청은 이미 저장됐고 받는 사람의 양도함에 보인다. 메일은 덤이다.
             log.warn("양도 알림 발송 실패 to={}: {}", toEmail, e.getMessage());
         }
     }

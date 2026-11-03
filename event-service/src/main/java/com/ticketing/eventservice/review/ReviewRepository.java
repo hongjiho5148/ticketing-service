@@ -19,7 +19,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     long countByEventId(Long eventId);
 
-    /** Rows of [eventId, averageRating, reviewCount] - one query for a whole page of events instead of one each. */
+    /** [eventId, averageRating, reviewCount] 행들이다. 공연 한 페이지 전체를 쿼리 하나로 구하고, 공연마다 하나씩 구하지 않는다. */
     @Query("SELECT r.eventId, AVG(r.rating), COUNT(r) FROM Review r WHERE r.eventId IN :eventIds GROUP BY r.eventId")
     List<Object[]> ratingStats(@Param("eventIds") Collection<Long> eventIds);
 }

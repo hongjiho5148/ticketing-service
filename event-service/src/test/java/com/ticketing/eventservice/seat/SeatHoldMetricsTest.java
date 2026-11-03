@@ -19,7 +19,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Holding a seat is counted by outcome, so a rise in conflicts (many people on the same seats) shows on the dashboard. */
+/** 좌석 잡기는 결과별로 센다. 충돌(많은 사람이 같은 좌석에 몰림)이 늘면 대시보드에 보인다. */
 @SpringBootTest(properties = {"seat.hold-expiry-sweep-cron=-", "alert.open-sweep-cron=-"})
 @Transactional
 class SeatHoldMetricsTest {

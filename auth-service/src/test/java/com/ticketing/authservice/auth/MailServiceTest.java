@@ -61,7 +61,7 @@ class MailServiceTest {
         }
     }
 
-    /** For eyeballing the real rendering: MAIL_PREVIEW_DIR=/some/dir makes the test leave the HTML there. */
+    /** 실제로 그려지는 모습을 눈으로 확인하려면 MAIL_PREVIEW_DIR=/some/dir로 지정한다. 테스트가 그 위치에 HTML을 남긴다. */
     private static void preview(String name, String html) throws Exception {
         String dir = System.getenv("MAIL_PREVIEW_DIR");
         if (dir != null && !dir.isBlank()) {

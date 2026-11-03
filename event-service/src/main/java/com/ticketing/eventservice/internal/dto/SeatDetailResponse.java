@@ -4,7 +4,7 @@ import com.ticketing.eventservice.seat.Seat;
 import com.ticketing.eventservice.seat.SeatStatus;
 import java.time.LocalDateTime;
 
-/** Service-to-service seat detail - includes an embedded event summary so callers (backend) rarely need a second round trip. */
+/** 서비스 사이 좌석 상세다. 공연 요약이 들어 있어서 호출하는 쪽(backend)이 두 번째 왕복을 거의 하지 않아도 된다. */
 public record SeatDetailResponse(
         Long seatId,
         Long eventId,

@@ -105,8 +105,8 @@ function pickRandomSeatId(token) {
 export default function () {
   const token = loginToken();
   if (!token) {
-    // Don't tight-loop on a failed login - that turns one transient hiccup into a retry storm
-    // that floods /auth/login and can exhaust the proxy's ephemeral ports on its own.
+    // 실패한 로그인에서 바로 되풀이하지 않는다. 한 번의 일시적인 문제가 재시도 폭풍으로 번져서
+    // /auth/login을 마구 두드리고 프록시의 임시 포트까지 스스로 소진할 수 있다.
     sleep(1);
     return;
   }

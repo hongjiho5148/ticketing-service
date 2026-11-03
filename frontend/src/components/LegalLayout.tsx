@@ -8,7 +8,7 @@ interface LegalLayoutProps {
   children: ReactNode;
 }
 
-// Shared frame for the terms / privacy / contact pages: a readable column with a quiet sub-nav.
+// 이용약관/개인정보/문의 페이지가 함께 쓰는 틀이다. 읽기 편한 한 칸과 조용한 하위 내비게이션이 있다.
 export function LegalLayout({ eyebrow, title, updatedAt, children }: LegalLayoutProps) {
   return (
     <div className="legal">

@@ -30,22 +30,21 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
-                // CORS is handled once, at the gateway edge (CorsFilter there) - adding it again
-                // here would double up Access-Control-Allow-Origin on the response and the
-                // browser rejects that as invalid, so this service deliberately does none of it.
+                // CORS는 게이트웨이 가장자리(그쪽 CorsFilter)에서 한 번만 처리한다. 여기서 또 처리하면
+                // 응답에 Access-Control-Allow-Origin이 두 번 붙고 브라우저는 이를 잘못된 응답으로 거절하므로,
+                // 이 서비스는 일부러 CORS를 전혀 다루지 않는다.
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-                        // A queue stream (SSE) is dispatched a second time when it completes, on a thread that carries no
-                        // login. The request itself was already authorized when it arrived, so that second pass is
-                        // let through; without this every stream that ends logs an "Access Denied" error.
+                        // 대기열 스트림(SSE)은 끝날 때 로그인 정보가 없는 스레드에서 한 번 더 디스패치된다. 요청 자체는 도착했을 때
+                        // 이미 인가됐으므로 그 두 번째 통과는 허용한다. 이 설정이 없으면 끝나는 스트림마다 "Access Denied" 오류가 로그에 남는다.
                         .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                         .requestMatchers("/error").permitAll()
-                        // Metrics are served on the separate management port (9090), which only exists inside the docker
-                        // network; this security chain covers that port too, and Prometheus carries no token.
+                        // 메트릭은 docker 네트워크 안에만 있는 별도 관리 포트(9090)로 내보낸다. 이 보안 체인이 그 포트에도
+                        // 적용되는데, Prometheus는 토큰을 들고 오지 않는다.
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/events/**").permitAll()
-                        // Service-to-service only, reached directly within the docker network - never
-                        // carries a user JWT, so it can't go through the normal auth check.
+                        // 서비스 사이 호출 전용이며 docker 네트워크 안에서 직접 닿는다. 사용자 JWT를 싣지 않으므로
+                        // 일반 인증 검사를 거칠 수 없다.
                         .requestMatchers("/internal/**").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(exception -> exception.authenticationEntryPoint((request, response, authException) -> {

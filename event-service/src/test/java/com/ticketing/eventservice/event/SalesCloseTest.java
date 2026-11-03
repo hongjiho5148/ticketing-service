@@ -17,9 +17,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Seats of a show can be taken until two hours before it starts. The rule is judged from the clock; the stored status only
- * follows (SalesCloseSweeper), so a show that starts in 90 minutes is closed for booking whatever its status says. Against
- * the compose MySQL (rolled back); run inside the compose network with DB_HOST=mysql.
+ * 공연의 좌석은 시작 두 시간 전까지만 잡을 수 있다. 이 규칙은 시계로 판정하고 저장된 상태는 그저 따라간다
+ * (SalesCloseSweeper). 그래서 90분 뒤에 시작하는 공연은 상태가 뭐라고 하든 예매가 닫힌다. compose MySQL(롤백)에서
+ * 실행하고 compose 네트워크 안에서 DB_HOST=mysql로 실행한다.
  */
 @SpringBootTest(properties = {"seat.hold-expiry-sweep-cron=-", "alert.open-sweep-cron=-"})
 @Transactional
@@ -44,7 +44,7 @@ class SalesCloseTest {
 
         assertThat(event.getSalesCloseAt()).isEqualTo(start.minus(Duration.ofHours(2)));
         assertThat(event.isSalesClosed(start.minusHours(2).minusMinutes(1))).isFalse();
-        assertThat(event.isSalesClosed(start.minusHours(2))).isTrue(); // the closing moment itself is already too late
+        assertThat(event.isSalesClosed(start.minusHours(2))).isTrue(); // 마감 순간 자체가 이미 너무 늦다
         assertThat(event.isSalesClosed(start.plusMinutes(1))).isTrue();
     }
 

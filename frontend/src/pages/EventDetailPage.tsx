@@ -46,14 +46,14 @@ export function EventDetailPage() {
   const [searchParams] = useSearchParams();
   const resumeOrderId = searchParams.get("resume");
   const [resumeState, setResumeState] = useState<"none" | "loading" | "error">(resumeOrderId ? "loading" : "none");
-  // True once a held seat was restored from a pending order. Such a visit never went through the queue (the hold
-  // itself is the proof), so the queue/pre-open/sold-out gates below must not apply to it.
+  // 잡아 둔 좌석을 결제 대기 주문에서 복원했으면 true다. 그런 방문은 대기열을 거치지 않았으므로(홀드 자체가 증거다)
+  // 아래의 대기열/오픈 전/매진 관문이 적용되면 안 된다.
   const [resumed, setResumed] = useState(false);
 
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [seats, setSeats] = useState<Seat[]>([]);
   const [passToken, setPassToken] = useState<string | null>(null);
-  // Local clock time at which the pass runs out; null when the server did not say.
+  // 입장권이 끝나는 로컬 시계 시각이다. 서버가 알려 주지 않았으면 null이다.
   const [passDeadline, setPassDeadline] = useState<number | null>(null);
   const hadReservation = useRef(false);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
@@ -62,13 +62,13 @@ export function EventDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  // Why the queue screen is showing again; a toast is gone in 3 seconds and an error banner sits on a page that is replaced.
+  // 대기열 화면이 다시 보이는 이유다. 토스트는 3초면 사라지고, 오류 배너는 교체되는 페이지 위에 놓인다.
   const [queueNotice, setQueueNotice] = useState<string | null>(null);
   const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
-  // Set when the open countdown reaches zero, so the page moves on without waiting for the
-  // server-side UPCOMING -> OPEN status flip (which only lands on the next sweeper tick).
+  // 오픈 카운트다운이 0이 되면 설정해서, 서버 쪽 UPCOMING -> OPEN 상태 전환(다음 스위퍼 주기에야 반영된다)을
+  // 기다리지 않고 페이지가 넘어가게 한다.
   const [openedByClock, setOpenedByClock] = useState(false);
-  // The buyer-confirmation checkbox; asked again for every new reservation.
+  // 구매자 확인 체크박스다. 새 예약마다 다시 묻는다.
   const [identityConfirmed, setIdentityConfirmed] = useState(false);
 
   const [isWishlisted, setIsWishlisted] = useState(false);
@@ -96,13 +96,13 @@ export function EventDetailPage() {
     setIdentityConfirmed(false);
   }, [reservation?.reservationId]);
 
-  // Taking a seat lengthens the pass, but the page learns of it only by asking. When the reservation is gone again
-  // (cancelled, or the hold ran out) ask how long the pass has left, after a moment so the lengthening has been applied.
+  // 좌석을 잡으면 입장권이 연장되지만 페이지는 물어봐야만 그것을 안다. 예약이 다시 없어지면(취소되었거나 홀드가 끝났다)
+  // 연장이 반영될 시간을 잠깐 둔 뒤 입장권이 얼마나 남았는지 묻는다.
   useEffect(() => {
     const had = hadReservation.current;
     hadReservation.current = reservation !== null;
     if (reservation !== null) {
-      setPassDeadline(null); // being lengthened; unknown until asked, so show no clock rather than an old one
+      setPassDeadline(null); // 연장되는 중이라 물어보기 전에는 알 수 없다. 오래된 시계를 보이느니 시계를 보이지 않는다
       return;
     }
     if (!had || !passToken) return;
@@ -123,11 +123,11 @@ export function EventDetailPage() {
   }, [reservation, passToken]);
 
   function handlePassExpired() {
-    // Back to the queue: the pass is gone, so a seat can no longer be taken with it.
+    // 대기열로 돌아간다. 입장권이 없어졌으므로 그것으로는 더는 좌석을 잡을 수 없다.
     setPassToken(null);
     setPassDeadline(null);
     setSelectedSeat(null);
-    // A more specific reason (the payment was refunded because the hold ran out) is not replaced by the generic one.
+    // 더 구체적인 사유(홀드가 끝나서 결제가 환불됐다)를 일반적인 사유로 덮어쓰지 않는다.
     setQueueNotice((prev) => prev ?? "입장 시간이 지났어요. 다시 줄을 서 주세요.");
   }
 
@@ -149,8 +149,8 @@ export function EventDetailPage() {
       .catch(() => undefined);
   }, [user, eventId]);
 
-  // Native share sheet where the browser has one (phones, Safari, recent Chrome/Edge); otherwise
-  // copy the link. Closing the share sheet rejects with AbortError - that's a choice, not a failure.
+  // 브라우저에 네이티브 공유 시트가 있으면 그것을 쓴다(휴대폰, Safari, 최신 Chrome/Edge). 없으면
+  // 링크를 복사한다. 공유 시트를 닫으면 AbortError로 reject되는데, 실패가 아니라 사용자의 선택이다.
   async function handleShare() {
     if (!event) return;
     const url = `${window.location.origin}/events/${event.id}`;
@@ -239,7 +239,7 @@ export function EventDetailPage() {
       setQueueNotice(null);
     } catch (err) {
       if (isAxiosError<ApiErrorBody>(err) && err.response?.data?.code === "PASS_TOKEN_REQUIRED") {
-        // The pass ran out while they were choosing: back to the queue rather than a message with nowhere to go.
+        // 좌석을 고르는 동안 입장권이 끝났다. 갈 곳 없는 메시지 대신 대기열로 돌려보낸다.
         handlePassExpired();
         return;
       }
@@ -301,8 +301,8 @@ export function EventDetailPage() {
     };
   }, [resumeOrderId, event, seats, user, resumeState]);
 
-  // The seat goes back on sale server-side on its own at this moment; this just brings the screen
-  // in line. A payment already in flight is left alone - that call settles with the server's verdict.
+  // 이 순간에 좌석은 서버 쪽에서 스스로 다시 판매로 돌아간다. 이 함수는 화면을 거기에 맞출 뿐이다. 이미 진행 중인
+  // 결제는 건드리지 않는다. 그 호출은 서버의 판정으로 끝난다.
   function handleHoldExpired() {
     if (isProcessing) return;
     if (resumed) {
@@ -327,8 +327,8 @@ export function EventDetailPage() {
       .catch(() => undefined);
   }, [reservation]);
 
-  // The order is created lazily - at the first coupon/points application or at checkout, whichever
-  // comes first - and reused after that (a reservation can only ever have one order).
+  // 주문은 필요할 때 만든다. 처음 쿠폰/포인트를 적용할 때나 결제할 때 중 먼저 오는 때이고, 그 뒤에는 재사용한다
+  // (예약 하나에는 주문이 하나만 있을 수 있다).
   async function ensureOrder(): Promise<Order> {
     if (order) return order;
     if (!reservation) throw new Error("예약 정보가 없어요.");
@@ -361,7 +361,7 @@ export function EventDetailPage() {
     }
   }
 
-  // Picking one of the listed coupons applies it straight away - no retyping the code.
+  // 목록에 있는 쿠폰 중 하나를 고르면 곧바로 적용한다. 코드를 다시 입력하지 않아도 된다.
   async function handleApplyCouponCode(code: string) {
     await runBenefit((current) => applyCoupon(current.orderId, code), "쿠폰이 적용됐어요.");
   }
@@ -375,7 +375,7 @@ export function EventDetailPage() {
     runBenefit((current) => applyPoints(current.orderId, points), points > 0 ? "포인트가 적용됐어요." : undefined);
   }
 
-  // 100 is the smallest amount the card payment accepts - mirrors the server's own cap.
+  // 100은 카드 결제가 받아 주는 가장 작은 금액이다. 서버 자체의 상한과 같다.
   const maxPoints = Math.max(
     0,
     Math.min(pointBalance, (order?.originalPrice ?? selectedSeat?.price ?? 0) - (order?.discountAmount ?? 0) - 100),
@@ -386,14 +386,14 @@ export function EventDetailPage() {
     setError(null);
     setIsProcessing(true);
     try {
-      // Re-use the order across retries (e.g. the PG payment window was cancelled) instead of
-      // creating a second one - a reservation can only ever have a single order.
+      // 재시도(예: PG 결제창을 닫았을 때)할 때 주문을 두 번째로 만들지 않고 재사용한다.
+      // 예약 하나에는 주문이 하나만 있을 수 있다.
       const currentOrder = await ensureOrder();
 
-      // Recorded before the payment window opens - the server won't confirm an order without it.
+      // 결제창이 열리기 전에 기록한다. 서버는 이것이 없으면 주문을 확정하지 않는다.
       await verifyIdentity(currentOrder.orderId);
 
-      // The server decides the payment id and the amount; it only accepts a payment made with an id it issued.
+      // 결제 id와 금액은 서버가 정한다. 서버는 자기가 발급한 id로 결제한 것만 받아들인다.
       const intent = await createPaymentIntent(currentOrder.orderId);
 
       const paymentResult = await requestPayment(
@@ -412,8 +412,8 @@ export function EventDetailPage() {
         return;
       }
 
-      // The PG popup only tells us it finished, not whether it actually succeeded - the backend
-      // re-checks with PortOne's server before trusting it.
+      // PG 팝업은 끝났다는 것만 알려 줄 뿐 실제로 성공했는지는 알려 주지 않는다. 백엔드가
+      // PortOne 서버에서 다시 확인한 뒤에야 믿는다.
       const verified = await payOrder(currentOrder.orderId, paymentResult.paymentId);
       if (verified.paymentStatus === "SUCCESS") {
         navigate("/tickets?tab=orders");
@@ -435,7 +435,7 @@ export function EventDetailPage() {
         ? "좌석 예약 시간이 지나 결제가 자동으로 환불됐어요. 다시 예약해주세요."
         : "결제가 거절됐어요. 좌석이 해제됐으니 다시 예약해주세요.";
       setError(lostMessage);
-      // The queue pass has usually run out by now, which sends them back to the queue screen where `error` is not shown.
+      // 이 시점에는 대기열 입장권이 대개 끝나 있어서 `error`가 보이지 않는 대기열 화면으로 돌아가게 된다.
       setQueueNotice(lostMessage);
       setReservation(null);
       setSelectedSeat(null);
@@ -452,7 +452,7 @@ export function EventDetailPage() {
   }
 
   if (!user && (event.status === "CLOSED" || new Date(event.salesCloseAt).getTime() <= Date.now())) {
-    // No point asking someone to log in for a show nobody can book any more.
+    // 아무도 더는 예매할 수 없는 공연에 로그인하라고 요구할 이유가 없다.
     return (
       <div className="queue-room">
         <div className="queue-card">
@@ -534,15 +534,15 @@ export function EventDetailPage() {
     </>
   );
 
-  // Nothing to book yet / anymore: skip the queue and offer the matching alert instead.
+  // 아직(또는 더는) 예매할 것이 없다. 대기열을 건너뛰고 그에 맞는 알림을 권한다.
   const isPreOpen =
     event.status === "UPCOMING" && !openedByClock && new Date(event.openAt).getTime() > Date.now();
   const totalSeats = event.sectionSummary.reduce((sum, s) => sum + s.totalCount, 0);
   const availableSeats = event.sectionSummary.reduce((sum, s) => sum + s.availableCount, 0);
   const isSoldOut = event.status === "OPEN" && totalSeats > 0 && availableSeats === 0;
-  // Seats can be taken until two hours before the show. The server judges this by its clock (and refuses later bookings);
-  // the page only has to say so instead of offering a queue that would lead nowhere. Someone already holding a seat or
-  // finishing an earlier order is not turned away mid-way.
+  // 좌석은 공연 두 시간 전까지 잡을 수 있다. 서버가 자기 시계로 이를 판정하고(그 뒤의 예매는 거절한다), 페이지는 어디로도
+  // 이어지지 않을 대기열을 권하는 대신 그것을 알려 주기만 하면 된다. 이미 좌석을 잡았거나 앞선 주문을 마무리하는 사람은
+  // 도중에 돌려보내지 않는다.
   const isSalesClosed = event.status === "CLOSED" || new Date(event.salesCloseAt).getTime() <= Date.now();
 
   if (isSalesClosed && !resumed && !reservation) {

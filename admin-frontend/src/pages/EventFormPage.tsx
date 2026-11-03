@@ -26,7 +26,7 @@ const STATUS_OPTIONS: { value: EventStatus; label: string }[] = [
 
 const EMPTY_BLOCK: SeatBlockPayload = { section: "", grade: "VIP", price: 100000, rows: 5, seatsPerRow: 10 };
 
-// <input type="datetime-local"> wants "YYYY-MM-DDTHH:mm" - the API returns seconds too.
+// <input type="datetime-local">은 "YYYY-MM-DDTHH:mm"을 원하는데, API는 초까지 돌려준다.
 function toInputValue(iso: string) {
   return iso.slice(0, 16);
 }

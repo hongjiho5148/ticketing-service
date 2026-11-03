@@ -1,12 +1,12 @@
 package com.ticketing.orderservice.order;
 
 /**
- * @param refundPercent  share of the payment given back (0 = cancellation no longer allowed)
- * @param refundAmount   won returned to the card/easy-pay
- * @param feeAmount      won kept as the cancellation fee (paid - refundAmount)
- * @param pointsRestored points spent on the order that go back to the customer's balance
- * @param couponRestored the order's coupon becomes usable again (only with a full refund)
- * @param couponForfeited the order used a coupon that stays spent (a partial refund)
+ * @param refundPercent  결제 금액 중 돌려주는 비율(0 = 더는 취소할 수 없음)
+ * @param refundAmount   카드/간편결제로 돌려주는 원화 금액
+ * @param feeAmount      취소 수수료로 남기는 원화 금액(결제액 - refundAmount)
+ * @param pointsRestored 주문에 쓴 포인트 중 고객 잔액으로 돌아가는 포인트
+ * @param couponRestored 주문의 쿠폰을 다시 쓸 수 있게 됨(전액 환불일 때만)
+ * @param couponForfeited 주문에 쓴 쿠폰이 쓴 것으로 남음(부분 환불)
  */
 public record RefundQuote(
         int refundPercent,

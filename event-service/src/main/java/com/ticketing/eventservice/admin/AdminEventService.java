@@ -94,7 +94,7 @@ public class AdminEventService {
 
     @Transactional(readOnly = true)
     public List<EventStatsResponse> stats() {
-        // eventId -> grade -> counts indexed by SeatStatus ordinal (AVAILABLE, HOLD, SOLD)
+        // eventId -> 등급 -> SeatStatus 순서값(AVAILABLE, HOLD, SOLD)으로 색인한 개수
         Map<Long, Map<String, long[]>> byEvent = new LinkedHashMap<>();
         Map<Long, Long> soldRevenue = new LinkedHashMap<>();
         for (Object[] row : seatRepository.aggregateStats()) {

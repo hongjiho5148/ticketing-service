@@ -9,12 +9,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * Builds the {@link RemoteService} each client uses, from the {@code remote.*} settings. A service-to-service call
- * should finish in well under a second, and the slowest legitimate one (holding a seat behind the seat lock) is bounded
- * by the lock's own few seconds, so five seconds of read time only cuts off calls that are really stuck.
+ * 각 클라이언트가 쓰는 {@link RemoteService}를 {@code remote.*} 설정으로 만든다. 서비스 사이 호출은 1초보다
+ * 한참 짧게 끝나야 하고, 가장 느린 정상 호출(좌석 잠금 뒤에서 좌석을 잡는 일)도 잠금 자체의 몇 초로 상한이
+ * 있으므로, 읽기 시간 5초는 정말로 걸려 버린 호출만 끊는다.
  *
- * <p>Every circuit breaker lives in one registry that is bound to the metrics registry, so each service exports
- * {@code resilience4j_circuitbreaker_*} (state, failure rate, calls refused while open) without further wiring.
+ * <p>모든 서킷 브레이커는 메트릭 레지스트리에 연결된 하나의 레지스트리에 있어서, 따로 연결하지 않아도 각
+ * 서비스가 {@code resilience4j_circuitbreaker_*}(상태, 실패율, 열려 있는 동안 거절한 호출)를 내보낸다.
  */
 @Component
 public class RemoteServices {
@@ -51,7 +51,7 @@ public class RemoteServices {
         return new RemoteService(name, baseUrl, settings, settings.readTimeout(), circuitBreakers);
     }
 
-    /** For an outside API whose normal answer time is different (e.g. a payment provider). */
+    /** 정상 응답 시간이 다른 외부 API(예: 결제 대행사)용이다. */
     public RemoteService create(String name, String baseUrl, Duration readTimeout) {
         return new RemoteService(name, baseUrl, settings, readTimeout, circuitBreakers);
     }

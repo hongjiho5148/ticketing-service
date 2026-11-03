@@ -8,9 +8,9 @@ import { ReCaptcha } from "./ReCaptcha";
 
 interface QueueWaitingRoomProps {
   eventId: number;
-  /** expiresInSeconds: how long the pass has left, when the server said. */
+  /** expiresInSeconds: 입장권이 얼마나 남았는지(서버가 알려 줬을 때). */
   onPassed: (passToken: string, expiresInSeconds: number | null) => void;
-  /** Why the person is back in the queue (a lost hold, an expired pass), shown until they get in again. */
+  /** 사람이 대기열로 돌아온 이유(잃어버린 홀드, 끝난 입장권)다. 다시 입장할 때까지 보여 준다. */
   notice?: string | null;
 }
 
@@ -20,12 +20,12 @@ export function QueueWaitingRoom({ eventId, onPassed, notice }: QueueWaitingRoom
   const [rankNo, setRankNo] = useState<number | null>(null);
   const [estimatedWaitSeconds, setEstimatedWaitSeconds] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // The solved captcha that gets us into the queue. Kept once solved: if the widget later expires,
-  // that must not tear down a queue entry that is already waiting.
+  // 대기열에 들어가게 해 주는 푼 캡차다. 한 번 풀면 계속 보관한다. 위젯이 나중에 만료되어도
+  // 이미 기다리고 있는 대기열 항목을 무너뜨리면 안 된다.
   const [enterToken, setEnterToken] = useState<string | null>(null);
   const [captchaKey, setCaptchaKey] = useState(0);
-  // The server takes people out of the line when it has not heard from them for a while (a closed laptop, a phone that
-  // lost signal). Coming back, they find their place gone and can join again at the back.
+  // 서버는 한동안 소식이 없는 사람(덮은 노트북, 신호를 잃은 휴대폰)을 줄에서 뺀다. 돌아오면 자리가 사라진 것을 보고
+  // 맨 뒤에 다시 설 수 있다.
   const [removedFromLine, setRemovedFromLine] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const onPassedRef = useRef(onPassed);
@@ -37,7 +37,7 @@ export function QueueWaitingRoom({ eventId, onPassed, notice }: QueueWaitingRoom
     let intervalId: number | undefined;
     const controller = new AbortController();
 
-    // Returns true once the person has been let in.
+    // 사람이 입장했으면 true를 돌려준다.
     function apply(status: QueueStatusResult): boolean {
       if (cancelled) return true;
       if (status.status === "PASSED" && status.passToken) {
@@ -65,8 +65,8 @@ export function QueueWaitingRoom({ eventId, onPassed, notice }: QueueWaitingRoom
       }
     }
 
-    // The server pushes updates over one open connection. If that cannot be had (the server is full, something between
-    // us and it drops the stream) the page asks every two seconds instead, which is how it worked before.
+    // 서버가 열려 있는 연결 하나로 업데이트를 밀어 준다. 그것을 얻을 수 없으면(서버가 가득 찼거나 사이의 무언가가
+    // 스트림을 끊으면) 예전처럼 페이지가 2초마다 묻는다.
     async function watch(queueToken: string) {
       let passed = false;
       try {
@@ -74,14 +74,14 @@ export function QueueWaitingRoom({ eventId, onPassed, notice }: QueueWaitingRoom
           if (apply(status)) passed = true;
         }, controller.signal);
       } catch {
-        // fall through to polling
+        // 폴링으로 넘어간다
       }
       if (cancelled || passed) return;
       intervalId = window.setInterval(() => poll(queueToken), POLL_INTERVAL_MS);
     }
 
-    // A browser slows or pauses a tab that is out of sight, and a phone that slept may have lost the connection without
-    // noticing. When the tab is shown again, ask at once instead of waiting for the next tick or the next push.
+    // 브라우저는 보이지 않는 탭을 느리게 하거나 멈추고, 잠들었던 휴대폰은 알아채지 못한 채 연결을 잃었을 수 있다.
+    // 탭이 다시 보이면 다음 틱이나 다음 푸시를 기다리지 않고 곧바로 묻는다.
     let queueToken: string | null = null;
     function onVisible() {
       if (document.visibilityState === "visible" && queueToken) void poll(queueToken);
@@ -100,7 +100,7 @@ export function QueueWaitingRoom({ eventId, onPassed, notice }: QueueWaitingRoom
         if (cancelled) return;
         setError(extractErrorMessage(err));
         if (isCaptchaEnabled) {
-          // The token is spent whatever the outcome, so ask for a fresh one.
+          // 결과와 상관없이 토큰은 쓰였으므로 새 것을 요청한다.
           setEnterToken(null);
           setCaptchaKey((k) => k + 1);
         }
@@ -140,7 +140,7 @@ export function QueueWaitingRoom({ eventId, onPassed, notice }: QueueWaitingRoom
     setError(null);
     setRankNo(null);
     if (isCaptchaEnabled) {
-      // The earlier token was spent, so the check has to be done again.
+      // 이전 토큰은 쓰였으므로 확인을 다시 해야 한다.
       setEnterToken(null);
       setCaptchaKey((k) => k + 1);
     } else {

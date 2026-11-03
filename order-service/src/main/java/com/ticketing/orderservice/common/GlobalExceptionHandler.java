@@ -15,9 +15,10 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(e.getErrorCode().getStatus()).body(ErrorResponse.of(e.getErrorCode()));
     }
 
-    /** Two concurrent createOrder() calls racing on the same still-HOLDING reservation both pass the
-     * status check before either commits - the unique constraint on orders.reservation_id is what
-     * actually stops the second one. */
+    /**
+     * 아직 HOLDING인 같은 예약에 createOrder()가 동시에 두 번 들어오면, 둘 다 커밋 전에 상태 검사를
+     * 통과한다. 두 번째를 실제로 막는 것은 orders.reservation_id의 유니크 제약이다.
+     */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleOrderContention(DataIntegrityViolationException e) {
         return ResponseEntity.status(ErrorCode.RESERVATION_NOT_CANCELLABLE.getStatus())

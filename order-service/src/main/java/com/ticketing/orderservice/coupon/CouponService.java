@@ -13,7 +13,7 @@ import java.util.Locale;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// noRollbackFor ApiException - see PointService for why (pay() recovers from these inside its own transaction).
+// noRollbackFor ApiException. 이유는 PointService 참고(pay()가 자기 트랜잭션 안에서 이 예외들을 복구한다).
 @Service
 @Transactional(noRollbackFor = ApiException.class)
 public class CouponService {
@@ -58,7 +58,7 @@ public class CouponService {
                 .toList();
     }
 
-    /** The coupons this user can still use. Every active coupon is public here - there are no coupons issued to one person only. */
+    /** 이 사용자가 아직 쓸 수 있는 쿠폰이다. 활성 쿠폰은 모두 공개라서 특정인에게만 발급된 쿠폰은 없다. */
     @Transactional(readOnly = true)
     public List<AvailableCouponResponse> available(Long userId) {
         return couponRepository.findAvailableFor(userId, LocalDateTime.now()).stream()
@@ -66,7 +66,7 @@ public class CouponService {
                 .toList();
     }
 
-    /** Checks a code can be applied by this user right now. Nothing is consumed until the order is paid (see redeem). */
+    /** 이 사용자가 지금 코드를 적용할 수 있는지 확인한다. 주문이 결제되기 전까지는 아무것도 소모하지 않는다(redeem 참고). */
     @Transactional(readOnly = true)
     public Coupon findUsable(String rawCode, Long userId) {
         Coupon coupon = couponRepository.findByCode(normalize(rawCode))
@@ -80,12 +80,12 @@ public class CouponService {
         return coupon;
     }
 
-    /** Consumes one use of the order's coupon for real - called only once the card payment has been verified. */
+    /** 주문 쿠폰의 한 번 사용을 실제로 소모한다. 카드 결제가 검증된 뒤에만 호출한다. */
     public void redeem(Orders order) {
         Coupon coupon = couponRepository.findByCode(order.getCouponCode())
                 .orElseThrow(() -> new ApiException(ErrorCode.COUPON_NOT_FOUND));
-        // Re-checked here, not just at apply time: the window/limit/one-per-user rules can all have
-        // changed in the minutes between "apply" and "paid".
+        // 적용할 때만이 아니라 여기서도 다시 확인한다. 기간, 한도, 1인 1회 규칙이 모두 "적용"에서
+        // "결제" 사이의 몇 분 동안 바뀌었을 수 있다.
         if (redemptionRepository.existsByCouponIdAndUserId(coupon.getId(), order.getUserId())) {
             throw new ApiException(ErrorCode.COUPON_ALREADY_USED);
         }
@@ -98,9 +98,9 @@ public class CouponService {
     }
 
     /**
-     * Undoes redeem() for a fully refunded order: the user can use the coupon again and the use goes back
-     * to the coupon's limit. Idempotent - the use is only given back if this order's redemption row was
-     * really there to delete, so calling it twice never frees up a use that belongs to someone else.
+     * 전액 환불된 주문의 redeem()을 되돌린다. 사용자는 쿠폰을 다시 쓸 수 있고 사용 횟수는 쿠폰의
+     * 한도로 돌아간다. 멱등하다. 이 주문의 사용 기록 행이 실제로 지워질 때만 횟수를 돌려주므로,
+     * 두 번 호출해도 다른 사람의 사용 횟수를 풀어 주는 일은 없다.
      */
     public void restore(Orders order) {
         if (order.getCouponCode() == null) {

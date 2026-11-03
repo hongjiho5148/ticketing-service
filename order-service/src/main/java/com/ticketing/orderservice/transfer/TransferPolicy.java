@@ -7,9 +7,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * When a ticket may change hands. The window closes at the same moment QR issuance opens (default
- * 2 hours before the show), so a QR code never has to be re-issued for a new holder, and one
- * transfer per ticket keeps it from turning into a resale chain.
+ * 티켓을 넘길 수 있는 시기다. 창은 QR 발급이 열리는 순간(기본 공연 2시간 전)에 닫히므로 새 소지자를 위해
+ * QR을 다시 발급할 일이 없고, 티켓당 양도를 한 번으로 제한해서 되팔기 사슬이 되는 것을 막는다.
  */
 @Component
 public class TransferPolicy {

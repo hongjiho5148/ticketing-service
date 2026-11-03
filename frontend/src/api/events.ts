@@ -5,7 +5,7 @@ export function fetchEvents(
   params: {
     status?: EventStatus;
     category?: EventCategory;
-    // ISO dates (YYYY-MM-DD), both inclusive - used for the calendar month window.
+    // ISO 날짜(YYYY-MM-DD)이고 양쪽 끝을 모두 포함한다. 달력의 한 달 구간에 쓴다.
     startDate?: string;
     endDate?: string;
     keyword?: string;

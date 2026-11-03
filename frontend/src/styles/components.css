@@ -1,5 +1,6 @@
-/* ---------- Badges ----------
- * Square-ish tags, not pills. Status badges carry a dot so state never depends on color alone.
+/*
+ * ---------- 배지 ----------
+ * 알약이 아니라 각진 태그다. 상태 배지에는 점이 있어서 상태가 색에만 의존하지 않는다.
  */
 
 .badge {
@@ -82,7 +83,7 @@
   color: var(--ink-3);
 }
 
-/* ---------- Modal & confirm dialog ---------- */
+/* ---------- 모달과 확인 대화상자 ---------- */
 
 .modal-overlay {
   position: fixed;
@@ -151,7 +152,7 @@
   font-size: 1.15rem;
 }
 
-/* Confirmation text can be several short lines (the refund breakdown). */
+/* 확인 문구는 짧은 여러 줄일 수 있다(환불 내역). */
 .modal-confirm .modal-subtitle {
   white-space: pre-line;
   line-height: 1.7;
@@ -166,7 +167,7 @@
   margin-top: 24px;
 }
 
-/* ---------- Toast ---------- */
+/* ---------- 토스트 ---------- */
 
 .toast-container {
   position: fixed;
@@ -214,7 +215,7 @@
   }
 }
 
-/* ---------- Skeleton ---------- */
+/* ---------- 스켈레톤 ---------- */
 
 .skeleton {
   border-radius: var(--r-sm);
@@ -261,7 +262,7 @@
   gap: 4px;
 }
 
-/* ---------- Error boundary / 404 ---------- */
+/* ---------- 에러 바운더리 / 404 ---------- */
 
 .error-boundary,
 .not-found {
@@ -286,7 +287,7 @@
   color: var(--ink-3);
 }
 
-/* ---------- Lists, toolbars, small shared bits ---------- */
+/* ---------- 목록, 툴바, 작은 공용 조각 ---------- */
 
 .load-more-row {
   display: flex;
@@ -310,7 +311,7 @@
   border-radius: 0 0 var(--r-lg) var(--r-lg);
 }
 
-/* ---------- Hold timer / countdowns ---------- */
+/* ---------- 홀드 타이머 / 카운트다운 ---------- */
 
 .hold-timer {
   display: flex;
@@ -373,7 +374,7 @@
   color: var(--danger);
 }
 
-/* A departure-board style countdown: ink panel, big monospace digits */
+/* 출발 전광판 같은 카운트다운: 잉크색 패널에 큰 고정폭 숫자 */
 .open-countdown {
   display: flex;
   flex-direction: column;
@@ -400,7 +401,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ---------- Gates (pre-open / sold-out) and alert cards ---------- */
+/* ---------- 관문(오픈 전 / 매진)과 알림 카드 ---------- */
 
 .gate-panel {
   display: flex;
@@ -446,7 +447,7 @@
   font-size: 0.78rem;
 }
 
-/* ---------- Coupon chips, identity check, pay methods (checkout pieces used in a few places) ---------- */
+/* ---------- 쿠폰 칩, 본인 확인, 결제 수단 (여러 곳에서 쓰는 결제 조각) ---------- */
 
 .coupon-chips {
   display: flex;

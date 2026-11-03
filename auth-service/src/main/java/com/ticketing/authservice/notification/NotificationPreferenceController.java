@@ -10,9 +10,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-// Nested under /api/auth/** (not /api/account/**) so it rides the existing auth-service gateway
-// route instead of needing a new one - auth-service already owns every other self-service account
-// endpoint (/api/auth/me, /api/auth/password) under this same prefix.
+// /api/account/**가 아니라 /api/auth/** 아래에 두어서 새 라우트를 만들지 않고 기존 auth-service 게이트웨이 라우트를
+// 탄다. auth-service는 셀프서비스 계정 엔드포인트(/api/auth/me, /api/auth/password)를 이미 모두 같은 접두사로 맡고 있다.
 @RestController
 @RequestMapping("/api/auth/notification-prefs")
 public class NotificationPreferenceController {

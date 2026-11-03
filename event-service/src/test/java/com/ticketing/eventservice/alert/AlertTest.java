@@ -34,9 +34,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Open-alert and cancellation-ticket alert logic against the compose MySQL/Redis (rolled back).
- * Auth lookups and mail are mocked; the cron sweepers are switched off and driven by hand. Run
- * inside the compose network with DB_HOST=mysql REDIS_HOST=redis, like order-service's tests.
+ * 오픈 알림과 취소표 알림 로직을 compose MySQL/Redis(롤백)에서 확인한다.
+ * auth 조회와 메일은 mock이고, 크론 스위퍼는 꺼 두고 손으로 돌린다. order-service의 테스트처럼
+ * compose 네트워크 안에서 DB_HOST=mysql REDIS_HOST=redis로 실행한다.
  */
 @SpringBootTest(properties = {
     "seat.hold-expiry-sweep-cron=-",
@@ -111,7 +111,7 @@ class AlertTest {
         openAlertRepository.save(new OpenAlertSubscription(userId, due.getId()));
 
         openAlertSweeper.sendOpenAlerts();
-        openAlertSweeper.sendOpenAlerts(); // a second tick must not mail again
+        openAlertSweeper.sendOpenAlerts(); // 두 번째 주기는 메일을 다시 보내면 안 된다
 
         assertThat(due.getStatus()).isEqualTo(EventStatus.OPEN);
         assertThat(openAlertRepository.findByUserIdAndEventId(userId, due.getId()).orElseThrow().getNotifiedAt())
@@ -134,7 +134,7 @@ class AlertTest {
         assertThat(openAlertRepository.findByUserIdAndEventId(userId, future.getId()).orElseThrow().getNotifiedAt())
                 .isNull();
         assertThat(openAlertRepository.findByUserIdAndEventId(userId + 1, due.getId()).orElseThrow().getNotifiedAt())
-                .isNull(); // still pending - next tick retries
+                .isNull(); // 아직 대기 중이라 다음 주기에 재시도한다
         verify(mailService, never()).sendTicketOpenedEmail(anyString(), anyString(), anyLong(), anyString(), any());
     }
 
@@ -170,14 +170,14 @@ class AlertTest {
         WaitlistSubscription second = waitlistRepository.save(new WaitlistSubscription(userId + 1, open.getId()));
         em.flush();
 
-        waitlistNotifier.notifyWaitlist(new SeatsReleasedEvent(open.getId(), 1)); // notify-per-seat = 1
+        waitlistNotifier.notifyWaitlist(new SeatsReleasedEvent(open.getId(), 1)); // 좌석당 알림 수 = 1
 
         em.clear();
         assertThat(waitlistRepository.findById(first.getId()).orElseThrow().getNotifiedAt()).isNotNull();
         assertThat(waitlistRepository.findById(second.getId()).orElseThrow().getNotifiedAt()).isNull();
         verify(mailService, times(1)).sendSeatFreedEmail(anyString(), anyString(), eq(open.getId()), anyString());
 
-        waitlistNotifier.notifyWaitlist(new SeatsReleasedEvent(open.getId(), 1)); // next freed seat -> next in line
+        waitlistNotifier.notifyWaitlist(new SeatsReleasedEvent(open.getId(), 1)); // 다음에 풀린 좌석 -> 줄의 다음 사람
         verify(mailService, times(2)).sendSeatFreedEmail(anyString(), anyString(), eq(open.getId()), anyString());
     }
 

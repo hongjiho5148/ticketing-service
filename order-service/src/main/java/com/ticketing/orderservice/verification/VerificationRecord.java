@@ -13,7 +13,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
-/** Proof that the buyer was verified for one order, kept so a disputed purchase can be traced to what they confirmed. */
+/** 한 주문에 대해 구매자가 확인됐다는 증거다. 분쟁이 된 구매를 구매자가 확인한 내용까지 추적할 수 있도록 남긴다. */
 @Entity
 @Table(
         name = "verification_record",
@@ -32,11 +32,11 @@ public class VerificationRecord {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    // Which provider vouched for the buyer (SELF_ATTESTED today).
+    // 어느 제공자가 구매자를 보증했는지(현재는 SELF_ATTESTED).
     @Column(nullable = false, length = 30)
     private String method;
 
-    // Version of the wording the buyer saw and agreed to, so old records stay interpretable if the text changes.
+    // 구매자가 보고 동의한 문구의 버전이다. 문구가 바뀌어도 오래된 기록을 해석할 수 있게 한다.
     @Column(name = "statement_version", nullable = false, length = 10)
     private String statementVersion;
 

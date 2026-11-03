@@ -1,7 +1,8 @@
-/* ---------- Posters ----------
- * There are no poster images, so each event gets a bold printed-poster look: a flat color field, one pattern
- * and the artist/title set huge. Six themes, picked by event id. Each theme only sets two variables
- * (--poster-fg for type on top, plus its background) so the card and the detail hero share the same system.
+/*
+ * ---------- 포스터 ----------
+ * 포스터 이미지가 없으므로 공연마다 굵게 인쇄한 포스터 느낌을 준다. 평평한 색 바탕, 무늬 하나, 아주 크게 놓은
+ * 아티스트/제목이다. 테마는 여섯 가지이고 공연 id로 고른다. 테마마다 변수 두 개(위에 올라가는 글자용 --poster-fg와
+ * 배경)만 정하므로 카드와 상세 히어로가 같은 체계를 공유한다.
  */
 
 .poster-theme-0 {
@@ -44,7 +45,7 @@
   bottom: 14px;
   max-width: calc(100% - 36px);
   overflow: hidden;
-  /* Sized from the word's length so a short name and a long one both fill the width without clipping */
+  /* 글자 길이로 크기를 정해서 짧은 이름이든 긴 이름이든 잘리지 않고 폭을 채운다 */
   font-size: clamp(1.6rem, calc(86cqw / (var(--glyph-len, 6) * 0.62 + 0.4)), 4.4rem);
   font-weight: 900;
   line-height: 1;
@@ -55,7 +56,7 @@
   user-select: none;
 }
 
-/* ---------- List page ---------- */
+/* ---------- 목록 페이지 ---------- */
 
 .list-head h1 {
   font-size: clamp(2rem, 1.2rem + 3vw, 3.4rem);
@@ -189,7 +190,7 @@
   font-size: 0.86rem;
 }
 
-/* ---------- Event cards ---------- */
+/* ---------- 공연 카드 ---------- */
 
 .event-list {
   display: grid;
@@ -271,7 +272,7 @@
   box-shadow: var(--shadow-1);
 }
 
-/* Tear line between poster and stub, with a notch bitten out of each side */
+/* 포스터와 티켓 조각 사이의 절취선이며, 양쪽에 홈이 파여 있다 */
 .event-card-body {
   position: relative;
   padding: 18px 20px 20px;
@@ -344,7 +345,7 @@
   font-weight: 500;
 }
 
-/* The first card is the headline act: twice as wide, bigger type */
+/* 첫 번째 카드는 메인 공연이다. 두 배 넓고 글자도 크다 */
 @media (min-width: 960px) {
   .event-card.featured {
     grid-column: span 2;
@@ -363,7 +364,7 @@
   }
 }
 
-/* ---------- Calendar ---------- */
+/* ---------- 달력 ---------- */
 
 .calendar-header {
   display: flex;
@@ -553,7 +554,7 @@
   }
 }
 
-/* ---------- Event detail: hero ---------- */
+/* ---------- 공연 상세: 히어로 ---------- */
 
 .detail-back {
   display: inline-flex;
@@ -665,7 +666,7 @@
   gap: 6px;
 }
 
-/* ---------- Event detail: content ---------- */
+/* ---------- 공연 상세: 내용 ---------- */
 
 .detail-section-title {
   margin: 0 0 16px;

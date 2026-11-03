@@ -50,12 +50,12 @@ public class AuthController {
     public ResponseEntity<LoginResponse> login(
             @Valid @RequestBody LoginRequest request,
             @RequestHeader(value = "X-Captcha-Token", required = false) String captchaToken) {
-        // Before the password is even looked at, so a bot can't use this endpoint to test credentials without solving it.
+        // 비밀번호를 보기도 전에 확인한다. 봇이 이것을 풀지 않고는 이 엔드포인트로 자격 증명을 시험할 수 없다.
         captchaVerifier.verify(captchaToken);
         return ResponseEntity.ok(authService.login(request));
     }
 
-    // Always 202: whether the address exists (or is already verified) is deliberately not revealed.
+    // 항상 202다. 주소가 존재하는지(또는 이미 인증됐는지)는 일부러 알려 주지 않는다.
     @PostMapping("/resend-verification")
     public ResponseEntity<Void> resendVerification(@Valid @RequestBody ResendVerificationRequest request) {
         authService.resendVerification(request.email());

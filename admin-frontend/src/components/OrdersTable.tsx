@@ -29,7 +29,7 @@ function statusTone(status: AdminOrderStatus) {
   return "is-ended";
 }
 
-/** Paged order list for one status (or all). Mount it with key={filter}: a new filter starts a fresh load. */
+/** 한 상태(또는 전체)의 주문을 페이지 단위로 보여 준다. key={filter}로 마운트한다. 필터가 바뀌면 새로 불러오기 시작한다. */
 export function OrdersTable({ filter }: { filter: AdminOrderStatus | "ALL" }) {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [total, setTotal] = useState(0);

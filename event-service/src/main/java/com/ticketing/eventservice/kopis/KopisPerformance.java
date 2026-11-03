@@ -2,7 +2,7 @@ package com.ticketing.eventservice.kopis;
 
 import java.time.LocalDate;
 
-/** One performance as KOPIS describes it. List responses only fill id/title/period/venue/genre; detail fills the rest. */
+/** KOPIS가 설명하는 공연 하나다. 목록 응답은 id/제목/기간/장소/장르만 채우고, 나머지는 상세가 채운다. */
 public record KopisPerformance(
         String id,
         String title,

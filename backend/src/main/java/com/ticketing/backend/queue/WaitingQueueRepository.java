@@ -17,9 +17,9 @@ public interface WaitingQueueRepository extends JpaRepository<WaitingQueue, Long
     List<WaitingQueue> findByUserIdAndEventId(Long userId, Long eventId);
 
     /**
-     * Marks a whole batch of admitted entries PASSED in one statement (the unique index on queue_token finds them), so a
-     * sweep costs one UPDATE per event instead of a SELECT and an UPDATE per person. Transactional here, on the
-     * repository proxy, so it does not depend on the caller having a transaction.
+     * 입장한 항목 묶음 전체를 한 문장으로 PASSED로 표시한다(queue_token의 유니크 인덱스가 찾는다). 그래서 스윕 한 번에 사람마다
+     * SELECT와 UPDATE를 하나씩 하는 대신 공연당 UPDATE 하나가 든다. 호출한 쪽이 트랜잭션을 가지고 있는지에 기대지 않도록
+     * 여기 리포지토리 프록시에 Transactional을 붙였다.
      */
     @Transactional
     @Modifying(clearAutomatically = true)
@@ -27,7 +27,7 @@ public interface WaitingQueueRepository extends JpaRepository<WaitingQueue, Long
             + " where w.queueToken in :tokens and w.status = com.ticketing.backend.queue.QueueEntryStatus.WAITING")
     int markPassed(@Param("tokens") Collection<String> tokens, @Param("now") LocalDateTime now);
 
-    /** The people who left the line without being let in: one statement for the batch, like markPassed. */
+    /** 입장하지 못하고 줄을 떠난 사람들이다. markPassed처럼 묶음에 대해 문장 하나다. */
     @Transactional
     @Modifying(clearAutomatically = true)
     @Query("update WaitingQueue w set w.status = com.ticketing.backend.queue.QueueEntryStatus.ABANDONED"

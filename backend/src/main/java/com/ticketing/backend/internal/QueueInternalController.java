@@ -8,9 +8,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Service-to-service only - not routed through the public Gateway, reached directly within the
- * docker network. Queue wasn't split out in this phase, so reservation-service calls back here to
- * validate a pass token before it holds a seat.
+ * 서비스 사이 호출 전용이다. 공개 게이트웨이를 거치지 않고 docker 네트워크 안에서 직접 닿는다.
+ * 이 단계에서는 대기열을 분리하지 않았으므로, reservation-service가 좌석을 잡기 전에 입장권 토큰을
+ * 검증하려고 여기를 다시 호출한다.
  */
 @RestController
 @RequestMapping("/internal/queue")

@@ -15,7 +15,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
-/** Append-only ledger: the balance on PointAccount can always be re-derived by summing these. */
+/** 추가만 하는 원장이다. PointAccount의 잔액은 언제든 이 행들을 합산해서 다시 구할 수 있다. */
 @Entity
 @Table(name = "point_transaction", indexes = @Index(name = "idx_point_tx_user", columnList = "user_id"))
 @Getter
@@ -29,7 +29,7 @@ public class PointTransaction {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    /** Signed: positive adds to the balance, negative takes from it. */
+    /** 부호가 있다. 양수는 잔액에 더하고 음수는 잔액에서 뺀다. */
     @Column(nullable = false)
     private Long delta;
 

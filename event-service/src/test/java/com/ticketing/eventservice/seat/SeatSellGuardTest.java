@@ -23,8 +23,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * A payment may only sell a seat that is still held by the hold it paid for. Against the compose MySQL/Redis (rolled
- * back); run inside the compose network with DB_HOST=mysql REDIS_HOST=redis.
+ * 결제는 자기가 결제한 홀드에 아직 잡혀 있는 좌석만 판매 처리할 수 있다. compose MySQL/Redis(롤백)에서
+ * 실행하고 compose 네트워크 안에서 DB_HOST=mysql REDIS_HOST=redis로 실행한다.
  */
 @SpringBootTest(properties = {"seat.hold-expiry-sweep-cron=-", "alert.open-sweep-cron=-"})
 @Transactional
@@ -67,9 +67,9 @@ class SeatSellGuardTest {
     void aLatePaymentCannotSellASeatSomeoneElseHoldsNow() {
         LocalDateTime first = LocalDateTime.now().plusMinutes(5);
         seatService.hold(seat.getId(), first);
-        seatService.release(seat.getId(), first); // the first hold ran out
+        seatService.release(seat.getId(), first); // 첫 홀드가 끝났다
         LocalDateTime second = LocalDateTime.now().plusMinutes(5).plusSeconds(2);
-        seatService.hold(seat.getId(), second); // somebody else took the seat
+        seatService.hold(seat.getId(), second); // 다른 사람이 좌석을 가져갔다
 
         assertThatThrownBy(() -> seatService.sell(seat.getId(), first)).isInstanceOfSatisfying(ApiException.class,
                 e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.SEAT_HOLD_LOST));
@@ -110,7 +110,7 @@ class SeatSellGuardTest {
         seatService.hold(seat.getId(), hold);
         seatService.sell(seat.getId(), hold);
 
-        seatService.sell(seat.getId(), hold); // a payment retried after a partial failure
+        seatService.sell(seat.getId(), hold); // 일부가 실패한 뒤 다시 시도한 결제
 
         assertThat(reload().getStatus()).isEqualTo(SeatStatus.SOLD);
     }

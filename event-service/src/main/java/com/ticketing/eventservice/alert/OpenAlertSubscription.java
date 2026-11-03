@@ -31,7 +31,7 @@ public class OpenAlertSubscription {
     @Column(name = "event_id", nullable = false)
     private Long eventId;
 
-    /** Null while the user is still waiting; set once the mail went out (or they turned out to be opted out). */
+    /** 사용자가 아직 기다리는 동안은 null이다. 메일이 나갔거나(또는 수신 거부로 확인됐을 때) 설정한다. */
     private LocalDateTime notifiedAt;
 
     @CreationTimestamp
@@ -47,7 +47,7 @@ public class OpenAlertSubscription {
         this.notifiedAt = LocalDateTime.now();
     }
 
-    /** Subscribing again after being notified re-arms the alert. */
+    /** 알림을 받은 뒤 다시 구독하면 알림이 다시 걸린다. */
     public void rearm() {
         this.notifiedAt = null;
     }

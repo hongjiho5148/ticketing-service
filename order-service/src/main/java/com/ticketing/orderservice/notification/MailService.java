@@ -15,8 +15,8 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 /**
- * Copy of auth-service's MailService with this service's mail types. Sends multipart/alternative: an HTML
- * version (see MailTemplate) plus a plain-text one for clients that don't render HTML.
+ * auth-service의 MailService를 복사해서 이 서비스의 메일 종류를 담았다. multipart/alternative로 보낸다.
+ * HTML 본문(MailTemplate 참고)과, HTML을 그리지 못하는 클라이언트를 위한 텍스트 본문을 함께 담는다.
  */
 @Service
 public class MailService {
@@ -82,7 +82,7 @@ public class MailService {
         send(to, "[픽시트] " + fromName + "님이 티켓을 양도했어요", plain, html);
     }
 
-    /** Alternating label, value, label, value ... in the order given. */
+    /** 라벨, 값, 라벨, 값 ... 순서로 번갈아 들어 있다. */
     private static Map<String, String> details(String... labelsAndValues) {
         Map<String, String> rows = new LinkedHashMap<>();
         for (int i = 0; i + 1 < labelsAndValues.length; i += 2) {

@@ -1,4 +1,4 @@
-/* ---------- Header ---------- */
+/* ---------- 헤더 ---------- */
 
 .header {
   position: sticky;
@@ -32,7 +32,7 @@
   flex-shrink: 0;
 }
 
-/* The mark is a ticket stub: a rounded rectangle with a notch bitten out of each side. */
+/* 로고 표시는 티켓 조각이다. 양쪽에 홈이 파인 둥근 사각형이다. */
 .logo-mark {
   position: relative;
   width: 22px;
@@ -149,7 +149,7 @@
   transform: translateY(1px);
 }
 
-/* Signed-in menu */
+/* 로그인한 사람의 메뉴 */
 .user-menu {
   position: relative;
 }
@@ -274,7 +274,7 @@
   color: var(--danger);
 }
 
-/* ---------- Main ---------- */
+/* ---------- 본문 ---------- */
 
 .main {
   max-width: var(--container);
@@ -283,12 +283,12 @@
   min-height: calc(100dvh - var(--header-h) - 160px);
 }
 
-/* A page's own <h1> gets room before whatever follows it */
+/* 페이지 자신의 <h1>은 뒤에 오는 것과의 사이에 여백을 둔다 */
 .main > div > h1:first-child {
   margin-bottom: clamp(18px, 2.6vw, 28px);
 }
 
-/* Reusable page heading block: small mono eyebrow, big title, one quiet line under it */
+/* 재사용하는 페이지 제목 블록: 작은 고정폭 눈썹 문구, 큰 제목, 그 아래 조용한 한 줄 */
 .page-head {
   display: flex;
   flex-wrap: wrap;
@@ -304,7 +304,7 @@
   max-width: 62ch;
 }
 
-/* ---------- Footer ---------- */
+/* ---------- 푸터 ---------- */
 
 .footer {
   border-top: 1px solid var(--line);
@@ -360,7 +360,7 @@
   text-underline-offset: 4px;
 }
 
-/* ---------- Narrow screens ---------- */
+/* ---------- 좁은 화면 ---------- */
 
 @media (max-width: 760px) {
   .header-inner {
@@ -373,7 +373,7 @@
     margin-left: auto;
   }
 
-  /* Primary links drop to their own scrollable row under the logo */
+  /* 주요 링크는 로고 아래의 스크롤되는 별도 줄로 내려간다 */
   .header-nav {
     order: 3;
     flex-basis: 100%;
@@ -405,7 +405,7 @@
   }
 }
 
-/* Credit for the public data some shows come from (KOPIS terms require naming the source) */
+/* 일부 공연의 출처인 공공 데이터에 대한 표기(KOPIS 약관이 출처를 밝히도록 요구한다) */
 .footer-credit {
   max-width: var(--container);
   margin: 0 auto;

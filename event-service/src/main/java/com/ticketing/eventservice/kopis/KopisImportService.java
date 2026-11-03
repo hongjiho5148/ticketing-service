@@ -27,9 +27,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Brings real performance metadata (title, venue, period, genre, cast, synopsis, price points) in from KOPIS.
- * KOPIS has no seating or sales data, so each imported show gets a seat map generated from its price points -
- * this is a ticketing simulation on top of public data, not a resale of real inventory.
+ * 실제 공연 메타데이터(제목, 장소, 기간, 장르, 출연진, 줄거리, 가격대)를 KOPIS에서 가져온다.
+ * KOPIS에는 좌석이나 판매 데이터가 없으므로, 가져온 공연마다 가격대로 좌석 배치를 만들어 준다.
+ * 공공 데이터 위에 얹은 티켓팅 시뮬레이션이며 실제 재고를 되파는 것이 아니다.
  */
 @Service
 public class KopisImportService {
@@ -122,11 +122,11 @@ public class KopisImportService {
         seatRepository.saveAll(seatsFor(saved, plan.grades()));
     }
 
-    /** What to persist for one performance: the event itself and the grade/price tiers its seat map is built from. */
+    /** 공연 하나에 대해 저장할 것이다. 공연 자체와, 좌석 배치를 만드는 데 쓰는 등급/가격 구간이다. */
     record Plan(Event event, List<GradePrice> grades) {
     }
 
-    /** One block of seats per grade; sizes are fixed because KOPIS says nothing about the venue's capacity. */
+    /** 등급마다 좌석 블록 하나다. KOPIS는 공연장의 수용 인원에 대해 아무 말도 하지 않으므로 크기는 고정이다. */
     static List<Seat> seatsFor(Event event, List<GradePrice> grades) {
         List<Seat> seats = new ArrayList<>();
         for (GradePrice grade : grades) {
@@ -151,8 +151,8 @@ public class KopisImportService {
     }
 
     /**
-     * Maps one KOPIS performance onto an on-sale event. Empty when the run is already over: the event must start
-     * in the future, so a show that is mid-run is listed from tomorrow on.
+     * KOPIS 공연 하나를 판매 중인 공연으로 옮긴다. 공연이 이미 끝났으면 비어 있다. 공연은 미래에 시작해야 하므로
+     * 공연 도중인 것은 내일부터 보이게 한다.
      */
     static Optional<Plan> plan(KopisPerformance performance, LocalDateTime now) {
         if (performance.from() == null || performance.to() == null) {

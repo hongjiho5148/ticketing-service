@@ -55,17 +55,17 @@ public class AuthService {
         user.issueEmailVerificationToken(token, LocalDateTime.now().plus(VERIFICATION_TOKEN_TTL));
         user = userRepository.save(user);
 
-        // Handed to VerificationMailListener, which sends it after this transaction commits - signup
-        // no longer waits on SMTP.
+        // VerificationMailListener에 넘기면 이 트랜잭션이 커밋된 뒤에 보낸다. 가입이 더는
+        // SMTP를 기다리지 않는다.
         eventPublisher.publishEvent(new VerificationMailRequested(user.getEmail(), user.getName(), token));
 
         return SignupResponse.from(user);
     }
 
     /**
-     * Sends a fresh verification link. Answers the same whether or not the address belongs to a
-     * pending account (so it can't be used to find out who is registered), and refuses to mail the
-     * same person again within a minute so it can't be used to flood someone's inbox.
+     * 새 인증 링크를 보낸다. 주소가 인증 대기 중인 계정의 것이든 아니든 똑같이 응답해서(누가 가입했는지
+     * 알아내는 데 쓸 수 없게) 같은 사람에게는 1분 안에 다시 메일을 보내지 않으므로, 누군가의 받은편지함을
+     * 가득 채우는 데 쓸 수 없다.
      */
     @Transactional
     public void resendVerification(String email) {
@@ -90,9 +90,8 @@ public class AuthService {
 
     public LoginResponse login(LoginRequest request) {
         User user = authenticate(request);
-        // Admin accounts only sign in through the separate admin app's endpoint (adminLogin) - the
-        // public site never sees an admin token. Same error as a wrong password so this doesn't
-        // reveal which emails are admins.
+        // 관리자 계정은 별도 관리자 앱의 엔드포인트(adminLogin)로만 로그인한다. 공개 사이트는
+        // 관리자 토큰을 볼 일이 없다. 어떤 이메일이 관리자인지 드러나지 않도록 비밀번호가 틀렸을 때와 같은 오류를 낸다.
         if (user.getRole() == Role.ADMIN) {
             throw new ApiException(ErrorCode.INVALID_CREDENTIALS);
         }

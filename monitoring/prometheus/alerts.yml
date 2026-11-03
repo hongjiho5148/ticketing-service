@@ -1,5 +1,5 @@
-# Alert rules. There is no Alertmanager in this setup, so these show up on Prometheus's Alerts page (and as firing alerts
-# in Grafana); wiring them to a channel (Slack, mail) means adding an Alertmanager.
+# 알림 규칙이다. 이 구성에는 Alertmanager가 없으므로 Prometheus의 Alerts 페이지(그리고 Grafana의 발생 중인 알림)에 보인다.
+# 슬랙이나 메일 같은 채널에 연결하려면 Alertmanager를 추가해야 한다.
 groups:
   - name: pickseat
     rules:
@@ -10,8 +10,8 @@ groups:
         annotations:
           summary: "{{ $labels.service }} ({{ $labels.instance }}) is not answering Prometheus"
 
-      # A circuit that stays broken flips between open and half-open every few seconds, so this fires the moment it opens
-      # and keeps firing for half a minute after, instead of requiring it to be open for a long unbroken stretch.
+      # 계속 고장 난 서킷은 몇 초마다 열림과 반열림 사이를 오간다. 그래서 오래 끊기지 않고 열려 있어야 조건이 되는 것이 아니라
+      # 열리는 순간 울리고 그 뒤 30초 동안 계속 울린다.
       - alert: CircuitOpen
         expr: resilience4j_circuitbreaker_state{state="open"} == 1
         for: 0s

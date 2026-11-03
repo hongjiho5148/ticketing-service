@@ -13,7 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
-/** With queue.release-slot-on-purchase=false a paying buyer keeps their slot until the pass token expires, as before. */
+/** queue.release-slot-on-purchase=false이면 결제한 구매자는 예전처럼 입장권 토큰이 만료될 때까지 슬롯을 쥐고 있다. */
 @SpringBootTest(properties = {
     "queue.active-capacity=2",
     "queue.admission-interval-ms=3600000",

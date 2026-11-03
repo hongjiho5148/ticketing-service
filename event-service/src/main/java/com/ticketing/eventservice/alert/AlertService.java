@@ -63,7 +63,7 @@ public class AlertService {
 
     public AlertStatusResponse subscribeWaitlist(Long userId, Long eventId) {
         Event event = loadEvent(eventId);
-        // Only a sold-out (or fully held) event has anything to wait for; otherwise just book a seat.
+        // 매진된(또는 전부 홀드된) 공연만 기다릴 것이 있다. 그렇지 않으면 그냥 좌석을 예매하면 된다.
         if (event.getStatus() != EventStatus.OPEN
                 || seatRepository.countByEventIdAndStatus(eventId, SeatStatus.AVAILABLE) > 0) {
             throw new ApiException(ErrorCode.WAITLIST_NOT_AVAILABLE);

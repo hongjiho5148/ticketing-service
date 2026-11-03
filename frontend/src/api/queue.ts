@@ -11,17 +11,16 @@ export function fetchQueueStatus(queueToken: string) {
   return apiClient.get<QueueStatusResult>("/queue/status", { params: { queueToken } }).then((res) => res.data);
 }
 
-// The server sends a comment line every 15s, so three missed beats means the connection is dead even if the browser
-// has not noticed (a phone that slept, a proxy that dropped it quietly).
+// 서버는 15초마다 주석 줄을 보내므로 세 번 놓치면 브라우저가 알아채지 못해도(잠든 휴대폰, 조용히 연결을 끊은 프록시)
+// 연결이 죽은 것이다.
 const STREAM_IDLE_TIMEOUT_MS = 45_000;
 
 /**
- * Listens to the queue over Server-Sent Events: the server pushes the new rank when it changes and the pass the moment
- * the person is let in, instead of the browser asking every couple of seconds. EventSource cannot send the login header,
- * so this reads the response stream itself.
+ * Server-Sent Events로 대기열을 듣는다. 브라우저가 2초마다 묻는 대신, 서버가 순번이 바뀌면 새 순번을, 사람이 입장하는
+ * 순간 입장권을 밀어 준다. EventSource는 로그인 헤더를 보낼 수 없어서 응답 스트림을 직접 읽는다.
  *
- * Resolves when the server ends the stream, rejects when it cannot be opened or goes quiet. Either way, if no pass came,
- * the caller should fall back to polling fetchQueueStatus.
+ * 서버가 스트림을 끝내면 resolve하고, 열 수 없거나 조용해지면 reject한다. 어느 쪽이든 입장권이 오지 않았다면
+ * 호출한 쪽은 fetchQueueStatus 폴링으로 되돌아가야 한다.
  */
 export async function streamQueueStatus(
   queueToken: string,

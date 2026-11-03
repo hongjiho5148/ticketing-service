@@ -2,6 +2,6 @@ package com.ticketing.orderservice.order;
 
 public enum OrderStatus {
     PENDING, PAID, FAILED, CANCELLED,
-    /** Cancelled, but late enough that only part of the payment was refunded (see RefundPolicy). */
+    /** 취소됐지만 너무 늦어서 결제 금액의 일부만 환불됐다(RefundPolicy 참고). */
     PARTIALLY_REFUNDED
 }

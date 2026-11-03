@@ -24,8 +24,8 @@ import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 
 /**
- * How a call to another service behaves when that service is slow, down or failing, against a real HTTP server on a
- * local port (no Spring context, no containers). Timeouts are short so the whole class runs in a few seconds.
+ * 다른 서비스가 느리거나 죽었거나 실패할 때 그 서비스에 대한 호출이 어떻게 동작하는지를 로컬 포트의 실제 HTTP
+ * 서버로 확인한다(Spring 컨텍스트도 컨테이너도 없다). 타임아웃을 짧게 잡아서 클래스 전체가 몇 초 안에 돈다.
  */
 class RemoteServiceTest {
 
@@ -56,7 +56,7 @@ class RemoteServiceTest {
         server.createContext("/hang", ex -> {
             hangHits.incrementAndGet();
             try {
-                Thread.sleep(4000); // accepts the request and never answers in time
+                Thread.sleep(4000); // 요청은 받아들이지만 제때 답하지 않는다
             } catch (InterruptedException ignored) {
                 Thread.currentThread().interrupt();
             }
@@ -133,7 +133,7 @@ class RemoteServiceTest {
     @Test
     void afterEnoughFailuresTheCircuitOpensAndCallsFailWithoutReachingTheService() {
         RemoteService remote = remote();
-        for (int i = 0; i < SETTINGS.minimumCalls(); i++) { // just enough failures for the breaker to judge
+        for (int i = 0; i < SETTINGS.minimumCalls(); i++) { // 서킷 브레이커가 판단하기에 딱 충분한 실패
             assertThatThrownBy(() -> remote.call(() -> get(remote, "/err"))).isInstanceOf(HttpServerErrorException.class);
         }
         int hitsWhenItOpened = errHits.get();
@@ -142,16 +142,16 @@ class RemoteServiceTest {
         for (int i = 0; i < 10; i++) {
             assertThatThrownBy(() -> remote.call(() -> get(remote, "/err")))
                     .isInstanceOf(RemoteService.CircuitOpenException.class)
-                    .isInstanceOf(ResourceAccessException.class); // what callers already treat as "service unavailable"
+                    .isInstanceOf(ResourceAccessException.class); // 호출자들이 이미 "서비스 이용 불가"로 취급하는 것
         }
 
-        assertThat(errHits.get()).isEqualTo(hitsWhenItOpened); // none of the ten reached the service
+        assertThat(errHits.get()).isEqualTo(hitsWhenItOpened); // 열 개 모두 서비스에 닿지 않았다
     }
 
     @Test
     void whileTheCircuitIsOpenEvenACallToAHealthyPathIsRefusedAndNeverSent() {
         RemoteService remote = remote();
-        for (int i = 0; i < SETTINGS.minimumCalls(); i++) { // just enough failures for the breaker to judge
+        for (int i = 0; i < SETTINGS.minimumCalls(); i++) { // 서킷 브레이커가 판단하기에 딱 충분한 실패
             assertThatThrownBy(() -> remote.call(() -> get(remote, "/err"))).isInstanceOf(HttpServerErrorException.class);
         }
 
@@ -163,13 +163,13 @@ class RemoteServiceTest {
     @Test
     void theCircuitClosesAgainOnceTheServiceRecovers() throws InterruptedException {
         RemoteService remote = remote();
-        for (int i = 0; i < SETTINGS.minimumCalls(); i++) { // just enough failures for the breaker to judge
+        for (int i = 0; i < SETTINGS.minimumCalls(); i++) { // 서킷 브레이커가 판단하기에 딱 충분한 실패
             assertThatThrownBy(() -> remote.call(() -> get(remote, "/flaky"))).isInstanceOf(HttpServerErrorException.class);
         }
         assertThat(remote.circuitBreaker().getState()).isEqualTo(CircuitBreaker.State.OPEN);
 
         flakyHealthy.set(true);
-        Thread.sleep(SETTINGS.openWait().toMillis() + 150); // the wait is over: trial calls are let through
+        Thread.sleep(SETTINGS.openWait().toMillis() + 150); // 대기가 끝났다: 시험 호출은 통과시킨다
         assertThat(remote.call(() -> get(remote, "/flaky"))).isEqualTo("flaky");
         assertThat(remote.call(() -> get(remote, "/flaky"))).isEqualTo("flaky");
 
@@ -194,7 +194,7 @@ class RemoteServiceTest {
         assertThat(remote.callIdempotent(() -> get(remote, "/blip"))).isEqualTo("blip");
         assertThat(blipHits.get()).isEqualTo(2);
 
-        blipHits.set(0); // the next call to /blip answers 503 again
+        blipHits.set(0); // 다음 /blip 호출은 다시 503으로 답한다
         assertThatThrownBy(() -> remote.call(() -> get(remote, "/blip"))).isInstanceOf(HttpServerErrorException.class);
         assertThat(blipHits.get()).isEqualTo(1);
     }
@@ -211,7 +211,7 @@ class RemoteServiceTest {
     @Test
     void anIdempotentCallToAnOpenCircuitIsNotRetried() {
         RemoteService remote = remote();
-        for (int i = 0; i < SETTINGS.minimumCalls(); i++) { // just enough failures for the breaker to judge
+        for (int i = 0; i < SETTINGS.minimumCalls(); i++) { // 서킷 브레이커가 판단하기에 딱 충분한 실패
             assertThatThrownBy(() -> remote.call(() -> get(remote, "/err"))).isInstanceOf(HttpServerErrorException.class);
         }
 

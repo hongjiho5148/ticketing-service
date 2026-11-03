@@ -1,9 +1,8 @@
 package com.ticketing.backend.queue.dto;
 
 /**
- * Where a person stands. For someone who has been let in, passExpiresInSeconds is how long the pass has left as of this
- * answer (seconds from now rather than a clock time, so the browser does not have to trust its own clock against the
- * server's).
+ * 한 사람이 서 있는 곳이다. 입장한 사람에게는 passExpiresInSeconds가 이 응답 시점에 입장권이 얼마나 남았는지다(시각이
+ * 아니라 지금부터의 초라서, 브라우저가 자기 시계를 서버의 시계와 맞춰 믿을 필요가 없다).
  */
 public record QueueStatusResponse(
         long rankNo, String status, Long estimatedWaitSeconds, String passToken, Long passExpiresInSeconds) {

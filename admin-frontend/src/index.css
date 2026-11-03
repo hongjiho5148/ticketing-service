@@ -1,9 +1,8 @@
 /*
- * PickSeat admin console.
+ * PickSeat 관리자 콘솔.
  *
- * Same paper/ink/vermilion tokens as the public site so the two read as one product, but the shell is
- * unmistakably different: a dark ink top bar and denser, number-first layouts. Staff should never wonder which
- * of the two they are looking at.
+ * 공개 사이트와 같은 종이/잉크/주홍 토큰을 써서 둘이 하나의 제품으로 읽히지만, 셸은 분명히 다르다. 어두운 잉크색 상단 바와
+ * 더 조밀하고 숫자를 앞세운 레이아웃이다. 직원이 지금 둘 중 어느 쪽을 보고 있는지 헷갈릴 일이 없어야 한다.
  */
 
 :root {
@@ -54,7 +53,7 @@
   color-scheme: light;
 }
 
-/* ---------- Base ---------- */
+/* ---------- 기본 ---------- */
 
 *,
 *::before,
@@ -135,7 +134,7 @@ h2 {
   color: var(--accent);
 }
 
-/* ---------- Header: dark console bar ---------- */
+/* ---------- 헤더: 어두운 콘솔 바 ---------- */
 
 .header {
   position: sticky;
@@ -279,7 +278,7 @@ h2 {
   padding: clamp(24px, 4vw, 48px) var(--gutter) 80px;
 }
 
-/* ---------- Buttons ---------- */
+/* ---------- 버튼 ---------- */
 
 button {
   min-height: 44px;
@@ -326,7 +325,7 @@ button:disabled {
   background: var(--danger);
 }
 
-/* Link styled as a compact button */
+/* 작은 버튼처럼 꾸민 링크 */
 .btn-link {
   display: inline-flex;
   align-items: center;
@@ -359,7 +358,7 @@ button:disabled {
   border-color: var(--accent-hover);
 }
 
-/* ---------- Forms ---------- */
+/* ---------- 폼 ---------- */
 
 .form-page {
   max-width: 440px;
@@ -505,7 +504,7 @@ button:disabled {
   min-height: 46px;
 }
 
-/* ---------- Dashboard ---------- */
+/* ---------- 대시보드 ---------- */
 
 .admin-header {
   display: flex;
@@ -620,7 +619,7 @@ button:disabled {
   letter-spacing: -0.02em;
 }
 
-/* Sell-through: the percentage and a bar that shows it at a glance */
+/* 판매율: 퍼센트와 한눈에 보여 주는 막대 */
 .sell-rate {
   display: flex;
   align-items: center;
@@ -654,7 +653,7 @@ button:disabled {
   text-align: right;
 }
 
-/* ---------- Scan ---------- */
+/* ---------- 스캔 ---------- */
 
 .scan-log {
   display: flex;
@@ -689,7 +688,7 @@ button:disabled {
   font-variant-numeric: tabular-nums;
 }
 
-/* ---------- Toast ---------- */
+/* ---------- 토스트 ---------- */
 
 .toast-container {
   position: fixed;
@@ -725,7 +724,7 @@ button:disabled {
   }
 }
 
-/* ---------- Skeleton ---------- */
+/* ---------- 스켈레톤 ---------- */
 
 .skeleton {
   border-radius: var(--r-sm);
@@ -763,7 +762,7 @@ button:disabled {
   gap: 4px;
 }
 
-/* ---------- Error boundary / 404 ---------- */
+/* ---------- 에러 바운더리 / 404 ---------- */
 
 .error-boundary,
 .not-found {
@@ -788,7 +787,7 @@ button:disabled {
   color: var(--ink-3);
 }
 
-/* KOPIS import result */
+/* KOPIS 가져오기 결과 */
 .import-result {
   margin-bottom: 32px;
 }
@@ -827,7 +826,7 @@ button:disabled {
   line-height: 1.7;
 }
 
-/* Dashboard tiles that lead somewhere */
+/* 어딘가로 이어지는 대시보드 타일 */
 .admin-summary-item {
   position: relative;
   align-items: flex-start;
@@ -884,7 +883,7 @@ a.event-name:hover {
   text-underline-offset: 3px;
 }
 
-/* Orders page */
+/* 주문 페이지 */
 .admin-filters {
   display: flex;
   flex-wrap: wrap;

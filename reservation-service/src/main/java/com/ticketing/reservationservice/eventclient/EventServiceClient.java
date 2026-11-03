@@ -15,7 +15,7 @@ import com.ticketing.reservationservice.remote.RemoteService;
 import com.ticketing.reservationservice.remote.RemoteServices;
 import org.springframework.web.client.RestClientException;
 
-/** Talks to event-service directly over the docker network - never through the public Gateway, which is for external clients only. */
+/** 외부 클라이언트용인 공개 게이트웨이를 거치지 않고 docker 네트워크로 event-service와 직접 통신한다. */
 @Component
 public class EventServiceClient {
 
@@ -31,8 +31,8 @@ public class EventServiceClient {
                 ErrorCode.SEAT_NOT_FOUND, true);
     }
 
-    // Same critical operation ReservationService used to run in-process under SeatLockService -
-    // now a single atomic call to event-service, which holds that lock itself.
+    // 예전에 ReservationService가 SeatLockService 아래에서 프로세스 안에서 돌리던 것과 같은 핵심 작업이다.
+    // 이제는 그 잠금을 직접 쥐고 있는 event-service에 대한 원자적 호출 한 번이다.
     public SeatDetailResponse hold(Long seatId, LocalDateTime holdExpireAt) {
         return call(
                 () -> remote.rest()
@@ -44,7 +44,7 @@ public class EventServiceClient {
                 ErrorCode.SEAT_NOT_FOUND, false);
     }
 
-    /** Releases the seat only if it is still held by the hold that expires at {@code holdExpireAt}. */
+    /** 좌석이 아직 {@code holdExpireAt}에 끝나는 그 홀드에 잡혀 있을 때만 좌석을 푼다. */
     public void release(Long seatId, LocalDateTime holdExpireAt) {
         call(() -> remote.rest()
                         .post()
@@ -55,7 +55,7 @@ public class EventServiceClient {
                 ErrorCode.SEAT_NOT_FOUND, true);
     }
 
-    /** Sells the seat only if it is still held by the hold that expires at {@code holdExpireAt}; otherwise HOLD_EXPIRED. */
+    /** 좌석이 아직 {@code holdExpireAt}에 끝나는 그 홀드에 잡혀 있을 때만 좌석을 판매 처리한다. 아니면 HOLD_EXPIRED다. */
     public void sell(Long seatId, LocalDateTime holdExpireAt) {
         call(() -> remote.rest()
                         .post()

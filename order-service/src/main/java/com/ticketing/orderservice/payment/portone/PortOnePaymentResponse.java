@@ -10,8 +10,8 @@ public record PortOnePaymentResponse(String status, Amount amount, Method method
     }
 
     /**
-     * What the customer actually paid with, as PortOne reports it - never taken from the client's
-     * request. Card -> CARD; easy-pay -> its provider (KAKAOPAY, NAVERPAY, TOSSPAY...).
+     * 고객이 실제로 무엇으로 결제했는지를 PortOne이 보고한 대로 담는다. 클라이언트 요청에서 가져오지 않는다.
+     * 카드 -> CARD, 간편결제 -> 그 제공사(KAKAOPAY, NAVERPAY, TOSSPAY ...).
      */
     public String methodLabel() {
         if (method == null || method.type() == null) {

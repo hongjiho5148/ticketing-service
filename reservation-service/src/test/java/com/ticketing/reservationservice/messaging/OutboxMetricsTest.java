@@ -16,9 +16,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * What Prometheus sees of the outbox: how many events are waiting, how long the oldest has waited, and how many went out
- * or failed. Against the compose MySQL (rolled back, so the table's own rows are counted before and after); run inside
- * the compose network with DB_HOST=mysql.
+ * Prometheus가 아웃박스에 대해 보는 것이다. 기다리는 이벤트가 몇 개인지, 가장 오래된 것이 얼마나 기다렸는지,
+ * 몇 개가 나갔고 몇 개가 실패했는지. compose MySQL(롤백이므로 테이블에 원래 있던 행은 전후에 세어 둔다)에서 실행한다.
+ * compose 네트워크 안에서 DB_HOST=mysql로 실행한다.
  */
 @SpringBootTest(properties = {
     "reservation.hold-expire-sweep-cron=-",

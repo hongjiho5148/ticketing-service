@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Staff-facing scan endpoint - gated to ROLE_ADMIN in SecurityConfig, not by anything in here. */
+/** 스태프용 스캔 엔드포인트다. ROLE_ADMIN만 접근할 수 있고, 이 제한은 이 클래스가 아니라 SecurityConfig가 건다. */
 @RestController
 @RequestMapping("/api/admin/tickets")
 public class AdminTicketController {

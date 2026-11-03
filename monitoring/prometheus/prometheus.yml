@@ -1,4 +1,4 @@
-# Scrapes the metrics port (9090) of every service over the docker network. Nothing here is published to the outside.
+# docker 네트워크로 모든 서비스의 메트릭 포트(9090)를 수집한다. 여기 있는 어느 것도 바깥에 공개하지 않는다.
 global:
   scrape_interval: 10s
   evaluation_interval: 10s
@@ -21,7 +21,7 @@ scrape_configs:
       - targets: ["order-service:9090"]
         labels: { service: order-service }
 
-  # backend is scaled to several replicas: ask Docker's DNS for all of them (the name resolves to every replica's IP)
+  # backend는 여러 복제본으로 늘린다. Docker DNS에 모든 복제본을 물어본다(이름이 모든 복제본의 IP로 풀린다)
   - job_name: backend
     metrics_path: /actuator/prometheus
     dns_sd_configs:

@@ -4,11 +4,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The one HTML layout every PickSeat mail shares (each service keeps its own copy, like MailService).
- * Mail clients are stuck in the early 2000s, so this is built the way they need it: table layout,
- * inline styles, no external images or fonts (many clients block them), and a visible copy of the
- * link under the button for clients that strip or disable it. Everything that comes from a user or
- * the database (names, event titles) is HTML-escaped before it goes in.
+ * PickSeat의 모든 메일이 함께 쓰는 하나의 HTML 레이아웃이다(서비스마다 MailService처럼 자기 복사본을 둔다).
+ * 메일 클라이언트는 2000년대 초반에 머물러 있어서 그에 맞게 만들었다. 표 레이아웃, 인라인 스타일,
+ * 외부 이미지와 폰트 없음(많은 클라이언트가 막는다), 그리고 링크를 막거나 끄는 클라이언트를 위해 버튼
+ * 아래에 링크를 그대로 보여 준다. 사용자나 DB에서 온 값(이름, 공연 제목)은 모두 HTML 이스케이프해서 넣는다.
  */
 final class MailTemplate {
 
@@ -19,12 +18,12 @@ final class MailTemplate {
     }
 
     /**
-     * @param title headline inside the card
-     * @param paragraphs body text, one paragraph each (plain text - escaped here)
-     * @param details optional label/value rows shown in a tinted box (event, date, ...); may be empty
-     * @param buttonLabel the call-to-action text, or null for none
-     * @param buttonUrl where the button goes (required when buttonLabel is set)
-     * @param note small print under the card content, or null
+     * @param title 카드 안의 제목
+     * @param paragraphs 본문 단락, 하나에 한 단락(일반 텍스트이며 여기서 이스케이프한다)
+     * @param details 색이 들어간 상자에 보여 줄 라벨/값 행(공연, 날짜 등). 비어 있어도 된다
+     * @param buttonLabel 행동 유도 문구. 버튼이 없으면 null
+     * @param buttonUrl 버튼이 가는 주소(buttonLabel이 있으면 필수)
+     * @param note 카드 내용 아래의 작은 글씨. 없으면 null
      */
     static String render(
             String title,

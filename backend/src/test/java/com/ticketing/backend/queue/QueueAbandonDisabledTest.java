@@ -14,7 +14,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
-/** queue.abandon-grace-ms=0 switches the clean-up off: the line behaves as it did before. */
+/** queue.abandon-grace-ms=0이면 정리를 끈다. 줄은 예전처럼 동작한다. */
 @SpringBootTest(properties = {"queue.active-capacity=2", "queue.admission-interval-ms=3600000", "queue.abandon-grace-ms=0"})
 @Transactional
 class QueueAbandonDisabledTest {
@@ -45,6 +45,6 @@ class QueueAbandonDisabledTest {
 
         sweeper.admitForEvent(eventId);
 
-        assertThat(queueService.isPassTokenValid(eventId, a)).isTrue(); // admitted like anyone else
+        assertThat(queueService.isPassTokenValid(eventId, a)).isTrue(); // 다른 사람들처럼 입장했다
     }
 }

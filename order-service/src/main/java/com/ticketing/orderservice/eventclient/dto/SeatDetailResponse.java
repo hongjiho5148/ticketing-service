@@ -2,7 +2,7 @@ package com.ticketing.orderservice.eventclient.dto;
 
 import java.time.LocalDateTime;
 
-/** Mirrors event-service's internal SeatDetailResponse - an embedded event summary so most calls need only one round trip. */
+/** event-service 내부 SeatDetailResponse를 그대로 본뜬 것이다. 공연 요약이 들어 있어서 대부분의 호출이 한 번의 왕복으로 끝난다. */
 public record SeatDetailResponse(
         Long seatId,
         Long eventId,

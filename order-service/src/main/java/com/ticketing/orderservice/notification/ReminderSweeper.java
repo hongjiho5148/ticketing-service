@@ -17,9 +17,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Same cron-sweep shape as TicketIssuanceSweeper/SeatHoldExpirySweeper. A mail-send failure here
- * leaves reminderSentAt null so the next tick (within the window) just retries - only a
- * successful send, or a confirmed opt-out, marks the order as handled.
+ * TicketIssuanceSweeper/SeatHoldExpirySweeper와 같은 크론 스윕 구조다. 메일 발송에 실패하면
+ * reminderSentAt을 null로 두어서 다음 주기(범위 안이면)에 그냥 다시 시도한다. 발송에 성공했거나
+ * 수신 거부가 확인됐을 때만 그 주문을 처리한 것으로 표시한다.
  */
 @Component
 public class ReminderSweeper {

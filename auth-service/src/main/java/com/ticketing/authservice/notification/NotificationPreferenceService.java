@@ -13,7 +13,7 @@ public class NotificationPreferenceService {
         this.notificationPreferenceRepository = notificationPreferenceRepository;
     }
 
-    // No row yet = never changed the default, which is opted in.
+    // 행이 아직 없다는 것은 기본값을 바꾼 적이 없다는 뜻이고, 기본값은 수신 동의다.
     @Transactional(readOnly = true)
     public boolean isEmailOptedIn(Long userId) {
         return notificationPreferenceRepository.findById(userId)

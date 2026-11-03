@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Gated to ROLE_ADMIN by the /api/admin/** matcher in SecurityConfig, not by anything in here. */
+/** ROLE_ADMIN만 접근할 수 있다. 이 제한은 이 클래스가 아니라 SecurityConfig의 /api/admin/** 매처가 건다. */
 @RestController
 @RequestMapping("/api/admin/orders")
 public class AdminOrderController {
@@ -22,7 +22,7 @@ public class AdminOrderController {
         this.adminOrderService = adminOrderService;
     }
 
-    /** Newest first; {@code status} omitted = every status. */
+    /** 최신순. {@code status}를 생략하면 모든 상태를 보여 준다. */
     @GetMapping
     public AdminOrderListResponse list(
             @RequestParam(required = false) OrderStatus status,

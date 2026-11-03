@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Configuration;
 @EnableConfigurationProperties(RateLimitProperties.class)
 public class RateLimitConfig {
 
-    /** Just after the CORS filter (see CorsConfig), so a 429 still carries the CORS headers the browser needs to read it. */
+    /** CORS 필터(CorsConfig 참고) 바로 뒤에 있으므로, 429도 브라우저가 읽는 데 필요한 CORS 헤더를 가진다. */
     public static final int ORDER = -40;
 
     @Bean

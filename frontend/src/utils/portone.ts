@@ -6,7 +6,7 @@ export type PayMethod = "CARD" | "KAKAOPAY" | "NAVERPAY";
 
 interface PayMethodConfig {
   label: string;
-  // Each method is its own channel in the PortOne console, so each has its own key.
+  // 결제 수단마다 PortOne 콘솔에서 자기 채널이므로 각자 자기 키를 가진다.
   channelKey: string | undefined;
 }
 
@@ -16,7 +16,7 @@ const PAY_METHODS: Record<PayMethod, PayMethodConfig> = {
   NAVERPAY: { label: "네이버페이", channelKey: import.meta.env.VITE_PORTONE_CHANNEL_KEY_NAVERPAY },
 };
 
-/** Only methods whose channel key is configured are offered - a button with no channel behind it can only fail. */
+/** 채널 키가 설정된 수단만 보여 준다. 뒤에 채널이 없는 버튼은 실패할 수밖에 없다. */
 export function availablePayMethods(): { method: PayMethod; label: string }[] {
   return (Object.keys(PAY_METHODS) as PayMethod[])
     .filter((method) => Boolean(PAY_METHODS[method].channelKey))
@@ -52,7 +52,7 @@ export async function requestPayment(request: PaymentRequest, paymentId: string)
     currency: "KRW" as const,
     customer: {
       fullName: request.customerName,
-      // Kakao logins never give us an email (no email scope) - only send it when we actually have one.
+      // 카카오 로그인은 이메일을 주지 않으므로(이메일 스코프 없음) 실제로 가지고 있을 때만 보낸다.
       ...(request.customerEmail ? { email: request.customerEmail } : {}),
     },
   };

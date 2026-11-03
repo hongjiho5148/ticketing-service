@@ -26,9 +26,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Buyer-verification gate against the compose MySQL (rolled back). PortOne is mocked so the test
- * can prove pay() refuses an unverified order *before* it ever asks PortOne about the payment.
- * Run inside the compose network with DB_HOST=mysql, like the other order-service tests.
+ * compose MySQL(롤백)에서 확인하는 구매자 확인 관문이다. PortOne은 mock이라서 pay()가 확인되지 않은 주문을
+ * PortOne에 결제를 묻기 *전에* 거절한다는 것을 증명할 수 있다.
+ * 다른 order-service 테스트처럼 compose 네트워크 안에서 DB_HOST=mysql로 실행한다.
  */
 @SpringBootTest(properties = {"ticket.issuance-sweep-cron=-", "reminder.sweep-cron=-"})
 @Transactional

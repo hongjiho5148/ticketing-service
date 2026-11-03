@@ -8,9 +8,9 @@ import java.time.LocalDateTime;
 import org.springframework.stereotype.Component;
 
 /**
- * How far behind the outbox is. Both numbers are read from the table when Prometheus scrapes (every few seconds), so they
- * are right even after a restart and for rows another instance wrote. The age of the oldest waiting event is the one to
- * alert on: a few seconds is normal, minutes means Kafka (or the relay) is not delivering.
+ * 아웃박스가 얼마나 밀렸는지 보여 준다. 두 숫자 모두 Prometheus가 수집할 때(몇 초마다) 테이블에서 읽으므로
+ * 재시작 뒤에도, 다른 인스턴스가 쓴 행에 대해서도 정확하다. 알림을 걸어야 할 것은 가장 오래 기다린 이벤트의
+ * 나이다. 몇 초는 정상이고, 몇 분이면 Kafka(또는 릴레이)가 전달하지 못하고 있다는 뜻이다.
  */
 @Component
 public class OutboxMetrics implements MeterBinder {
@@ -36,7 +36,7 @@ public class OutboxMetrics implements MeterBinder {
         try {
             return repository.countBySentAtIsNull();
         } catch (RuntimeException e) {
-            return Double.NaN; // the database is not answering: report "unknown", not zero
+            return Double.NaN; // 데이터베이스가 응답하지 않는다: 0이 아니라 "알 수 없음"을 보고한다
         }
     }
 

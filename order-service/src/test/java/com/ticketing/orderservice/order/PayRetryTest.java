@@ -33,11 +33,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
- * pay() runs in several short transactions around its network calls, so a retry after a partial failure must leave the
- * customer's points exactly where they should be: given back when the seat confirmation fails, consumed once when the
- * retry succeeds. Deliberately NOT @Transactional: every step of pay() commits for real, as in production (a shared test
- * transaction would hide the stale-cache effects of the bulk point updates), so the rows are deleted afterwards. Compose
- * MySQL; PortOne and reservation-service are mocked.
+ * pay()는 네트워크 호출 사이마다 짧은 트랜잭션 여러 개로 돌기 때문에, 일부가 실패한 뒤의 재시도가 고객의 포인트를
+ * 정확히 있어야 할 자리에 두어야 한다. 좌석 확정이 실패하면 돌려주고, 재시도가 성공하면 한 번만 소모한다.
+ * 일부러 @Transactional로 하지 않았다. pay()의 모든 단계가 운영과 똑같이 실제로 커밋된다(테스트가 공유하는
+ * 트랜잭션은 대량 포인트 UPDATE의 캐시 불일치 효과를 가려 버린다). 그래서 끝나면 행을 지운다. compose MySQL을
+ * 쓰고 PortOne과 reservation-service는 mock이다.
  */
 @SpringBootTest(properties = {"ticket.issuance-sweep-cron=-", "reminder.sweep-cron=-"})
 class PayRetryTest {
@@ -46,7 +46,7 @@ class PayRetryTest {
     private static final int PRICE = 10_000;
     private static final int POINTS_USED = 500;
     private static final int CHARGED = PRICE - POINTS_USED;
-    private static final long REWARD = CHARGED / 100; // 1% purchase reward
+    private static final long REWARD = CHARGED / 100; // 구매 적립 1%
 
     @Autowired private OrderService orderService;
     @Autowired private OrderBenefitService benefitService;
@@ -111,7 +111,7 @@ class PayRetryTest {
 
     @Test
     void redeemingTwiceConsumesTheBenefitsOnlyOnce() {
-        // redeem() needs a transaction (it is one in pay()); run it as pay() does and persist the marker
+        // redeem()은 트랜잭션이 필요하다(pay() 안에서는 트랜잭션이다). pay()와 같은 방식으로 실행하고 표식을 저장한다
         redeemInTransaction();
         redeemInTransaction();
 
@@ -127,12 +127,12 @@ class PayRetryTest {
         assertThatThrownBy(() -> orderService.pay(userId, order.getId(), new PaymentRequest(paymentId)))
                 .isInstanceOf(ApiException.class);
 
-        // exactly as before the attempt
+        // 시도하기 전과 정확히 같다
         assertThat(balance()).isEqualTo(1_000);
         assertThat(reload().isBenefitsRedeemed()).isFalse();
         assertThat(reload().getStatus()).isEqualTo(OrderStatus.PENDING);
 
-        // reservation-service is back: the same payment id goes through
+        // reservation-service가 돌아왔다. 같은 결제 id가 통과한다
         org.mockito.Mockito.reset(reservationServiceClient);
         double paidBefore = meters.counter("payments_total", "result", "success").count();
         PaymentResponse response = orderService.pay(userId, order.getId(), new PaymentRequest(paymentId));

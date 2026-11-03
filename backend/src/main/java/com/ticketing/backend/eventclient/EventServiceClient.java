@@ -11,7 +11,7 @@ import com.ticketing.backend.remote.RemoteService;
 import com.ticketing.backend.remote.RemoteServices;
 import org.springframework.web.client.RestClientException;
 
-/** Talks to event-service directly over the docker network - never through the public Gateway, which is for external clients only. */
+/** 외부 클라이언트용인 공개 게이트웨이를 거치지 않고 docker 네트워크로 event-service와 직접 통신한다. */
 @Component
 public class EventServiceClient {
 
@@ -28,7 +28,7 @@ public class EventServiceClient {
 
     private <T> T call(Supplier<T> request) {
         try {
-            return remote.callIdempotent(request); // a read
+            return remote.callIdempotent(request); // 읽기
         } catch (HttpClientErrorException.NotFound e) {
             throw new ApiException(ErrorCode.EVENT_NOT_FOUND);
         } catch (RestClientException e) {

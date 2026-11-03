@@ -21,17 +21,15 @@ import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.util.backoff.FixedBackOff;
 
 /**
- * Consumer-only (backend no longer publishes reservation.created - reservation-service does, since
- * it owns the domain now). Wired for a plain String payload - ReservationEventListener marshals it
- * with the app's own Jackson 3 ObjectMapper instead of spring-kafka's JsonDeserializer, which is
- * built on classic Jackson 2 and doesn't resolve on this app's Jackson 3 classpath. Also sidesteps
- * the fact that Spring Boot's auto-configured listener-container-factory is generically
- * <Object, Object>, which doesn't satisfy a typed injection point either way.
+ * 소비자 전용이다(backend는 더는 reservation.created를 발행하지 않는다. 이제 도메인을 소유한 reservation-service가 한다).
+ * 일반 String 페이로드용으로 구성했다. ReservationEventListener가 spring-kafka의 JsonDeserializer가 아니라
+ * 앱 자체의 Jackson 3 ObjectMapper로 변환한다. JsonDeserializer는 기존 Jackson 2 위에 만들어져서 이 앱의
+ * Jackson 3 클래스패스에서는 해석되지 않는다. 또한 Spring Boot가 자동 구성하는 리스너 컨테이너 팩토리가
+ * 일반적으로 <Object, Object>라서 타입이 있는 주입 지점을 어느 쪽으로도 만족시키지 못한다는 점도 피한다.
  *
- * <p>A message the listener can't process (unreadable payload, a bug) is retried a few times and then moved to
- * "<topic>.DLT" so the partition keeps moving and the record is kept - without this the framework's default is to
- * log it and skip it, i.e. lose it. The dead letters keep their original payload, so they can be inspected and
- * replayed once the cause is fixed.
+ * <p>리스너가 처리하지 못하는 메시지(읽을 수 없는 페이로드, 버그)는 몇 번 재시도한 뒤 "<topic>.DLT"로 옮겨서
+ * 파티션이 계속 움직이게 하고 레코드는 보존한다. 이것이 없으면 프레임워크의 기본 동작은 로그만 남기고 건너뛰는
+ * 것, 즉 잃어버리는 것이다. 데드 레터는 원래 페이로드를 그대로 가지므로 원인을 고친 뒤 살펴보고 다시 재생할 수 있다.
  */
 @Configuration
 @EnableKafka
@@ -50,7 +48,7 @@ public class KafkaConfig {
         return new DefaultKafkaConsumerFactory<>(configs);
     }
 
-    /** Only used to publish dead letters; plain Strings like everything else here. */
+    /** 데드 레터를 발행하는 데만 쓴다. 여기 있는 다른 것들처럼 일반 String이다. */
     @Bean
     public KafkaTemplate<String, String> deadLetterKafkaTemplate(
             @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers) {
@@ -62,7 +60,7 @@ public class KafkaConfig {
         return new KafkaTemplate<>(producerFactory);
     }
 
-    /** Three more attempts one second apart, then the dead-letter topic (partition left to the producer). */
+    /** 1초 간격으로 세 번 더 시도한 뒤 데드 레터 토픽으로 보낸다(파티션은 프로듀서에 맡긴다). */
     @Bean
     public DefaultErrorHandler kafkaErrorHandler(KafkaTemplate<String, String> deadLetterKafkaTemplate) {
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(

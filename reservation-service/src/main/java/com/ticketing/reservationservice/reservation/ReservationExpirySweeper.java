@@ -32,8 +32,8 @@ public class ReservationExpirySweeper {
             try {
                 eventServiceClient.release(reservation.getSeatId(), reservation.getHoldExpireAt());
             } catch (Exception e) {
-                // event-service runs the same expiry sweep independently on Seat.holdExpireAt, so
-                // a failed release here isn't the last line of defense - just log and move on.
+                // event-service도 Seat.holdExpireAt을 기준으로 같은 만료 스윕을 독립적으로 돌리므로,
+                // 여기서 해제에 실패해도 마지막 방어선이 아니다. 로그만 남기고 넘어간다.
                 log.warn("Failed to release seat {} for expired reservation {}: {}",
                         reservation.getSeatId(), reservation.getId(), e.getMessage());
             }

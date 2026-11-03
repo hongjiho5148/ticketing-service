@@ -20,14 +20,14 @@ public record OrderHistoryResponse(
         String paymentMethod,
         Integer refundedAmount,
         OrderStatus status,
-        // "PENDING" while a transfer awaits the recipient, "TRANSFERRED" once accepted, else null.
+        // 양도가 받는 사람의 응답을 기다리면 "PENDING", 수락되면 "TRANSFERRED", 아니면 null이다.
         String transferStatus,
         boolean transferable,
-        // Set only for a PENDING order whose seat is still held: until then payment can be picked back up.
+        // 좌석이 아직 잡혀 있는 PENDING 주문에만 설정한다. 그때까지는 결제를 이어서 할 수 있다.
         LocalDateTime holdExpireAt,
         LocalDateTime createdAt) {
 
-    /** payment is null for orders that never reached a payment attempt (still PENDING). */
+    /** 결제를 한 번도 시도하지 않은 주문(아직 PENDING)은 payment가 null이다. */
     public static OrderHistoryResponse from(
             Orders order,
             SeatDetailResponse seat,

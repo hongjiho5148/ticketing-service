@@ -12,8 +12,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ErrorResponse> handleApiException(ApiException e) {
-        // JSON whatever the endpoint produces: the queue stream (text/event-stream) has no converter for an error body, and
-        // without this its 404 and 503 came out as a bare 500.
+        // 엔드포인트가 무엇을 만들어 내든 JSON으로 응답한다. 대기열 스트림(text/event-stream)에는 오류 본문을 위한 컨버터가 없어서,
+        // 이 설정이 없으면 404와 503이 맨 500으로 나갔다.
         return ResponseEntity.status(e.getErrorCode().getStatus())
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(ErrorResponse.of(e.getErrorCode()));

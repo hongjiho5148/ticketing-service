@@ -12,7 +12,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
-/** An event that has to reach Kafka. See {@link OutboxRecorder} (writes it) and {@link OutboxRelay} (publishes it). */
+/** Kafka에 닿아야 하는 이벤트다. 기록은 {@link OutboxRecorder}, 발행은 {@link OutboxRelay}를 참고. */
 @Entity
 @Table(name = "outbox_event")
 @Getter
@@ -26,7 +26,7 @@ public class OutboxEvent {
     @Column(nullable = false, length = 100)
     private String topic;
 
-    /** Kafka message key: events with the same key stay in order on one partition. */
+    /** Kafka 메시지 키. 키가 같은 이벤트는 한 파티션 안에서 순서가 유지된다. */
     @Column(nullable = false, length = 100)
     private String eventKey;
 
@@ -37,10 +37,10 @@ public class OutboxEvent {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    /** Null until the broker acknowledged the event. */
+    /** 브로커가 이벤트를 확인하기 전까지는 null이다. */
     private LocalDateTime sentAt;
 
-    /** The relay poll that holds this row for sending, and until when (see OutboxEventRepository.claim). */
+    /** 이 행을 전송하려고 쥐고 있는 릴레이 폴링과 그 임대 만료 시각이다(OutboxEventRepository.claim 참고). */
     @Column(length = 64)
     private String claimedBy;
 

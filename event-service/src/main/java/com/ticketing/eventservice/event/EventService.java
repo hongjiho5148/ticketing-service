@@ -37,8 +37,8 @@ public class EventService {
     }
 
     /**
-     * @param from inclusive start of the show-date window (e.g. a calendar month), null = unbounded
-     * @param to exclusive end of the window, null = unbounded
+     * @param from 공연 날짜 구간의 시작(포함, 예: 달력의 한 달). null이면 제한 없음
+     * @param to 구간의 끝(포함하지 않음). null이면 제한 없음
      */
     public EventListResponse listEvents(
             EventStatus status,
@@ -79,7 +79,7 @@ public class EventService {
                 ? RatingStats.NONE
                 : new RatingStats(reviewRepository.findAverageRatingByEventId(eventId), reviewCount);
 
-        // Counted by the database (GROUP BY) rather than by loading every seat of the event just to tally them.
+        // 공연의 모든 좌석을 불러와서 세는 대신 데이터베이스가(GROUP BY) 센다.
         List<SeatGradeSummary> seatSummary = seatRepository.gradeSummary(eventId).stream()
                 .map(row -> new SeatGradeSummary((String) row[0], ((Number) row[1]).longValue(), ((Number) row[2]).longValue()))
                 .sorted(Comparator.comparing(SeatGradeSummary::grade))

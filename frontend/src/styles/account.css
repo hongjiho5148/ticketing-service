@@ -1,4 +1,4 @@
-/* ---------- My page: side menu + one panel at a time ---------- */
+/* ---------- 마이페이지: 사이드 메뉴 + 한 번에 패널 하나 ---------- */
 
 .account-page {
   max-width: 980px;
@@ -85,7 +85,7 @@
     gap: 16px;
   }
 
-  /* The side menu becomes a swipeable tab row */
+  /* 사이드 메뉴는 밀어서 넘기는 탭 줄이 된다 */
   .account-nav {
     position: static;
     flex-direction: row;
@@ -170,7 +170,7 @@
   cursor: pointer;
 }
 
-/* ---------- Page tabs (e.g. tickets / orders) ---------- */
+/* ---------- 페이지 탭 (예: 티켓 / 주문) ---------- */
 
 .page-tabs {
   display: flex;
@@ -206,7 +206,7 @@
   background: var(--accent);
 }
 
-/* ---------- Orders: one card per order, status color on the left edge ---------- */
+/* ---------- 주문: 주문마다 카드 하나, 상태 색은 왼쪽 가장자리 ---------- */
 
 .order-filters {
   margin-bottom: 18px;
@@ -394,7 +394,7 @@
   }
 }
 
-/* ---------- Tickets: each one is a stub with a tear-off side ---------- */
+/* ---------- 티켓: 하나하나가 뜯는 쪽이 달린 티켓 조각 ---------- */
 
 .ticket-list {
   display: flex;
@@ -507,7 +507,7 @@
   }
 }
 
-/* ---------- Transfers ---------- */
+/* ---------- 양도 ---------- */
 
 .transfer-list {
   display: flex;
@@ -639,7 +639,7 @@
   }
 }
 
-/* ---------- Sign in / sign up: poster panel + form ---------- */
+/* ---------- 로그인 / 가입: 포스터 패널 + 폼 ---------- */
 
 .auth-layout {
   display: grid;

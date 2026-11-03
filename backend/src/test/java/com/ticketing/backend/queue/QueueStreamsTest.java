@@ -22,10 +22,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * What a waiting client is told over its stream: where it stands when it connects, the pass the moment it is let in, a
- * smaller rank when people ahead of it go in, and the right answer even when the announcement was lost. The sink is a
- * recording fake, so no HTTP is involved. Against the compose Redis and MySQL; run inside the compose network with
- * DB_HOST=mysql REDIS_HOST=redis.
+ * 기다리는 클라이언트가 스트림으로 듣는 것이다. 연결했을 때 어디에 서 있는지, 입장하는 순간 입장권, 앞사람들이 들어가면 더 작은
+ * 순번, 그리고 알림이 유실됐을 때도 맞는 답. 싱크는 기록하는 가짜라서 HTTP는 끼어들지 않는다. compose Redis와 MySQL에서 실행하고,
+ * compose 네트워크 안에서 DB_HOST=mysql REDIS_HOST=redis로 실행한다.
  */
 @SpringBootTest(properties = {
     "queue.active-capacity=2",
@@ -122,14 +121,14 @@ class QueueStreamsTest {
         Recorder rc = connect(c);
         Recorder rd = connect(d);
 
-        sweeper.admitForEvent(eventId); // capacity 2: a and b go in
+        sweeper.admitForEvent(eventId); // 용량 2: a와 b가 입장한다
 
         await(() -> ra.completed && rb.completed);
         assertThat(ra.last().status()).isEqualTo("PASSED");
         assertThat(ra.last().passToken()).isEqualTo(a);
-        assertThat(ra.last().passExpiresInSeconds()).isBetween(295L, 300L); // the default five-minute pass, as it was told to the browser
+        assertThat(ra.last().passExpiresInSeconds()).isBetween(295L, 300L); // 기본 5분 입장권이다. 브라우저에 알려 준 그대로
         assertThat(rb.last().status()).isEqualTo("PASSED");
-        // c and d are told their new places on the flush (at most once a second), not on every batch
+        // c와 d는 묶음마다가 아니라 반영 시점(초당 한 번 이하)에 새 자리를 알린다
         await(() -> rc.updates.size() == 1 && streams.connections() == 2);
         streams.flushRanks();
         assertThat(rc.last().rankNo()).isEqualTo(1);
@@ -157,9 +156,9 @@ class QueueStreamsTest {
         assertThat(rc.last().rankNo()).isEqualTo(3);
 
         streams.reconcile();
-        assertThat(rc.updates).hasSize(1); // same rank as before: nothing to say
+        assertThat(rc.updates).hasSize(1); // 이전과 같은 순번: 알릴 것이 없다
 
-        // someone ahead leaves the line without being let in (this instance was never told)
+        // 앞에 있던 사람이 입장하지 않고 줄을 떠난다(이 인스턴스는 전달받지 못했다)
         redissonClient.getScoredSortedSet(QueueService.waitingKey(eventId)).remove(a);
         streams.reconcile();
 
@@ -173,20 +172,20 @@ class QueueStreamsTest {
         for (int i = 0; i < 5; i++) {
             line.add(join());
         }
-        sweeper.admitForEvent(eventId); // capacity 2: the first two are let in, three wait
-        redissonClient.getScoredSortedSet(QueueService.waitingKey(eventId)).remove(line.get(3)); // one leaves the line
+        sweeper.admitForEvent(eventId); // 용량 2: 처음 둘이 입장하고 셋은 기다린다
+        redissonClient.getScoredSortedSet(QueueService.waitingKey(eventId)).remove(line.get(3)); // 한 명이 줄을 떠난다
         java.util.Map<String, Long> asked = new java.util.HashMap<>();
         line.forEach(t -> asked.put(t, eventId));
 
         java.util.Map<String, QueueStatusResponse> many = queueService.statusOfMany(asked);
 
-        assertThat(many).containsOnlyKeys(line.get(0), line.get(1), line.get(2), line.get(4)); // the one who left is missing
+        assertThat(many).containsOnlyKeys(line.get(0), line.get(1), line.get(2), line.get(4)); // 떠난 사람은 빠져 있다
         for (String token : many.keySet()) {
             QueueStatusResponse one = queueService.status(token);
             assertThat(many.get(token).status()).isEqualTo(one.status());
             assertThat(many.get(token).rankNo()).isEqualTo(one.rankNo());
             assertThat(many.get(token).passToken()).isEqualTo(one.passToken());
-            if (one.passExpiresInSeconds() != null) { // read a moment apart, so allow a second
+            if (one.passExpiresInSeconds() != null) { // 조금 간격을 두고 읽으므로 1초의 여유를 둔다
                 assertThat(many.get(token).passExpiresInSeconds()).isBetween(one.passExpiresInSeconds() - 1, one.passExpiresInSeconds() + 1);
             }
         }
@@ -201,7 +200,7 @@ class QueueStreamsTest {
         join();
         Recorder ra = connect(a);
         Recorder rb = connect(b);
-        // let a and b in without announcing it, as if the pub/sub message never arrived
+        // pub/sub 메시지가 도착하지 않은 것처럼, 알리지 않고 a와 b를 입장시킨다
         RScoredSortedSet<String> active = redissonClient.getScoredSortedSet(QueueService.activeKey(eventId));
         RScoredSortedSet<String> waiting = redissonClient.getScoredSortedSet(QueueService.waitingKey(eventId));
         active.add(System.currentTimeMillis() + 60_000, a);

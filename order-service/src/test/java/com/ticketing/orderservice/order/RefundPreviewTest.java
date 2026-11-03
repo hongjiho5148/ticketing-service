@@ -15,12 +15,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 /**
- * Regression test for a bug the @Transactional tests could not see: the refund preview runs in a
- * READ ONLY transaction, and MySQL rejects SELECT ... FOR UPDATE there ("Cannot execute statement in
- * a READ ONLY transaction") - so a preview that took the cancellation row lock failed with a 500 in
- * production. Inside a rollback test the outer read-write transaction swallows the readOnly flag, so this
- * class is deliberately NOT @Transactional: it commits real rows and deletes them again.
- * Run inside the compose network with DB_HOST=mysql, like the other order-service tests.
+ * @Transactional 테스트로는 보이지 않던 버그의 회귀 테스트다. 환불 미리보기는 READ ONLY 트랜잭션에서 실행되는데,
+ * MySQL은 거기서 SELECT ... FOR UPDATE를 거절한다("Cannot execute statement in a READ ONLY transaction").
+ * 그래서 취소 행 잠금을 잡던 미리보기가 운영에서 500으로 실패했다. 롤백 테스트에서는 바깥의 읽기-쓰기 트랜잭션이
+ * readOnly 플래그를 삼켜 버리므로, 이 클래스는 일부러 @Transactional로 하지 않았다. 실제 행을 커밋하고 다시 지운다.
+ * 다른 order-service 테스트처럼 compose 네트워크 안에서 DB_HOST=mysql로 실행한다.
  */
 @SpringBootTest(properties = {"ticket.issuance-sweep-cron=-", "reminder.sweep-cron=-"})
 class RefundPreviewTest {

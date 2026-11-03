@@ -19,9 +19,9 @@ spring:
       hibernate:
         format_sql: ${JPA_SHOW_SQL:false}
     show-sql: ${JPA_SHOW_SQL:false}
-  # Schema changes are versioned SQL in db/migration (Flyway), not whatever Hibernate decides at startup.
-  # baseline-on-migrate lets a database that predates Flyway (built by the old ddl-auto: update) adopt V1 as
-  # already applied instead of failing on a non-empty schema; a brand-new database runs V1 to create everything.
+  # 스키마 변경은 Hibernate가 시작할 때 알아서 정하는 것이 아니라 db/migration(Flyway)의 버전 있는 SQL로 한다.
+  # baseline-on-migrate는 Flyway 이전에 만들어진 DB(예전 ddl-auto: update로 만든 것)가 비어 있지 않은 스키마에서 실패하지 않고
+  # V1을 이미 적용된 것으로 받아들이게 한다. 완전히 새로운 DB는 V1을 실행해서 모든 것을 만든다.
   flyway:
     baseline-on-migrate: true
     baseline-version: 1
@@ -37,11 +37,11 @@ spring:
           starttls:
             enable: true
 
-# Verification only here (auth-service is the one that mints tokens) - secret must match
-# auth-service's/backend's exactly since that's what makes a JWT it signs valid here too.
+# 여기서는 검증만 한다(토큰을 발급하는 것은 auth-service). 시크릿은 auth-service/backend와 정확히 같아야 한다.
+# 그래야 그쪽에서 서명한 JWT가 여기서도 유효하다.
 jwt:
-  # Deliberately no default: a secret baked into the source is a secret everyone has, and whoever holds it can
-  # forge tokens. The service refuses to start until JWT_SECRET is set (see .env.example).
+  # 일부러 기본값이 없다. 소스에 박아 둔 시크릿은 모두가 가진 시크릿이고, 그것을 가진 사람은 토큰을 위조할 수 있다.
+  # JWT_SECRET이 설정될 때까지 서비스는 시작을 거부한다(.env.example 참고).
   secret: ${JWT_SECRET}
 
 portone:
@@ -52,36 +52,35 @@ portone:
 
 ticket:
   issuance-sweep-cron: "0 * * * * *"
-  # How far ahead of the show the sweeper starts issuing QR tickets for paid orders.
+  # 스위퍼가 결제된 주문에 대해 공연 얼마 전부터 QR 티켓을 발급하기 시작하는지.
   issuance-lead-hours: 2
   qr-token:
-    # Deliberately a different secret from jwt.secret above - a QR shown at the gate and a login
-    # token are never interchangeable even if one leaks.
-    # Deliberately no default: a secret baked into the source is a secret everyone has, and whoever holds it can
-    # forge tokens. The service refuses to start until QR_TOKEN_SECRET is set (see .env.example).
+    # 위의 jwt.secret과 일부러 다른 시크릿이다. 입구에서 보여 주는 QR과 로그인 토큰은 하나가 유출돼도
+    # 서로 바꿔 쓸 수 없다. 일부러 기본값이 없다. 소스에 박아 둔 시크릿은 모두가 가진 시크릿이고, 그것을 가진
+    # 사람은 토큰을 위조할 수 있다. QR_TOKEN_SECRET이 설정될 때까지 서비스는 시작을 거부한다(.env.example 참고).
     secret: ${QR_TOKEN_SECRET}
     expiration-ms: ${QR_TOKEN_EXPIRATION_MS:21600000}
 
 identity-verification:
-  # SELF_ATTESTED is a checkbox stand-in for a real identity check; to use a real provider (PASS,
-  # PortOne identity verification) add an IdentityVerificationProvider bean and name its method here.
+  # SELF_ATTESTED는 실제 본인 확인을 대신하는 체크박스다. 실제 제공자(PASS, PortOne 본인인증)를 쓰려면
+  # IdentityVerificationProvider 빈을 추가하고 그 메서드 이름을 여기에 적는다.
   provider: SELF_ATTESTED
   required: ${IDENTITY_VERIFICATION_REQUIRED:true}
 
 transfer:
-  # Transfers close at the same moment QR issuance opens, so a QR never has to be re-issued for a new holder.
+  # 양도는 QR 발급이 열리는 순간에 닫히므로, 새 소지자를 위해 QR을 다시 발급할 일이 없다.
   cutoff-hours: ${ticket.issuance-lead-hours}
 
 reminder:
   sweep-cron: "0 * * * * *"
-  # D-1 reminder window: orders whose show starts between 24h and (24h + window) from now.
+  # D-1 알림 구간: 공연이 지금부터 24시간에서 (24시간 + 구간) 사이에 시작하는 주문.
   lead-hours: 24
   window-hours: 1
 
 payment:
-  # Settles payments the browser never reported back (see PaymentReconciliationService).
+  # 브라우저가 끝내 보고하지 않은 결제를 정리한다(PaymentReconciliationService 참고).
   reconcile-sweep-cron: "0 * * * * *"
-  # Hold (5 min) plus a generous margin for a payment window left open; older unpaid orders are not looked at.
+  # 홀드(5분)에 결제창을 열어 둔 경우를 위한 넉넉한 여유를 더한 값이다. 그보다 오래된 미결제 주문은 보지 않는다.
   reconcile-lookback-minutes: 60
 
 event:
@@ -96,12 +95,12 @@ auth:
   service:
     uri: ${AUTH_SERVICE_URI:http://auth-service:8080}
 
-# Where the buttons in notification mails point (the public site).
+# 알림 메일의 버튼이 가리키는 곳(공개 사이트).
 app:
   frontend-url: ${APP_FRONTEND_URL:http://localhost:5173}
 
-# Metrics for Prometheus, on a separate port that only exists inside the docker network: nothing routes to it (the
-# gateway forwards /api/** only), so it is never reachable from outside and needs no authentication of its own.
+# Prometheus용 메트릭이며 docker 네트워크 안에만 있는 별도 포트로 내보낸다. 그 포트로 가는 라우트가 없어서
+# (게이트웨이는 /api/**만 전달한다) 밖에서는 닿지 않으므로 자체 인증이 필요 없다.
 management:
   server:
     port: 9090

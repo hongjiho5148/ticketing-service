@@ -30,9 +30,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Picking a pending payment back up: allowed only while the reservation still holds the seat. The other
- * services are mocked; the order rows are real (compose MySQL, rolled back). Run inside the compose
- * network with DB_HOST=mysql, like the other order-service tests.
+ * 결제 대기 중인 결제를 다시 이어 가는 경우로, 예약이 아직 좌석을 잡고 있는 동안에만 허용한다. 다른 서비스는
+ * mock이고 주문 행은 실제다(compose MySQL, 롤백). 다른 order-service 테스트처럼
+ * compose 네트워크 안에서 DB_HOST=mysql로 실행한다.
  */
 @SpringBootTest(properties = {"ticket.issuance-sweep-cron=-", "reminder.sweep-cron=-"})
 @Transactional
@@ -124,7 +124,7 @@ class ResumeCheckoutTest {
     @Test
     void anOrderOlderThanAnyHoldIsRefusedWithoutAskingReservationService() {
         Orders order = pendingOrder();
-        reservationIs(order, "HOLDING", LocalDateTime.now().plusMinutes(3)); // even if it (impossibly) looked alive
+        reservationIs(order, "HOLDING", LocalDateTime.now().plusMinutes(3)); // (있을 수 없지만) 살아 있는 것처럼 보여도
         makeOlder(order, 30);
 
         expectError(() -> orderService.resumeCheckout(userId, order.getId()), ErrorCode.ORDER_NOT_RESUMABLE);

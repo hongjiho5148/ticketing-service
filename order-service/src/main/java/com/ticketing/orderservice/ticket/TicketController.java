@@ -19,8 +19,8 @@ public class TicketController {
         this.ticketService = ticketService;
     }
 
-    // "tickets" (plural, no path variable) never collides with "/{orderId}/ticket" below - Spring
-    // matches them by segment count, not just literal prefix.
+    // "tickets"(복수, 경로 변수 없음)는 아래의 "/{orderId}/ticket"과 겹치지 않는다. Spring은 문자열 접두사만이
+    // 아니라 세그먼트 수로도 구분해서 맞춘다.
     @GetMapping("/tickets")
     public List<TicketHistoryResponse> listMyTickets() {
         return ticketService.listMyTickets(SecurityUtil.getCurrentUserId());

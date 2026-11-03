@@ -1,9 +1,9 @@
 package com.ticketing.gateway.ratelimit;
 
 /**
- * A classic token bucket: holds up to {@code capacity} tokens, earns {@code perMinute} of them back
- * per minute, and every request spends one. A burst up to the capacity is fine; a sustained rate
- * above the refill rate drains it and gets refused. Time is passed in so tests can drive a fake clock.
+ * 고전적인 토큰 버킷이다. 최대 {@code capacity}개의 토큰을 들고 있고, 분당 {@code perMinute}개씩 다시 얻으며,
+ * 요청마다 하나를 쓴다. 용량까지의 버스트는 괜찮고, 보충 속도를 넘는 지속적인 속도는 버킷을 비워서 거절당한다.
+ * 테스트가 가짜 시계를 쓸 수 있도록 시간은 바깥에서 넘겨받는다.
  */
 final class TokenBucket {
 
@@ -19,7 +19,7 @@ final class TokenBucket {
         this.lastNanos = nowNanos;
     }
 
-    /** Spends a token and returns 0, or - when empty - returns how many nanoseconds until one is available. */
+    /** 토큰을 쓰고 0을 돌려준다. 비어 있으면 하나가 생길 때까지 몇 나노초가 남았는지를 돌려준다. */
     synchronized long tryConsume(long nowNanos) {
         refill(nowNanos);
         if (tokens >= 1) {
@@ -29,7 +29,7 @@ final class TokenBucket {
         return (long) Math.ceil((1 - tokens) / refillPerNano);
     }
 
-    /** True once the bucket has been left alone long enough to be full again - i.e. it is indistinguishable from a new one. */
+    /** 버킷이 다시 가득 찰 만큼 오래 방치됐으면 true다. 새 버킷과 구별할 수 없는 상태다. */
     synchronized boolean isFullAndIdle(long nowNanos) {
         refill(nowNanos);
         return tokens >= capacity;

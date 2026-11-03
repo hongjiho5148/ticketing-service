@@ -7,7 +7,7 @@ public interface CouponRedemptionRepository extends JpaRepository<CouponRedempti
 
     boolean existsByCouponIdAndUserId(Long couponId, Long userId);
 
-    /** Returns how many rows it removed - 0 means this order never redeemed the coupon (or it was already given back). */
+    /** 지운 행의 수를 돌려준다. 0이면 이 주문이 쿠폰을 쓴 적이 없다는 뜻이다(또는 이미 돌려줬다). */
     long deleteByCouponIdAndUserIdAndOrderId(Long couponId, Long userId, Long orderId);
 
     List<CouponRedemption> findTop50ByUserIdOrderByIdDesc(Long userId);

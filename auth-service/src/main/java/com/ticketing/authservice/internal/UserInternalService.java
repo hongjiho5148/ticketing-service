@@ -25,9 +25,9 @@ public class UserInternalService {
     }
 
     /**
-     * Resolves a transfer recipient by email. An address can exist under several login providers;
-     * the local account wins (it is the only one whose email we verified ourselves), then Google,
-     * then Kakao. Admin accounts are never a valid recipient.
+     * 양도를 받는 사람을 이메일로 찾는다. 한 주소가 여러 로그인 제공자 아래에 있을 수 있다.
+     * 로컬 계정이 우선하고(이메일을 우리가 직접 인증한 유일한 계정이다) 그다음 Google, 그다음 Kakao다.
+     * 관리자 계정은 받는 사람이 될 수 없다.
      */
     public UserInternalResponse lookupByEmail(String email) {
         for (AuthProvider provider : new AuthProvider[] {AuthProvider.LOCAL, AuthProvider.GOOGLE, AuthProvider.KAKAO}) {

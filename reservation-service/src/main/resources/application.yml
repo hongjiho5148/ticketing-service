@@ -12,9 +12,9 @@ spring:
     password: ${DB_PASSWORD:ticketing}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
-      # Connections this service may hold to its database (HikariCP's default is 10). More lets more requests work at the same
-      # time but every one is a connection MySQL has to serve, and MySQL's own limit (max_connections, 151 by default) is shared
-      # by all services and all replicas - raise them together. Measured under a 2,500-person spike: docs/design-notes.md.
+      # 이 서비스가 DB에 열어 둘 수 있는 연결 수다(HikariCP 기본값은 10). 늘리면 더 많은 요청이 동시에 일하지만 하나하나가
+      # MySQL이 맡아야 하는 연결이고, MySQL 자체의 한도(max_connections, 기본 151)는 모든 서비스와 모든 복제본이
+      # 나눠 쓰므로 함께 올려야 한다. 2,500명 폭주에서 측정한 결과는 docs/design-notes.md 참고.
       maximum-pool-size: ${DB_POOL_SIZE:10}
   jpa:
     hibernate:
@@ -24,14 +24,14 @@ spring:
       hibernate:
         format_sql: ${JPA_SHOW_SQL:false}
     show-sql: ${JPA_SHOW_SQL:false}
-  # Schema changes are versioned SQL in db/migration (Flyway), not whatever Hibernate decides at startup.
-  # baseline-on-migrate lets a database that predates Flyway (built by the old ddl-auto: update) adopt V1 as
-  # already applied instead of failing on a non-empty schema; a brand-new database runs V1 to create everything.
+  # 스키마 변경은 Hibernate가 시작할 때 알아서 정하는 것이 아니라 db/migration(Flyway)의 버전 있는 SQL로 한다.
+  # baseline-on-migrate는 Flyway 이전에 만들어진 DB(예전 ddl-auto: update로 만든 것)가 비어 있지 않은 스키마에서 실패하지 않고
+  # V1을 이미 적용된 것으로 받아들이게 한다. 완전히 새로운 DB는 V1을 실행해서 모든 것을 만든다.
   flyway:
     baseline-on-migrate: true
     baseline-version: 1
-  # The default scheduler has a single thread, so a slow sweep (remote calls) would hold up the outbox relay and a
-  # relay waiting on a down broker would hold up the sweeps.
+  # 기본 스케줄러는 스레드가 하나라서, 느린 스윕(원격 호출)이 아웃박스 릴레이를 막고 죽은 브로커를 기다리는
+  # 릴레이가 스윕을 막을 수 있다.
   task:
     scheduling:
       pool:
@@ -42,27 +42,27 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
-# Verification only here (auth-service is the one that mints tokens) - secret must match
-# auth-service's/backend's exactly since that's what makes a JWT it signs valid here too.
+# 여기서는 검증만 한다(토큰을 발급하는 것은 auth-service). 시크릿은 auth-service/backend와 정확히 같아야 한다.
+# 그래야 그쪽에서 서명한 JWT가 여기서도 유효하다.
 jwt:
-  # Deliberately no default: a secret baked into the source is a secret everyone has, and whoever holds it can
-  # forge tokens. The service refuses to start until JWT_SECRET is set (see .env.example).
+  # 일부러 기본값이 없다. 소스에 박아 둔 시크릿은 모두가 가진 시크릿이고, 그것을 가진 사람은 토큰을 위조할 수 있다.
+  # JWT_SECRET이 설정될 때까지 서비스는 시작을 거부한다(.env.example 참고).
   secret: ${JWT_SECRET}
 
-# Events reach Kafka through the outbox table (see OutboxRelay); these are its defaults.
+# 이벤트는 아웃박스 테이블을 거쳐 Kafka에 닿는다(OutboxRelay 참고). 아래는 그 기본값이다.
 outbox:
   relay-interval-ms: 500
   send-timeout-ms: 5000
-  # How long a relay holds the rows it claimed; another instance takes them over if it dies mid-send.
+  # 릴레이가 가져간 행을 얼마나 쥐고 있는지. 전송 도중 죽으면 다른 인스턴스가 넘겨받는다.
   lease-ms: 30000
-  # SQL LIKE pattern of the topics this relay sends ("%" = all).
+  # 이 릴레이가 보내는 토픽의 SQL LIKE 패턴("%" = 전체).
   topic-pattern: "%"
   retention-hours: 24
   purge-cron: "0 0 * * * *"
 
 reservation:
   hold-expire-sweep-cron: "0 * * * * *"
-  # Seats one user may hold or own per event - the usual anti-scalping cap on ticketing sites.
+  # 한 사용자가 한 공연에서 잡거나 가질 수 있는 좌석 수. 티켓팅 사이트에서 흔히 쓰는 암표 방지 상한이다.
   max-seats-per-event: ${RESERVATION_MAX_SEATS_PER_EVENT:4}
 
 event:
@@ -73,8 +73,8 @@ queue:
   service:
     uri: ${BACKEND_URI:http://backend:8080}
 
-# Metrics for Prometheus, on a separate port that only exists inside the docker network: nothing routes to it (the
-# gateway forwards /api/** only), so it is never reachable from outside and needs no authentication of its own.
+# Prometheus용 메트릭이며 docker 네트워크 안에만 있는 별도 포트로 내보낸다. 그 포트로 가는 라우트가 없어서
+# (게이트웨이는 /api/**만 전달한다) 밖에서는 닿지 않으므로 자체 인증이 필요 없다.
 management:
   server:
     port: 9090

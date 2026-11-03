@@ -26,8 +26,8 @@ export function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Two services own the two halves of this view (seats in event-service, money in
-    // order-service), so the page joins them by eventId instead of either service calling the other.
+    // 이 화면의 두 절반을 서로 다른 서비스가 가진다(좌석은 event-service, 돈은 order-service). 그래서 한 서비스가 다른 서비스를
+    // 호출하는 대신 페이지가 eventId로 둘을 합친다.
     Promise.all([fetchEventStats(), fetchOrderSummary()])
       .then(([eventStats, orderSummary]) => {
         setStats(eventStats);

@@ -38,14 +38,14 @@ public class ReservationInternalService {
         return ReservationDetailResponse.from(reservation);
     }
 
-    // Order-service delegates the "reservation lifecycle -> seat state" transition here instead of
-    // calling event-service directly - this is the same responsibility ReservationExpirySweeper
-    // already has when a hold lapses, just triggered by a successful payment instead of a timeout.
+    // order-service는 "예약 생명주기 -> 좌석 상태" 전환을 event-service를 직접 호출하지 않고 여기에 맡긴다.
+    // 홀드가 끝났을 때 ReservationExpirySweeper가 이미 맡고 있는 책임과 같고, 다만 타임아웃이 아니라
+    // 결제 성공이 이를 일으킨다.
     /**
-     * Only a reservation whose hold is still alive can be confirmed. An expired or cancelled one means the seat may
-     * already be free or held by someone else, so HOLD_EXPIRED goes back to order-service, which refunds the payment.
-     * Confirming twice is fine (a payment retried after a partial failure). The seat sale itself is guarded by the
-     * hold too, so even a reservation the sweeper has not expired yet cannot sell a seat that was re-held meanwhile.
+     * 홀드가 아직 살아 있는 예약만 확정할 수 있다. 만료됐거나 취소된 예약이면 좌석이 이미 풀렸거나 다른 사람에게
+     * 잡혔을 수 있으므로, order-service로 HOLD_EXPIRED를 돌려주고 그쪽이 결제를 환불한다.
+     * 두 번 확정해도 괜찮다(일부가 실패한 뒤 다시 시도한 결제). 좌석 판매 자체도 홀드로 보호되므로, 스위퍼가
+     * 아직 만료시키지 못한 예약이라도 그 사이 다시 잡힌 좌석을 팔 수는 없다.
      */
     public ReservationDetailResponse confirm(Long reservationId) {
         Reservation reservation = reservationRepository.findById(reservationId)
@@ -58,8 +58,8 @@ public class ReservationInternalService {
         }
         reservation.confirm();
         eventServiceClient.sell(reservation.getSeatId(), reservation.getHoldExpireAt());
-        // Recorded in this transaction, so the announcement exists exactly when the confirmation commits. A repeated
-        // confirm returns above and records nothing, so there is one event per reservation.
+        // 이 트랜잭션 안에서 기록하므로, 알림은 확정이 커밋될 때 정확히 그때 존재한다. 반복된
+        // 확정은 위에서 돌아가고 아무것도 기록하지 않으므로 예약 하나당 이벤트는 하나다.
         outboxRecorder.record(
                 KafkaTopics.RESERVATION_CONFIRMED,
                 reservation.getId().toString(),

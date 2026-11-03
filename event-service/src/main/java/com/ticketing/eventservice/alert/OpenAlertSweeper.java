@@ -18,9 +18,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Same cron-sweep shape as SeatHoldExpirySweeper. Once an event's openAt has passed it flips the
- * stored status UPCOMING -> OPEN, then mails the people who asked to be told. A failed send leaves
- * notifiedAt null so the next tick retries; only a sent mail or a confirmed opt-out closes it out.
+ * SeatHoldExpirySweeper와 같은 크론 스윕 구조다. 공연의 openAt이 지나면 저장된 상태를 UPCOMING -> OPEN으로
+ * 바꾸고, 알려 달라고 한 사람들에게 메일을 보낸다. 전송이 실패하면 notifiedAt을 null로 두어서 다음 주기에
+ * 재시도한다. 메일을 보냈거나 수신 거부가 확인됐을 때만 마무리한다.
  */
 @Component
 public class OpenAlertSweeper {
