@@ -174,7 +174,8 @@ public class OrderService {
         // Recorded from PortOne's own report (card / KAKAOPAY / NAVERPAY ...), not from anything the client sent.
         String method = portOnePayment.methodLabel();
         if (!verified) {
-            return failPayment(ctx, request.paymentId(), method, null);
+            // Nothing was charged (PortOne does not report it paid), so there is nothing to refund.
+            return failPayment(ctx, request.paymentId(), method, null, false);
         }
 
         try {
@@ -185,8 +186,8 @@ public class OrderService {
             // so the payment gets refunded and the order fails instead of being paid at a price
             // it no longer qualifies for.
             log.warn("Benefits no longer valid for order {}: {}", orderId, e.getErrorCode());
-            refundQuietly(request.paymentId(), "쿠폰/포인트 적용 실패로 자동 환불");
-            return failPayment(ctx, request.paymentId(), method, null);
+            boolean refunded = refundQuietly(request.paymentId(), "쿠폰/포인트 적용 실패로 자동 환불");
+            return failPayment(ctx, request.paymentId(), method, null, refunded);
         }
 
         // Confirm on reservation-service (which sells the seat on its end) before committing our
@@ -207,8 +208,8 @@ public class OrderService {
             // or held by someone else - confirming would sell one seat twice. The customer has paid, so
             // refund the payment (the coupon/points/reward were already given back above).
             log.warn("Hold expired before order {} could be confirmed - refunding payment {}", orderId, request.paymentId());
-            refundQuietly(request.paymentId(), "좌석 홀드 만료로 자동 환불");
-            return failPayment(ctx, request.paymentId(), method, "HOLD_EXPIRED");
+            boolean refunded = refundQuietly(request.paymentId(), "좌석 홀드 만료로 자동 환불");
+            return failPayment(ctx, request.paymentId(), method, "HOLD_EXPIRED", refunded);
         }
 
         return transactionTemplate.execute(status -> completePayment(orderId, method, request.paymentId()));
@@ -276,23 +277,34 @@ public class OrderService {
         }
     }
 
-    private PaymentResponse failPayment(PayContext ctx, String paymentId, String method, String failureReason) {
+    /**
+     * @param refunded whether the charge was given back in full, so the order list can tell "paid, then refunded"
+     *     from "the payment never went through" (the reconciliation sweep records its refunds the same way)
+     */
+    private PaymentResponse failPayment(PayContext ctx, String paymentId, String method, String failureReason, boolean refunded) {
         reservationServiceClient.cancel(ctx.reservationId());
         transactionTemplate.executeWithoutResult(status -> {
             Orders order = loadOrder(ctx.orderId());
             order.markFailed();
-            paymentRepository.save(new Payment(order, method, paymentId, PaymentStatus.FAILED, order.getTotalPrice(), null));
+            Payment record = new Payment(order, method, paymentId, PaymentStatus.FAILED, order.getTotalPrice(), null);
+            if (refunded) {
+                record.markRefunded(order.getTotalPrice());
+            }
+            paymentRepository.save(record);
         });
         meterRegistry.counter("payments_total", "result", "failed").increment();
         return new PaymentResponse(ctx.orderId(), PaymentStatus.FAILED, null, failureReason);
     }
 
-    private void refundQuietly(String paymentId, String reason) {
+    /** @return whether PortOne accepted the cancellation */
+    private boolean refundQuietly(String paymentId, String reason) {
         try {
             portOneClient.cancelPayment(paymentId, reason);
+            return true;
         } catch (RestClientException e) {
             // Nothing more to do automatically - needs a manual refund in the PortOne console.
             log.error("AUTO-REFUND FAILED for PortOne payment {} - refund it manually: {}", paymentId, e.getMessage());
+            return false;
         }
     }
 

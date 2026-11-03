@@ -10,11 +10,13 @@ interface QueueWaitingRoomProps {
   eventId: number;
   /** expiresInSeconds: how long the pass has left, when the server said. */
   onPassed: (passToken: string, expiresInSeconds: number | null) => void;
+  /** Why the person is back in the queue (a lost hold, an expired pass), shown until they get in again. */
+  notice?: string | null;
 }
 
 const POLL_INTERVAL_MS = 2000;
 
-export function QueueWaitingRoom({ eventId, onPassed }: QueueWaitingRoomProps) {
+export function QueueWaitingRoom({ eventId, onPassed, notice }: QueueWaitingRoomProps) {
   const [rankNo, setRankNo] = useState<number | null>(null);
   const [estimatedWaitSeconds, setEstimatedWaitSeconds] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -116,6 +118,7 @@ export function QueueWaitingRoom({ eventId, onPassed }: QueueWaitingRoomProps) {
     return (
       <div className="queue-room">
         <div className="queue-card">
+          {notice && <p className="form-error">{notice}</p>}
           <h2>대기열 입장 전 확인</h2>
           <p className="page-status">공정한 예매를 위해 로봇이 아님을 확인해주세요.</p>
           <ReCaptcha
@@ -163,6 +166,7 @@ export function QueueWaitingRoom({ eventId, onPassed }: QueueWaitingRoomProps) {
     <div className="queue-room">
       <div className="queue-card">
         <div className="queue-spinner" />
+        {notice && <p className="form-error">{notice}</p>}
         <h2>대기열에 입장했습니다</h2>
         {error ? (
           <p className="form-error">{error}</p>

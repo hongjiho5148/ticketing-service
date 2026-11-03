@@ -29,8 +29,19 @@ const FILTERS: { key: OrderFilter; label: string }[] = [
   { key: "all", label: "전체" },
   { key: "paid", label: "결제완료" },
   { key: "pending", label: "결제대기" },
-  { key: "closed", label: "취소·만료" },
+  { key: "closed", label: "취소·실패" },
 ];
+
+// A hold that ran out before any payment was made: no money moved and nothing happened to the customer, so it is not
+// listed at all (it would only read as a failure they did nothing to cause).
+function isUnpaidExpiry(order: OrderHistoryItem): boolean {
+  return order.status === "PENDING" && !order.holdExpireAt;
+}
+
+// Paid, then given back in full by the server (the seat hold ran out while paying, or the coupon/points no longer applied).
+function isAutoRefunded(order: OrderHistoryItem): boolean {
+  return order.status === "FAILED" && (order.refundedAmount ?? 0) > 0;
+}
 
 function matchesFilter(order: OrderHistoryItem, filter: OrderFilter): boolean {
   if (filter === "all") return true;
@@ -44,6 +55,7 @@ function matchesFilter(order: OrderHistoryItem, filter: OrderFilter): boolean {
 function statusTone(order: OrderHistoryItem): string {
   if (order.status === "PAID") return "is-paid";
   if (order.status === "PENDING") return order.holdExpireAt ? "is-pending" : "is-problem";
+  if (isAutoRefunded(order)) return "is-ended"; // settled: the money is back
   if (order.status === "FAILED") return "is-problem";
   return "is-ended";
 }
@@ -184,7 +196,8 @@ export function OrdersPanel() {
   }
 
   const hasMore = orders.length < totalElements;
-  const visibleOrders = orders.filter((o) => matchesFilter(o, filter));
+  const listedOrders = orders.filter((o) => !isUnpaidExpiry(o));
+  const visibleOrders = listedOrders.filter((o) => matchesFilter(o, filter));
 
   if (isLoading) {
     return (
@@ -200,7 +213,7 @@ export function OrdersPanel() {
       <p className="form-notice">
         환불정책: 공연 7일 전까지 100%, 3일 전까지 70%, 1일 전까지 30% 환불돼요. 공연 24시간 전부터는 취소할 수 없어요.
       </p>
-      {orders.length === 0 ? (
+      {listedOrders.length === 0 ? (
         <p className="page-status">주문 내역이 없습니다.</p>
       ) : (
         <>
@@ -229,7 +242,7 @@ export function OrdersPanel() {
                     <div className="order-card-body">
                       <div className="order-card-top">
                         <span className={`order-status ${statusTone(order)}`}>
-                          {order.status === "PENDING" && !order.holdExpireAt ? "결제 시간 만료" : STATUS_LABEL[order.status]}
+                          {isAutoRefunded(order) ? "결제 후 자동 환불" : STATUS_LABEL[order.status]}
                         </span>
                         {isWaiting && order.holdExpireAt && (
                           <HoldRemaining expireAt={order.holdExpireAt} onExpire={() => handleHoldExpired(order.orderId)} />
@@ -275,6 +288,15 @@ export function OrdersPanel() {
                               ) : (
                                 <small>공연 2시간 전부터 QR이 발급돼요</small>
                               )}
+                            </dd>
+                          </div>
+                        )}
+                        {isAutoRefunded(order) && (
+                          <div>
+                            <dt>환불</dt>
+                            <dd>
+                              <span className="num">{order.refundedAmount?.toLocaleString()}원</span>
+                              <small> · 결제 금액이 전액 환불됐어요</small>
                             </dd>
                           </div>
                         )}

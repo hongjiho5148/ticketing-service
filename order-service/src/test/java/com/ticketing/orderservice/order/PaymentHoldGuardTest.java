@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -13,6 +14,8 @@ import com.ticketing.orderservice.common.ApiException;
 import com.ticketing.orderservice.common.ErrorCode;
 import com.ticketing.orderservice.order.dto.PaymentRequest;
 import com.ticketing.orderservice.order.dto.PaymentResponse;
+import com.ticketing.orderservice.payment.Payment;
+import com.ticketing.orderservice.payment.PaymentRepository;
 import com.ticketing.orderservice.payment.PaymentStatus;
 import com.ticketing.orderservice.payment.portone.PortOneClient;
 import com.ticketing.orderservice.payment.portone.PortOnePaymentResponse;
@@ -20,12 +23,14 @@ import com.ticketing.orderservice.reservationclient.ReservationServiceClient;
 import com.ticketing.orderservice.verification.IdentityVerificationService;
 import com.ticketing.orderservice.verification.dto.VerifyIdentityRequest;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.web.client.RestClientException;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -43,6 +48,7 @@ class PaymentHoldGuardTest {
     @Autowired private OrderService orderService;
     @Autowired private OrderRepository orderRepository;
     @Autowired private IdentityVerificationService verification;
+    @Autowired private PaymentRepository paymentRepository;
 
     @MockitoBean private PortOneClient portOneClient;
     @MockitoBean private ReservationServiceClient reservationServiceClient;
@@ -84,6 +90,36 @@ class PaymentHoldGuardTest {
         assertThat(order.getStatus()).isEqualTo(OrderStatus.FAILED);
         verify(portOneClient).cancelPayment(eq(paymentId), anyString());
         verify(reservationServiceClient).cancel(order.getReservationId());
+        // The order list tells "paid, then refunded" from "never went through" by this.
+        assertThat(paymentOf(order).getRefundedAmount()).isEqualTo(PRICE);
+    }
+
+    @Test
+    void aFailedAutoRefundIsNotRecordedAsRefunded() {
+        when(reservationServiceClient.confirm(order.getReservationId()))
+                .thenThrow(new ApiException(ErrorCode.HOLD_EXPIRED));
+        doThrow(new RestClientException("PortOne down")).when(portOneClient).cancelPayment(eq(paymentId), anyString());
+
+        PaymentResponse response = orderService.pay(userId, order.getId(), new PaymentRequest(paymentId));
+
+        assertThat(response.paymentStatus()).isEqualTo(PaymentStatus.FAILED);
+        assertThat(paymentOf(order).getRefundedAmount()).isZero();
+    }
+
+    @Test
+    void aPaymentPortOneDoesNotReportPaidIsFailedWithoutARefund() {
+        when(portOneClient.getPayment(paymentId)).thenReturn(new PortOnePaymentResponse(
+                "FAILED", new PortOnePaymentResponse.Amount(PRICE), new PortOnePaymentResponse.Method("PaymentMethodCard", null)));
+
+        PaymentResponse response = orderService.pay(userId, order.getId(), new PaymentRequest(paymentId));
+
+        assertThat(response.paymentStatus()).isEqualTo(PaymentStatus.FAILED);
+        assertThat(paymentOf(order).getRefundedAmount()).isZero();
+        verify(portOneClient, never()).cancelPayment(anyString(), anyString());
+    }
+
+    private Payment paymentOf(Orders order) {
+        return paymentRepository.findByOrderIdIn(List.of(order.getId())).get(0);
     }
 
     @Test
