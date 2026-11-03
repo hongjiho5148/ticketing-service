@@ -26,11 +26,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
- * Verification mail goes out after the signup transaction commits, on another thread. Because it
- * hangs off a real commit this test is deliberately not @Transactional: it creates real users in the
- * compose MySQL and deletes them again. Run inside the compose network with DB_HOST=mysql.
+ * 인증 메일은 가입 트랜잭션이 커밋된 뒤 다른 스레드에서 나간다. 실제 커밋에 달려 있으므로 이 테스트는
+ * 일부러 @Transactional로 하지 않았다. compose MySQL에 실제 사용자를 만들고 다시 지운다.
+ * compose 네트워크 안에서 DB_HOST=mysql로 실행한다.
  */
-// Dummy OAuth ids: the real ones come from .env, and Spring refuses to build the OAuth2 client config without some.
+// 가짜 OAuth id다. 실제 값은 .env에서 오고, Spring은 값이 하나도 없으면 OAuth2 클라이언트 설정을 만들지 않는다.
 @SpringBootTest(properties = {
     "GOOGLE_CLIENT_ID=test", "GOOGLE_CLIENT_SECRET=test", "KAKAO_CLIENT_ID=test", "KAKAO_CLIENT_SECRET=test"
 })
@@ -61,14 +61,14 @@ class VerificationMailTest {
 
     @Test
     void signupDoesNotWaitForTheMailServer() {
-        // The first signup in a fresh JVM pays for class loading, the connection pool and BCrypt warm-up
-        // (seconds in a container) - that is not what is being measured, so get it out of the way first.
+        // 새 JVM에서 첫 가입은 클래스 로딩, 커넥션 풀, BCrypt 워밍업(컨테이너에서는 몇 초)의 비용을 낸다.
+        // 그것은 측정하려는 것이 아니므로 먼저 치워 둔다.
         String warmUp = "async-mail-warmup-" + UUID.randomUUID() + "@example.com";
         signup(warmUp);
         userRepository.findByProviderAndEmail(AuthProvider.LOCAL, warmUp).ifPresent(userRepository::delete);
 
         doAnswer(inv -> {
-            Thread.sleep(2000); // a slow SMTP server
+            Thread.sleep(2000); // 느린 SMTP 서버
             return null;
         }).when(mailService).sendVerificationEmail(anyString(), anyString(), anyString());
 
@@ -76,7 +76,7 @@ class VerificationMailTest {
         signup(newEmail());
         long elapsedMs = (System.nanoTime() - start) / 1_000_000;
 
-        assertThat(elapsedMs).isLessThan(1500); // would be 2000+ if signup still waited for the send
+        assertThat(elapsedMs).isLessThan(1500); // 가입이 여전히 전송을 기다렸다면 2000 이상이었을 것이다
         verify(mailService, timeout(5000)).sendVerificationEmail(eq(email), anyString(), anyString());
     }
 
@@ -119,10 +119,10 @@ class VerificationMailTest {
         String firstToken = userRepository.findByProviderAndEmail(AuthProvider.LOCAL, email).orElseThrow()
                 .getEmailVerificationToken();
 
-        authService.resendVerification(email); // too soon after signup: quietly ignored
+        authService.resendVerification(email); // 가입 직후라 너무 이르다: 조용히 무시한다
         verify(mailService, after(800).times(1)).sendVerificationEmail(eq(email), anyString(), anyString());
 
-        // Pretend the first link was issued five minutes ago.
+        // 첫 링크가 5분 전에 발급된 것으로 가장한다.
         User user = userRepository.findByProviderAndEmail(AuthProvider.LOCAL, email).orElseThrow();
         user.issueEmailVerificationToken(firstToken, LocalDateTime.now().plusHours(24).minusMinutes(5));
         userRepository.save(user);
@@ -138,7 +138,7 @@ class VerificationMailTest {
 
     @Test
     void resendSaysNothingAboutUnknownOrAlreadyVerifiedAccounts() {
-        authService.resendVerification("nobody-" + UUID.randomUUID() + "@example.com"); // no error either way
+        authService.resendVerification("nobody-" + UUID.randomUUID() + "@example.com"); // 어느 쪽이든 오류 없음
 
         signup(newEmail());
         verify(mailService, timeout(5000)).sendVerificationEmail(eq(email), anyString(), anyString());

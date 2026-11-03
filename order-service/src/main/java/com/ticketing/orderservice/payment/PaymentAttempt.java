@@ -15,10 +15,9 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 /**
- * A payment id the server handed out for one order before the payment window opened. Two things depend on it:
- * pay() only accepts a payment id registered for that very order (otherwise one paid payment could be presented for
- * every other order of the same price), and the reconciler can look the payment up at PortOne even when the browser
- * never reported back.
+ * 결제창을 열기 전에 서버가 한 주문에 대해 내준 결제 id다. 두 가지가 이것에 의존한다.
+ * pay()는 그 주문에 등록된 결제 id만 받아들이고(그렇지 않으면 결제된 한 건을 같은 가격의 다른 모든 주문에
+ * 내밀 수 있다), 조정 작업은 브라우저가 아무 보고도 하지 않았을 때도 PortOne에서 결제를 조회할 수 있다.
  */
 @Entity
 @Table(

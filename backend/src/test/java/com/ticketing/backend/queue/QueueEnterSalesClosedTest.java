@@ -19,8 +19,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Nobody joins the line for a show whose booking is over, and nothing is left in Redis for them. Against the compose Redis
- * and MySQL; run inside the compose network with DB_HOST=mysql REDIS_HOST=redis.
+ * 예매가 끝난 공연의 줄에는 아무도 서지 않고, Redis에는 그들 몫으로 아무것도 남지 않는다. compose Redis와 MySQL에서 실행하고,
+ * compose 네트워크 안에서 DB_HOST=mysql REDIS_HOST=redis로 실행한다.
  */
 @SpringBootTest(properties = {"queue.admission-interval-ms=3600000"})
 @Transactional

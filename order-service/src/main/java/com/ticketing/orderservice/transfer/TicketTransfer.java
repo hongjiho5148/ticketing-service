@@ -17,9 +17,8 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 /**
- * One request to hand a paid order's ticket to another user. The ticket itself may not exist yet
- * (QR codes are issued only 2 hours before the show), so a transfer is about the order; accepting
- * it flips Orders.ownerId and everything ticket-related follows the holder from there.
+ * 결제된 주문의 티켓을 다른 사용자에게 넘기는 요청 하나다. 티켓 자체는 아직 없을 수 있어서(QR은 공연 2시간 전에야
+ * 발급된다) 양도는 주문에 대한 것이다. 수락하면 Orders.ownerId가 바뀌고, 티켓과 관련된 모든 것이 그때부터 소지자를 따른다.
  */
 @Entity
 @Table(
@@ -46,7 +45,7 @@ public class TicketTransfer {
     @Column(name = "to_user_id", nullable = false)
     private Long toUserId;
 
-    // Denormalized so the transfer list needs no per-row lookup against auth-service.
+    // 양도 목록이 행마다 auth-service를 조회하지 않아도 되도록 값을 복사해 둔다.
     @Column(name = "from_name", nullable = false, length = 100)
     private String fromName;
 
@@ -57,8 +56,8 @@ public class TicketTransfer {
     @Column(nullable = false, length = 20)
     private TransferStatus status;
 
-    // Equals orderId while PENDING and null afterwards. The unique constraint on it is what
-    // guarantees at most one open transfer per order even if two requests race past the app-level check.
+    // PENDING인 동안은 orderId와 같고 그 뒤에는 null이다. 이 값의 유니크 제약이 있어서, 두 요청이 앱 수준 검사를
+    // 함께 통과해도 주문당 열린 양도는 최대 하나로 보장된다.
     @Column(name = "pending_order_id")
     private Long pendingOrderId;
 

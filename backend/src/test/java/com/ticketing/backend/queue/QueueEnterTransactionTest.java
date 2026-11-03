@@ -16,10 +16,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
- * Joining the queue must not hold a database connection while it waits on event-service. The test class is deliberately not
- * @Transactional (a test-wide transaction would be active everywhere and prove nothing), so it can see whether
- * QueueService.enter itself opened one around the remote call, and that the history row still ends up committed. Against
- * the compose Redis and MySQL; run inside the compose network with DB_HOST=mysql REDIS_HOST=redis.
+ * 대기열에 들어갈 때 event-service를 기다리는 동안 데이터베이스 커넥션을 붙잡고 있으면 안 된다. 이 테스트 클래스는 일부러
+ * @Transactional로 하지 않았다(테스트 전체 트랜잭션은 어디서든 활성이라 아무것도 증명하지 못한다). 그래서
+ * QueueService.enter 자체가 원격 호출을 감싸는 트랜잭션을 열었는지, 그리고 이력 행이 여전히 커밋되는지 볼 수 있다.
+ * compose Redis와 MySQL에서 실행하고, compose 네트워크 안에서 DB_HOST=mysql REDIS_HOST=redis로 실행한다.
  */
 @SpringBootTest(properties = {"queue.admission-interval-ms=3600000"})
 class QueueEnterTransactionTest {

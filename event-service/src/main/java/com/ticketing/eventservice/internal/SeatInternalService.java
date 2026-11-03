@@ -52,11 +52,11 @@ public class SeatInternalService {
     }
 
     /**
-     * Per-seat Redis lock first, and the transaction INSIDE it: the DB connection is only borrowed for the status
-     * check + update (not while waiting for the lock), and the commit happens before the lock is released, so the
-     * next request for the same seat can only enter once this hold is visible. (The old shape - a method-wide
-     * @Transactional with the lock inside - held a connection while waiting up to 500ms for the lock and released
-     * the lock a moment before the commit.) The @Version check on Seat stays as the last line of defense.
+     * 좌석별 Redis 잠금을 먼저 잡고, 트랜잭션은 그 안에 둔다. DB 커넥션은 상태 확인과 갱신 동안에만 빌리고(잠금을
+     * 기다리는 동안은 빌리지 않는다) 커밋은 잠금을 풀기 전에 일어나므로, 같은 좌석에 대한 다음 요청은 이 홀드가
+     * 보이게 된 뒤에야 들어올 수 있다. (예전 구조는 메서드 전체를 @Transactional로 감싸고 그 안에서 잠금을 잡아서,
+     * 잠금을 최대 500ms 기다리는 동안 커넥션을 붙잡고 커밋보다 잠금을 조금 먼저 풀었다.) Seat의 @Version 검사는
+     * 마지막 방어선으로 남는다.
      */
     public SeatDetailResponse hold(Long seatId, LocalDateTime holdExpireAt) {
         try {
@@ -71,7 +71,7 @@ public class SeatInternalService {
             meterRegistry.counter("seat_hold_total", "result", "ok").increment();
             return held;
         } catch (ApiException e) {
-            // a conflict (taken, or the seat lock was busy) is the normal outcome of a seat many people want
+            // 충돌(이미 잡혔거나 좌석 잠금이 사용 중)은 많은 사람이 원하는 좌석에서 나오는 정상적인 결과다
             String result = e.getErrorCode() == ErrorCode.SEAT_ALREADY_RESERVED ? "conflict" : "error";
             meterRegistry.counter("seat_hold_total", "result", result).increment();
             throw e;
@@ -79,21 +79,20 @@ public class SeatInternalService {
     }
 
     /**
-     * Gives a seat back. With {@code expectedHoldExpireAt} it only does so while the seat is still held by that exact
-     * hold; otherwise it is a no-op. That matters because the release is requested asynchronously by several parties
-     * (the user's cancel, a failed payment, and two independent expiry sweepers): a late request for a hold that is
-     * already gone must not free the hold of whoever took the seat since. Without it (null) the release is
-     * unconditional, as before.
+     * 좌석을 돌려준다. {@code expectedHoldExpireAt}이 있으면 좌석이 바로 그 홀드에 아직 잡혀 있는 동안만 풀고,
+     * 아니면 아무것도 하지 않는다. 해제를 여러 주체가 비동기로 요청하기 때문이다(사용자의 취소, 실패한 결제, 서로
+     * 독립적인 두 만료 스위퍼). 이미 없어진 홀드에 대한 늦은 요청이 그 사이 좌석을 잡은 사람의 홀드를 풀어서는 안 된다.
+     * 이 값이 없으면(null) 예전처럼 조건 없이 푼다.
      */
     public void release(Long seatId, LocalDateTime expectedHoldExpireAt) {
         try {
             transactionTemplate.executeWithoutResult(status -> {
                 Seat seat = seatRepository.findById(seatId).orElseThrow(() -> new ApiException(ErrorCode.SEAT_NOT_FOUND));
                 if (expectedHoldExpireAt != null && !seat.isHeldWith(expectedHoldExpireAt)) {
-                    return; // that hold is already gone (expired, released, or sold) - nothing of ours to give back
+                    return; // 그 홀드는 이미 없다(만료됐거나 풀렸거나 팔렸다). 우리가 돌려줄 것이 없다
                 }
-                // Both reservation-service and SeatHoldExpirySweeper release expired holds, so the second call
-                // lands on an already-AVAILABLE seat - that must not count as a freshly freed seat for the waitlist.
+                // reservation-service와 SeatHoldExpirySweeper가 모두 만료된 홀드를 풀기 때문에 두 번째 호출은 이미
+                // AVAILABLE인 좌석에 닿는다. 그것을 대기자 입장에서 새로 풀린 좌석으로 세면 안 된다.
                 boolean wasUnavailable = seat.getStatus() != SeatStatus.AVAILABLE;
                 seat.release();
                 if (wasUnavailable) {
@@ -101,8 +100,8 @@ public class SeatInternalService {
                 }
             });
         } catch (ObjectOptimisticLockingFailureException e) {
-            // Someone else changed the seat between our read and commit (e.g. the other sweeper freed it first).
-            // Either way the hold we meant to release is no longer ours to release.
+            // 읽은 뒤 커밋하기 전에 다른 쪽이 좌석을 바꿨다(예: 다른 스위퍼가 먼저 풀었다).
+            // 어느 쪽이든 우리가 풀려던 홀드는 더는 우리가 풀 수 있는 것이 아니다.
         }
     }
 
@@ -111,11 +110,11 @@ public class SeatInternalService {
     }
 
     /**
-     * Sells the seat for a payment. With {@code expectedHoldExpireAt} it only does so while the seat is still held by
-     * that exact hold - if the hold ran out while the buyer was paying, the seat may already be free or held by
-     * someone else, and selling it anyway would hand the same seat to two people. In that case this throws
-     * SEAT_HOLD_LOST and the caller must refund. Selling an already-sold seat out of the same hold is a no-op, so a
-     * payment that is retried after a partial failure still goes through. Takes the same per-seat lock as hold().
+     * 결제를 위해 좌석을 판매 처리한다. {@code expectedHoldExpireAt}이 있으면 좌석이 바로 그 홀드에 아직 잡혀 있는
+     * 동안만 판다. 구매자가 결제하는 동안 홀드가 끝났다면 좌석은 이미 풀렸거나 다른 사람이 잡았을 수 있고, 그래도 팔면
+     * 같은 좌석이 두 사람에게 간다. 그 경우 SEAT_HOLD_LOST를 던지고 호출한 쪽이 환불해야 한다. 같은 홀드로 이미 팔린
+     * 좌석을 다시 판매 처리하는 것은 아무 일도 하지 않으므로, 일부가 실패한 뒤 다시 시도한 결제도 통과한다.
+     * hold()와 같은 좌석별 잠금을 쓴다.
      */
     public void sell(Long seatId, LocalDateTime expectedHoldExpireAt) {
         if (expectedHoldExpireAt == null) {

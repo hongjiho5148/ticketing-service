@@ -50,7 +50,7 @@ export function EventListPage() {
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Debounce the search box so we don't fire a request on every keystroke.
+  // 검색창을 디바운스해서 키를 누를 때마다 요청을 보내지 않는다.
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => setKeyword(keywordInput.trim()), 300);

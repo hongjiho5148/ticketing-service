@@ -34,7 +34,7 @@ public class Payment {
     @Column(nullable = false, length = 20)
     private String method;
 
-    /** PortOne payment identifier used to look the payment up for server-side verification. */
+    /** 서버 쪽 검증을 위해 결제를 조회할 때 쓰는 PortOne 결제 식별자. */
     @Column(length = 100)
     private String portonePaymentId;
 
@@ -47,8 +47,8 @@ public class Payment {
 
     private LocalDateTime paidAt;
 
-    // Won given back to the customer; less than amount when a late cancellation only gets a partial
-    // refund. The column default keeps ddl-auto's ALTER TABLE valid for payments that already exist.
+    // 고객에게 돌려준 원화 금액이다. 늦은 취소로 일부만 환불되면 amount보다 작다. 컬럼 기본값 덕분에
+    // 이미 있는 결제 테이블에도 ddl-auto의 ALTER TABLE이 유효하다.
     @Column(nullable = false, columnDefinition = "integer default 0")
     private Integer refundedAmount = 0;
 

@@ -15,20 +15,20 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
     boolean existsByCode(String code);
 
     /**
-     * Coupons this user could apply right now: inside their validity window, with uses left, and not
-     * already redeemed by this user. The same three rules findUsable enforces when a code is applied.
+     * 이 사용자가 지금 적용할 수 있는 쿠폰이다. 유효 기간 안이고, 남은 횟수가 있고, 이 사용자가
+     * 아직 쓰지 않은 쿠폰이다. 코드를 적용할 때 findUsable이 적용하는 세 규칙과 같다.
      */
     @Query("select c from Coupon c where c.validFrom <= :now and c.validTo >= :now and c.usedCount < c.maxUses "
             + "and not exists (select 1 from CouponRedemption r where r.couponId = c.id and r.userId = :userId) "
             + "order by c.validTo asc, c.id asc")
     List<Coupon> findAvailableFor(@Param("userId") Long userId, @Param("now") LocalDateTime now);
 
-    /** Gives one use back atomically, never below zero. Only called after the redemption row it belongs to was deleted. */
+    /** 한 번의 사용을 원자적으로 돌려주되 0 아래로 내려가지 않는다. 대응하는 사용 기록 행을 지운 뒤에만 호출한다. */
     @Modifying
     @Query("UPDATE Coupon c SET c.usedCount = c.usedCount - 1 WHERE c.id = :id AND c.usedCount > 0")
     int markUnused(@Param("id") Long id);
 
-    /** Takes one use atomically; 0 rows updated means the coupon was already fully used. */
+    /** 한 번의 사용을 원자적으로 가져간다. 갱신된 행이 0이면 쿠폰이 이미 모두 사용됐다는 뜻이다. */
     @Modifying
     @Query("UPDATE Coupon c SET c.usedCount = c.usedCount + 1 WHERE c.id = :id AND c.usedCount < c.maxUses")
     int markUsed(@Param("id") Long id);

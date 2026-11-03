@@ -1,4 +1,4 @@
-/* ---------- Layout ---------- */
+/* ---------- 레이아웃 ---------- */
 
 .detail-layout {
   display: grid;
@@ -13,7 +13,7 @@
   }
 }
 
-/* ---------- Venue map ---------- */
+/* ---------- 공연장 지도 ---------- */
 
 .venue-map {
   padding: clamp(18px, 3vw, 32px);
@@ -22,7 +22,7 @@
   background: var(--card);
 }
 
-/* The stage: a flat black arc, like the one printed at the top of a paper seating chart */
+/* 무대: 종이 좌석표 맨 위에 인쇄된 것 같은 납작한 검은 호 */
 .venue-stage {
   margin: 0 auto 28px;
   max-width: 460px;
@@ -128,7 +128,7 @@
   cursor: not-allowed;
 }
 
-/* ---------- Seat grid ---------- */
+/* ---------- 좌석 격자 ---------- */
 
 .seat-grid-panel {
   margin-top: 28px;
@@ -289,7 +289,7 @@
   border-color: var(--line);
 }
 
-/* ---------- Booking panel (the ticket you are filling in) ---------- */
+/* ---------- 예매 패널 (지금 채워 넣는 티켓) ---------- */
 
 .booking-panel {
   position: sticky;
@@ -405,7 +405,7 @@
   padding-inline: 14px;
 }
 
-/* Chips sit side by side; they must not inherit the full-width rule meant for the panel's main buttons */
+/* 칩은 나란히 놓이므로, 패널의 주요 버튼을 위한 전체 폭 규칙을 물려받으면 안 된다 */
 .reservation-panel .coupon-chip {
   width: auto;
 }
@@ -489,7 +489,7 @@
   color: #8f1d17;
 }
 
-/* ---------- Queue waiting room ---------- */
+/* ---------- 대기실 ---------- */
 
 .queue-room {
   display: flex;

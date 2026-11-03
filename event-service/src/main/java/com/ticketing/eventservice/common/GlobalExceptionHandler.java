@@ -17,7 +17,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(e.getErrorCode().getStatus()).body(ErrorResponse.of(e.getErrorCode()));
     }
 
-    /** Same seat-contention races as backend used to handle before the split - see SeatLockService. */
+    /** 분리 전에 backend가 처리하던 것과 같은 좌석 경합이다. SeatLockService 참고. */
     @ExceptionHandler({
         ObjectOptimisticLockingFailureException.class,
         DataIntegrityViolationException.class,

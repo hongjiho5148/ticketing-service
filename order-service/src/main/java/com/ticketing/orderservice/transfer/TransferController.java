@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-// Under /api/orders so the gateway's existing order-service route already covers it.
+// /api/orders 아래에 두어서 게이트웨이의 기존 order-service 라우트가 그대로 적용된다.
 @RestController
 @RequestMapping("/api/orders")
 public class TransferController {

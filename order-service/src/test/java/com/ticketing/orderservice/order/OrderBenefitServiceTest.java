@@ -24,12 +24,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Runs against the docker-compose MySQL and rolls everything back, so the atomic UPDATE queries
- * (coupon use limit, point balance) are exercised for real rather than mocked. The sweepers' crons
- * are switched off so a scheduled tick can't touch the dev data mid-test.
+ * docker-compose의 MySQL에서 실행하고 모든 것을 롤백한다. 그래서 원자적 UPDATE 쿼리(쿠폰 사용 한도,
+ * 포인트 잔액)를 mock 없이 실제로 실행해 본다. 스위퍼의 크론은 꺼 두어서 예약된 주기가 테스트 도중
+ * 개발 데이터를 건드리지 못하게 한다.
  *
- * The DB is reached as host "mysql", so run it inside the compose network - a host-installed MySQL
- * on :3306 can shadow the container's published port and the tests would hit that instead:
+ * DB는 호스트 이름 "mysql"로 접근하므로 compose 네트워크 안에서 실행해야 한다. 호스트에 설치된 MySQL이
+ * :3306을 가로채면 컨테이너가 열어 둔 포트 대신 그쪽으로 붙어 버린다.
  * <pre>
  * docker run --rm --network ticketing-service_default -e DB_HOST=mysql \
  *   -v "$PWD/order-service:/workspace" -w /workspace eclipse-temurin:17-jdk \
@@ -97,7 +97,7 @@ class OrderBenefitServiceTest {
         assertThat(order.getTotalPrice()).isEqualTo(85_000);
         assertThat(order.originalPrice()).isEqualTo(100_000);
 
-        // Setting points again replaces rather than stacks.
+        // 포인트를 다시 설정하면 쌓이는 것이 아니라 교체된다.
         benefits.applyPoints(order, 1_000);
         assertThat(order.getTotalPrice()).isEqualTo(89_000);
 
@@ -133,11 +133,11 @@ class OrderBenefitServiceTest {
         Orders order = order(100_000);
         Coupon coupon = coupon(DiscountType.FLAT, 5_000, 5);
         benefits.applyCoupon(order, coupon.getCode());
-        benefits.applyPoints(order, 4_000); // charged: 100,000 - 5,000 - 4,000 = 91,000
+        benefits.applyPoints(order, 4_000); // 청구액: 100,000 - 5,000 - 4,000 = 91,000
 
         benefits.redeem(order);
 
-        // 10,000 - 4,000 spent + 1% of 91,000 (= 910) earned
+        // 10,000 - 사용 4,000 + 91,000의 1%(= 910) 적립
         assertThat(balance()).isEqualTo(6_910);
         em.refresh(couponRepository.findById(coupon.getId()).orElseThrow());
         assertThat(couponRepository.findById(coupon.getId()).orElseThrow().getUsedCount()).isEqualTo(1);
@@ -163,7 +163,7 @@ class OrderBenefitServiceTest {
         assertThat(usedCount(coupon)).isZero();
         assertThat(redemptionRepository.existsByCouponIdAndUserId(coupon.getId(), userId)).isFalse();
         Orders again = order(100_000);
-        benefits.applyCoupon(again, coupon.getCode()); // would throw COUPON_ALREADY_USED if it hadn't come back
+        benefits.applyCoupon(again, coupon.getCode()); // 돌아오지 않았다면 COUPON_ALREADY_USED를 던졌을 것이다
         assertThat(again.getDiscountAmount()).isEqualTo(5_000);
     }
 
@@ -197,7 +197,7 @@ class OrderBenefitServiceTest {
         assertThat(usedCount(coupon)).isEqualTo(2);
 
         benefits.reverse(mine, 100);
-        benefits.reverse(mine, 100); // a repeated reversal finds no redemption row left and gives nothing back
+        benefits.reverse(mine, 100); // 반복된 되돌림은 남은 사용 기록 행이 없어서 아무것도 돌려주지 않는다
 
         assertThat(usedCount(coupon)).isEqualTo(1);
         assertThat(redemptionRepository.existsByCouponIdAndUserId(coupon.getId(), userId + 1)).isTrue();
@@ -206,9 +206,9 @@ class OrderBenefitServiceTest {
     @Test
     void reversingAnOrderWithoutACouponLeavesCouponsAlone() {
         Orders order = order(100_000);
-        benefits.redeem(order); // no coupon, no points
+        benefits.redeem(order); // 쿠폰 없음, 포인트 없음
 
-        benefits.reverse(order, 100); // must not fail on the missing coupon
+        benefits.reverse(order, 100); // 없는 쿠폰 때문에 실패하면 안 된다
     }
 
     @Test
@@ -231,7 +231,7 @@ class OrderBenefitServiceTest {
         benefits.applyCoupon(order, coupon.getCode());
         benefits.applyPoints(order, 4_000);
 
-        // Two other people take both remaining uses between "apply" and "paid".
+        // "적용"과 "결제" 사이에 다른 두 사람이 남은 두 번의 사용을 모두 가져간다.
         couponRepository.markUsed(coupon.getId());
         couponRepository.markUsed(coupon.getId());
 
@@ -244,7 +244,7 @@ class OrderBenefitServiceTest {
     void reverseRestoresSpentPointsAndTakesBackTheReward() {
         giveBalance(10_000);
         Orders order = order(100_000);
-        benefits.applyPoints(order, 4_000); // charged 96,000 -> reward 960
+        benefits.applyPoints(order, 4_000); // 청구 96,000 -> 적립 960
         benefits.redeem(order);
         assertThat(balance()).isEqualTo(10_000 - 4_000 + 960);
 
@@ -257,22 +257,22 @@ class OrderBenefitServiceTest {
     void aPartialRefundOnlyGivesBackThatShareOfThePointsSpent() {
         giveBalance(10_000);
         Orders order = order(100_000);
-        benefits.applyPoints(order, 5_000); // charged 95,000 -> reward 950
+        benefits.applyPoints(order, 5_000); // 청구 95,000 -> 적립 950
         benefits.redeem(order);
         assertThat(balance()).isEqualTo(10_000 - 5_000 + 950);
 
-        benefits.reverse(order, 70); // 70% of 5,000 = 3,500 back, reward fully taken back
+        benefits.reverse(order, 70); // 5,000의 70% = 3,500 환불, 적립은 전부 회수
 
         assertThat(balance()).isEqualTo(10_000 - 5_000 + 3_500);
     }
 
     @Test
     void rewardClawbackNeverGoesBelowZero() {
-        Orders order = order(100_000); // no points used, reward 1,000
+        Orders order = order(100_000); // 포인트 사용 없음, 적립 1,000
         benefits.redeem(order);
         assertThat(balance()).isEqualTo(1_000);
 
-        // The reward was already spent elsewhere.
+        // 적립은 이미 다른 곳에 썼다.
         accountRepository.deduct(userId, 900);
         em.clear();
         benefits.reverse(order, 100);

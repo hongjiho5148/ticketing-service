@@ -9,12 +9,12 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Records an event to be published. Writing the row is only worth anything when it commits or rolls back together with
- * the change it describes - that is the whole point of an outbox - so a transaction must already be open
- * (MANDATORY): calling this on its own would silently recreate the "saved but maybe never published" problem.
+ * 발행할 이벤트를 기록한다. 행을 쓰는 것은 그 이벤트가 설명하는 변경과 함께 커밋되거나 롤백될 때만 의미가 있다.
+ * 그것이 아웃박스의 핵심이다. 그래서 트랜잭션이 이미 열려 있어야 하고(MANDATORY), 이것을 단독으로 호출하면
+ * "저장은 됐지만 발행은 안 될 수 있다"는 문제를 조용히 되살리게 된다.
  *
- * <p>Once that transaction has committed, the relay is nudged so the event leaves right away rather than at the next
- * poll. Nothing depends on the nudge: if it is missed the scheduled poll sends the row anyway.
+ * <p>그 트랜잭션이 커밋되면 릴레이를 깨워서 이벤트가 다음 폴링을 기다리지 않고 바로 나가게 한다. 이 깨우기에
+ * 의존하는 것은 없다. 놓쳐도 예약된 폴링이 어차피 그 행을 보낸다.
  */
 @Component
 public class OutboxRecorder {

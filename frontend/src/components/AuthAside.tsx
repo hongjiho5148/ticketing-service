@@ -1,4 +1,4 @@
-// The poster half of the sign-in / sign-up screens. Purely decorative - everything it says is true of the product.
+// 로그인/가입 화면의 포스터 쪽 절반이다. 순전히 장식이다. 여기 적힌 말은 모두 서비스에 대해 사실이다.
 export function AuthAside() {
   return (
     <aside className="auth-aside poster-theme-1" aria-hidden="true">

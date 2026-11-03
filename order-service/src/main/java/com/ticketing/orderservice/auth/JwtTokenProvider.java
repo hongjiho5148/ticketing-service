@@ -8,7 +8,7 @@ import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-/** Verification only - order-service never mints tokens, only checks ones auth-service issued. */
+/** 검증 전용이다. order-service는 토큰을 발급하지 않고 auth-service가 발급한 토큰만 확인한다. */
 @Component
 public class JwtTokenProvider {
 

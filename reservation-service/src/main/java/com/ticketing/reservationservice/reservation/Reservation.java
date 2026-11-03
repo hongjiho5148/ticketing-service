@@ -16,8 +16,8 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
-// Without these the table has only its primary key, so the per-user seat-limit count in reserve() and the expiry sweeper
-// scan every reservation ever made (cancelled and expired rows are never deleted) - a cost that grows with history.
+// 이 인덱스가 없으면 테이블에는 기본 키뿐이라서 reserve()의 사용자별 좌석 수 제한 count와 만료 스위퍼가 지금까지 만들어진
+// 모든 예약을 훑는다(취소·만료된 행은 지우지 않는다). 이력이 쌓일수록 비용이 커진다.
 @Table(
         name = "reservation",
         indexes = {
@@ -35,18 +35,16 @@ public class Reservation {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    // Not unique: event-service's hold() already serializes access to a seat with its own
-    // per-seat Redis lock and AVAILABLE-status check before this row is ever written, so it's the
-    // real concurrency guard. A DB-level unique constraint here would additionally mean "this seat
-    // can only ever be booked once in its lifetime" - the same seat_id would collide against a
-    // prior row forever, even a long-CANCELLED/EXPIRED one, permanently blocking every future
-    // reservation for that seat once someone's very first hold on it is cancelled or expires.
+    // 유니크가 아니다. 이 행이 쓰이기 전에 event-service의 hold()가 이미 좌석별 Redis 잠금과 AVAILABLE 상태 검사로
+    // 좌석 접근을 직렬화하므로 그것이 실제 동시성 방어선이다. 여기에 DB 수준의 유니크 제약을 걸면 "이 좌석은
+    // 평생 한 번만 예약할 수 있다"는 뜻이 추가된다. 같은 seat_id가 이전 행(오래전에 취소/만료된 것까지)과
+    // 영원히 충돌해서, 그 좌석에 대한 누군가의 첫 홀드가 취소되거나 만료되는 순간부터 그 좌석의 모든 이후
+    // 예약이 영구히 막힌다.
     @Column(name = "seat_id", nullable = false)
     private Long seatId;
 
-    // Denormalized from the seat so the per-user purchase limit can be counted without asking
-    // event-service. The column default keeps ddl-auto valid for rows from before this existed
-    // (0 = unknown, never matches a real event, so those old rows simply don't count).
+    // 좌석에서 복사해 둔 값이라 사용자별 구매 한도를 event-service에 묻지 않고 셀 수 있다. 컬럼 기본값은 이 컬럼이
+    // 생기기 전의 행에도 ddl-auto가 유효하게 한다(0 = 알 수 없음이며 실제 공연과 일치하지 않으므로 그런 옛 행은 세지 않는다).
     @Column(name = "event_id", nullable = false, columnDefinition = "bigint not null default 0")
     private Long eventId;
 

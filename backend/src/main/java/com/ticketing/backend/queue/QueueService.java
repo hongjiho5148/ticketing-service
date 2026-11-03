@@ -25,14 +25,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Redis holds the live queue state (who's waiting, who's been let through); WaitingQueue rows are
- * just a history/stats trail. QueueAdmissionSweeper is the other half of this - it moves people
- * from "waiting" to "active" on a timer.
+ * Redis는 실시간 대기열 상태(누가 기다리고, 누가 통과했는지)를 담고, WaitingQueue 행은 이력/통계 기록일 뿐이다.
+ * QueueAdmissionSweeper가 이것의 나머지 절반이다. 타이머로 사람들을 "대기"에서 "활성"으로 옮긴다.
  */
 @Service
 public class QueueService {
 
-    /** People read per round trip in statusOfMany (two commands each). */
+    /** statusOfMany에서 왕복 한 번에 읽는 사람 수다(사람마다 명령 두 개). */
     private static final int STATUS_BATCH = 500;
 
     private final RedissonClient redissonClient;
@@ -73,15 +72,15 @@ public class QueueService {
     }
 
     /**
-     * Deliberately not @Transactional: the event check is a call to another service and the queue state is in Redis, so a
-     * transaction around the method held a database connection for the whole of that call. When a few thousand people join
-     * at once that kept every connection in the pool busy waiting on event-service while MySQL itself sat idle. Only the
-     * history row needs the database, and saving it opens its own short transaction.
+     * 일부러 @Transactional로 하지 않았다. 공연 확인은 다른 서비스 호출이고 대기열 상태는 Redis에 있는데, 메서드를 감싼
+     * 트랜잭션이 그 호출 내내 데이터베이스 커넥션을 붙잡고 있었다. 몇천 명이 한꺼번에 들어오면 MySQL 자체는 놀고 있는데도
+     * 풀의 모든 커넥션이 event-service를 기다리느라 바빴다. 데이터베이스가 필요한 것은 이력 행뿐이고, 그것을 저장할 때는
+     * 자기 짧은 트랜잭션을 연다.
      */
     public QueueEnterResponse enter(Long userId, Long eventId) {
-        EventExistsResponse event = eventServiceClient.getEvent(eventId); // throws EVENT_NOT_FOUND (404) if it doesn't exist
+        EventExistsResponse event = eventServiceClient.getEvent(eventId); // 존재하지 않으면 EVENT_NOT_FOUND(404)를 던진다
         if (event != null && event.salesClosed()) {
-            throw new ApiException(ErrorCode.SALES_CLOSED); // nobody should wait in line for a show nobody can book any more
+            throw new ApiException(ErrorCode.SALES_CLOSED); // 더는 아무도 예매할 수 없는 공연을 위해 줄 서 있을 이유가 없다
         }
 
         String queueToken = UUID.randomUUID().toString();
@@ -94,7 +93,7 @@ public class QueueService {
 
         RBucket<Long> tokenEvent = redissonClient.getBucket(tokenEventKey(queueToken));
         tokenEvent.set(eventId, Duration.ofHours(1));
-        touch(eventId, List.of(queueToken)); // the person is here now; they have to keep showing it (see touch)
+        touch(eventId, List.of(queueToken)); // 이 사람은 지금 여기 있다. 계속 그것을 보여 줘야 한다(touch 참고)
 
         long rankNo = rankOf(waiting, queueToken);
 
@@ -109,9 +108,9 @@ public class QueueService {
     }
 
     /**
-     * What a browser without a stream asks every couple of seconds: the answer, and a note that this person is still
-     * there. Someone whose browser stops asking (and has no stream open either) is taken out of the line after
-     * queue.abandon-grace-ms, so the slot goes to someone who is still waiting.
+     * 스트림이 없는 브라우저가 몇 초마다 묻는 것이다. 답과, 이 사람이 아직 있다는 표시를 함께 남긴다. 브라우저가 더는
+     * 묻지 않고(스트림도 열려 있지 않은) 사람은 queue.abandon-grace-ms 뒤에 줄에서 빠지고, 그 슬롯은 여전히 기다리는
+     * 사람에게 간다.
      */
     public QueueStatusResponse poll(String queueToken) {
         Long eventId = eventOf(queueToken);
@@ -123,11 +122,11 @@ public class QueueService {
     }
 
     /**
-     * Where each of these people stands, read in a few round trips instead of three per person: every connection's state
-     * is re-read on a timer, and one at a time that took seconds for a few thousand connections. A token that is neither
-     * let in nor waiting any more is missing from the result.
+     * 이 사람들이 각각 어디에 서 있는지를, 사람마다 세 번이 아니라 몇 번의 왕복으로 읽는다. 모든 연결의 상태를
+     * 타이머로 다시 읽는데, 하나씩 읽으면 연결이 몇천 개일 때 몇 초가 걸렸다. 입장하지도 않았고 더는 기다리지도 않는
+     * 토큰은 결과에 없다.
      *
-     * @param eventByToken each person's queue token and the event it belongs to
+     * @param eventByToken 각 사람의 대기열 토큰과 그 토큰이 속한 공연
      */
     Map<String, QueueStatusResponse> statusOfMany(Map<String, Long> eventByToken) {
         Map<String, QueueStatusResponse> result = new HashMap<>();
@@ -157,19 +156,18 @@ public class QueueService {
     }
 
     /**
-     * Notes that these waiting people are still here, as of now. One entry per person in a sorted set whose score is the
-     * time, so the sweep can pick out everyone not heard from since a given moment with one range query. Entries are
-     * removed when the person is let in or taken out of the line.
+     * 기다리는 이 사람들이 지금 시점에도 여기 있다고 표시한다. 점수가 시각인 정렬 집합에서 사람마다 항목 하나이므로, 스윕이
+     * 특정 시점 이후로 소식이 없는 모든 사람을 범위 쿼리 한 번으로 골라낼 수 있다. 항목은 사람이 입장하거나 줄에서
+     * 빠질 때 지운다.
      */
     void touch(Long eventId, Collection<String> queueTokens) {
         touch(eventId, queueTokens, 0);
     }
 
     /**
-     * @param creditMs time added to the note, so the person counts as present that much longer. Someone who is only
-     *     asking for their status (no stream) is credited a couple of minutes because a browser slows the timers of a
-     *     background tab and may not ask again for the better part of a minute; an open connection needs no credit,
-     *     it is refreshed every few seconds and noticed at once when it dies.
+     * @param creditMs 표시에 더하는 시간이다. 그만큼 더 오래 있는 것으로 센다. 상태만 묻는 사람(스트림이 없음)에게는
+     *     몇 분을 얹어 준다. 브라우저가 백그라운드 탭의 타이머를 늦춰서 1분 가까이 다시 묻지 않을 수 있기 때문이다.
+     *     열린 연결에는 얹어 줄 필요가 없다. 몇 초마다 갱신되고 죽으면 바로 알아챈다.
      */
     void touch(Long eventId, Collection<String> queueTokens, long creditMs) {
         if (queueTokens.isEmpty()) {
@@ -198,7 +196,7 @@ public class QueueService {
         return QueueStatusResponse.waiting(rankNo, estimateWaitSeconds(rankNo));
     }
 
-    /** The event a queue token belongs to. */
+    /** 대기열 토큰이 속한 공연. */
     Long eventOf(String queueToken) {
         Long eventId = redissonClient.<Long>getBucket(tokenEventKey(queueToken)).get();
         if (eventId == null) {
@@ -216,19 +214,17 @@ public class QueueService {
     }
 
     /**
-     * Hands back the active slot(s) a buyer is holding for an event, once they have paid: the slot would otherwise stay
-     * taken until the pass token expired (ten minutes by default) although the person is finished. Looked up by user
-     * and event because the live queue is keyed by queue token, which the payment side doesn't know. Safe to call
-     * repeatedly - a slot that is already gone is simply not there to remove.
+     * 구매자가 결제를 마쳤을 때 그 사람이 공연에서 쥐고 있는 활성 슬롯을 돌려준다. 그렇지 않으면 사람은 이미 끝났는데도
+     * 입장권 토큰이 만료될 때까지(기본 10분) 슬롯이 그대로 차 있다. 실시간 대기열이 대기열 토큰을 키로 하는데 결제 쪽은 그것을
+     * 모르므로 사용자와 공연으로 찾는다. 반복 호출해도 안전하다. 이미 없어진 슬롯은 지울 것이 없을 뿐이다.
      *
-     * <p>Deliberately does not filter on the history row's status: only tokens in the active set are touched anyway, so
-     * looking at every entry of the user is safe, and rows admitted before QueueAdmissionSweeper started saving PASSED
-     * are still WAITING.
+     * <p>이력 행의 상태로는 일부러 거르지 않는다. 어차피 활성 집합에 있는 토큰만 건드리므로 사용자의 모든 항목을 보는 것이
+     * 안전하고, QueueAdmissionSweeper가 PASSED를 저장하기 시작하기 전에 입장한 행은 여전히 WAITING이다.
      *
-     * <p>The trade-off: the pass token stops working, so someone who wants more seats after paying joins the queue
-     * again. Turn it off with queue.release-slot-on-purchase=false.
+     * <p>트레이드오프: 입장권 토큰이 더는 동작하지 않으므로, 결제한 뒤에 좌석을 더 사려는 사람은 대기열에 다시 선다.
+     * queue.release-slot-on-purchase=false로 끌 수 있다.
      *
-     * @return how many slots were handed back
+     * @return 돌려준 슬롯 수
      */
     @Transactional(readOnly = true)
     public int releaseSlotsOfBuyer(Long userId, Long eventId) {
@@ -247,13 +243,12 @@ public class QueueService {
     }
 
     /**
-     * Lengthens the pass of someone who has just taken a seat, to at least pass-extension-ms from now. Passes are kept
-     * short so that a person who was let in and did nothing gives the slot back soon; this is what keeps a person who is
-     * actually buying from losing theirs in the middle (to pick another seat or to finish paying, if they go on to need
-     * it). Only a pass that is still valid is touched, and it is never shortened: a pass that has run out stays out.
-     * Safe to call repeatedly (a second seat, a redelivered event).
+     * 방금 좌석을 잡은 사람의 입장권을 지금부터 최소 pass-extension-ms만큼 연장한다. 입장권은 짧게 유지해서, 입장하고
+     * 아무것도 하지 않은 사람이 슬롯을 곧 돌려주게 한다. 이것은 실제로 구매 중인 사람이 중간에 입장권을 잃지 않게 하는
+     * 장치다(다른 좌석을 고르거나, 계속해서 결제해야 하면 결제를 마칠 때). 아직 유효한 입장권만 건드리고 절대 줄이지
+     * 않는다. 이미 끝난 입장권은 끝난 채로 둔다. 반복 호출해도 안전하다(두 번째 좌석, 다시 전달된 이벤트).
      *
-     * @return how many passes were lengthened
+     * @return 연장한 입장권 수
      */
     @Transactional(readOnly = true)
     public int extendPassesOfHolder(Long userId, Long eventId) {
@@ -275,7 +270,7 @@ public class QueueService {
         return extended;
     }
 
-    /** Whole seconds from now until a pass that runs out at this clock time (milliseconds), never below zero. */
+    /** 지금부터 이 시각(밀리초)에 끝나는 입장권까지 남은 초를 정수로 돌려준다. 0 아래로 내려가지 않는다. */
     static long secondsUntil(double expiresAtMs) {
         return Math.max(0, (long) Math.ceil((expiresAtMs - System.currentTimeMillis()) / 1000.0));
     }
@@ -298,7 +293,7 @@ public class QueueService {
         return "queue:active:" + eventId;
     }
 
-    /** When each waiting person was last known to be there (see touch). */
+    /** 기다리는 사람마다 마지막으로 있었다고 알려진 시각이다(touch 참고). */
     static String seenKey(Long eventId) {
         return "queue:seen:" + eventId;
     }

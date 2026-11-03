@@ -35,10 +35,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The outbox relay against the compose MySQL, with Kafka mocked (rolled back, so the relay's "mark as sent" updates and
- * everything it reads stay inside the test's transaction). Each test records its events on a topic of its own and only
- * looks at that topic, so rows that happen to be in the table don't matter. Run inside the compose network with
- * DB_HOST=mysql.
+ * Kafka를 mock으로 두고 compose MySQL에서 돌리는 아웃박스 릴레이 테스트다(롤백이므로 릴레이의 "전송 완료 표시"
+ * 업데이트와 읽는 모든 것이 테스트의 트랜잭션 안에 머문다). 테스트마다 자기 토픽에 이벤트를 기록하고 그 토픽만
+ * 보므로 테이블에 우연히 있는 행은 상관없다. compose 네트워크 안에서 DB_HOST=mysql로 실행한다.
  */
 @SpringBootTest(properties = {
     "reservation.hold-expire-sweep-cron=-",
@@ -118,7 +117,7 @@ class OutboxRelayTest {
 
         relay.relayOnce();
 
-        // a got through; b failed, so c must not overtake it
+        // a는 나갔고 b는 실패했으니 c가 앞지르면 안 된다
         verify(kafkaTemplate).send(eq(topic), eq("a"), anyString());
         verify(kafkaTemplate, never()).send(eq(topic), eq("c"), anyString());
         assertThat(mine()).extracting(OutboxEvent::getEventKey, e -> e.getSentAt() != null)
@@ -126,14 +125,14 @@ class OutboxRelayTest {
                         org.assertj.core.groups.Tuple.tuple("b", false),
                         org.assertj.core.groups.Tuple.tuple("c", false));
 
-        // the broker is back: the next poll resumes at b
+        // 브로커가 돌아왔다. 다음 폴링은 b에서 이어 간다
         brokerAccepts();
         relay.relayOnce();
 
         InOrder order = inOrder(kafkaTemplate);
         order.verify(kafkaTemplate).send(eq(topic), eq("b"), anyString());
         order.verify(kafkaTemplate).send(eq(topic), eq("c"), anyString());
-        verify(kafkaTemplate, never()).send(eq(topic), eq("a"), anyString()); // reset above; a was not resent
+        verify(kafkaTemplate, never()).send(eq(topic), eq("a"), anyString()); // 위에서 초기화했다. a는 다시 보내지지 않았다
         assertThat(mine()).allSatisfy(e -> assertThat(e.getSentAt()).isNotNull());
     }
 
@@ -187,9 +186,9 @@ class OutboxRelayTest {
         relay.purgeSent();
         em.clear();
 
-        assertThat(repository.existsById(oldSent)).isFalse(); // sent long ago
-        assertThat(repository.existsById(newSent)).isTrue(); // sent recently
-        assertThat(repository.existsById(oldUnsent)).isTrue(); // never sent - must never be dropped
+        assertThat(repository.existsById(oldSent)).isFalse(); // 오래전에 전송됨
+        assertThat(repository.existsById(newSent)).isTrue(); // 최근에 전송됨
+        assertThat(repository.existsById(oldUnsent)).isTrue(); // 전송된 적 없음: 절대 지워서는 안 된다
     }
 
     private static Long idOf(List<OutboxEvent> rows, String key) {

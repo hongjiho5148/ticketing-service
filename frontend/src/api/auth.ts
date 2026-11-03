@@ -5,14 +5,14 @@ export function signup(payload: { email: string; password: string; name: string 
   return apiClient.post<User>("/auth/signup", payload).then((res) => res.data);
 }
 
-// The captcha token travels as a header so the request body stays the same shape with or without captcha.
+// 캡차 토큰은 헤더로 보낸다. 그래야 캡차가 있든 없든 요청 본문의 모양이 같다.
 export function login(payload: { email: string; password: string }, captchaToken?: string) {
   return apiClient
     .post<LoginResponse>("/auth/login", payload, captchaToken ? { headers: { "X-Captcha-Token": captchaToken } } : undefined)
     .then((res) => res.data);
 }
 
-// Always succeeds from the caller's point of view - the server doesn't reveal whether the address is registered.
+// 호출한 쪽에서 보면 항상 성공한다. 서버는 그 주소가 가입되어 있는지 알려 주지 않는다.
 export function resendVerification(email: string) {
   return apiClient.post("/auth/resend-verification", { email }).then(() => undefined);
 }

@@ -25,10 +25,10 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.web.client.RestClientException;
 
 /**
- * Hand a paid ticket to another member: the holder names a recipient by email, the recipient
- * accepts or declines, and acceptance flips Orders.ownerId. Payment, refund and benefit bookkeeping
- * stay with the buyer, which is why a transferred or pending ticket can no longer be cancelled.
- * noRollbackFor keeps the "this window closed" bookkeeping when we then refuse the request.
+ * 결제된 티켓을 다른 회원에게 넘긴다. 소지자가 이메일로 받는 사람을 지정하고, 받는 사람이 수락하거나
+ * 거절하며, 수락하면 Orders.ownerId가 바뀐다. 결제, 환불, 혜택 기록은 구매자에게 남아 있으므로
+ * 양도됐거나 양도 대기 중인 티켓은 더는 취소할 수 없다. noRollbackFor는 요청을 거절할 때도
+ * "이 창이 닫혔다"는 기록을 남기게 한다.
  */
 @Service
 @Transactional(noRollbackFor = ApiException.class)
@@ -62,7 +62,7 @@ public class TransferService {
     }
 
     public TransferResponse create(Long userId, Long orderId, String email) {
-        // Same row lock cancelOrder takes: a cancel and a transfer on one order can't both get through.
+        // cancelOrder가 잡는 것과 같은 행 잠금이다. 한 주문에 대한 취소와 양도가 둘 다 통과할 수는 없다.
         Orders order = orderRepository.findByIdForUpdate(orderId).orElseThrow(() -> new ApiException(ErrorCode.ORDER_NOT_FOUND));
         if (!order.holderId().equals(userId)) {
             throw new ApiException(ErrorCode.FORBIDDEN);
@@ -132,7 +132,7 @@ public class TransferService {
                 .orElseThrow(() -> new ApiException(ErrorCode.ORDER_NOT_FOUND));
 
         if (isClosed(order, LocalDateTime.now())) {
-            // Settle it as expired (kept thanks to noRollbackFor) so it stops looking answerable.
+            // 만료로 정리해서(noRollbackFor 덕분에 남는다) 더는 응답할 수 있는 것처럼 보이지 않게 한다.
             transferRepository.closeIfPending(transferId, TransferStatus.EXPIRED, LocalDateTime.now());
             throw new ApiException(ErrorCode.TRANSFER_CLOSED);
         }
@@ -158,7 +158,7 @@ public class TransferService {
         }
     }
 
-    /** Loads a transfer the caller is a party to - as the recipient, or as the sender. Strangers just get "not found". */
+    /** 호출자가 당사자인 양도를 불러온다. 받는 사람이거나 보낸 사람인 경우이고, 남에게는 그냥 "없음"이다. */
     private TicketTransfer loadFor(Long transferId, Long userId, boolean asRecipient) {
         TicketTransfer transfer =
                 transferRepository.findById(transferId).orElseThrow(() -> new ApiException(ErrorCode.TRANSFER_NOT_FOUND));
@@ -197,7 +197,7 @@ public class TransferService {
         }
     }
 
-    // Only once the transfer is really committed - a rolled-back request must not have mailed anyone.
+    // 양도가 실제로 커밋된 뒤에만 보낸다. 롤백된 요청이 누구에게 메일을 보내서는 안 된다.
     private void sendAfterCommit(UserInternalResponse recipient, String fromName, SeatDetailResponse seat) {
         Runnable send = () ->
                 notifier.notifyRequested(recipient.email(), recipient.name(), fromName, seat.eventTitle(), seat.eventStartAt());
@@ -213,7 +213,7 @@ public class TransferService {
         }
     }
 
-    /** "gildong@example.com" -> "gi***@example.com": enough to recognise the recipient, not enough to harvest an address. */
+    /** "gildong@example.com" -> "gi***@example.com": 받는 사람을 알아보기에는 충분하고 주소를 긁어모으기에는 부족하다. */
     static String maskEmail(String email) {
         if (email == null) {
             return "";

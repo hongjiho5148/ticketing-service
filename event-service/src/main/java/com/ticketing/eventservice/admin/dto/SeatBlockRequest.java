@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-/** One visual block of seats: rows x seatsPerRow identical-grade/price seats under a single section name. */
+/** 좌석의 시각적 블록 하나다. 하나의 구역 이름 아래에 등급과 가격이 같은 좌석이 행 수 x 행당 좌석 수만큼 있다. */
 public record SeatBlockRequest(
         @NotBlank @Size(max = 50) String section,
         @NotBlank @Size(max = 20) String grade,

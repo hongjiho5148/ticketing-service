@@ -22,7 +22,7 @@ class RateLimiterTest {
         }
         RateLimiter.Decision refused = limiter.check("k", 5, 60);
         assertThat(refused.allowed()).isFalse();
-        assertThat(refused.retryAfterSeconds()).isEqualTo(1); // 60/min earns a token every second
+        assertThat(refused.retryAfterSeconds()).isEqualTo(1); // 분당 60이면 1초에 토큰 하나를 얻는다
     }
 
     @Test
@@ -55,7 +55,7 @@ class RateLimiterTest {
 
     @Test
     void retryAfterReflectsASlowRefillRate() {
-        limiter.check("k", 1, 5); // one token, earns one every 12 seconds
+        limiter.check("k", 1, 5); // 토큰 하나, 12초에 하나씩 얻는다
         RateLimiter.Decision refused = limiter.check("k", 1, 5);
         assertThat(refused.allowed()).isFalse();
         assertThat(refused.retryAfterSeconds()).isEqualTo(12);
@@ -76,9 +76,9 @@ class RateLimiterTest {
         }
         assertThat(limiter.size()).isEqualTo(100);
 
-        advanceSeconds(600); // every bucket has long since refilled
+        advanceSeconds(600); // 모든 버킷은 이미 한참 전에 다시 찼다
         for (int i = 0; i < 1024; i++) {
-            limiter.check("busy", 100_000, 6_000_000); // enough calls to trigger a cleanup pass
+            limiter.check("busy", 100_000, 6_000_000); // 정리 작업을 일으키기에 충분한 호출 수
         }
         assertThat(limiter.size()).isLessThanOrEqualTo(2);
     }

@@ -27,8 +27,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Confirming a reservation (what a successful payment triggers) only works while the hold is alive. Against the
- * compose MySQL (rolled back); event-service is mocked. Run inside the compose network with DB_HOST=mysql.
+ * 예약 확정(결제 성공이 일으키는 일)은 홀드가 살아 있는 동안에만 된다. compose MySQL(롤백)에서 실행하고
+ * event-service는 mock이다. compose 네트워크 안에서 DB_HOST=mysql로 실행한다.
  */
 @SpringBootTest(properties = {"reservation.hold-expire-sweep-cron=-"})
 @Transactional

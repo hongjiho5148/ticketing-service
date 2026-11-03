@@ -1,4 +1,4 @@
-/* ---------- Terms / privacy / contact ---------- */
+/* ---------- 약관 / 개인정보 / 문의 ---------- */
 
 .legal {
   max-width: 760px;
@@ -130,7 +130,7 @@
 }
 
 
-/* Consent line under the signup button's form */
+/* 가입 버튼 폼 아래의 동의 문구 */
 .form-agree {
   margin: 0;
   color: var(--ink-3);

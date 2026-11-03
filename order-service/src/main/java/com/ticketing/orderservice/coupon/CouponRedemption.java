@@ -13,7 +13,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
-/** Written when an order using a coupon is actually paid - one row per (coupon, user), so a code is single-use per person. */
+/** 쿠폰을 쓴 주문이 실제로 결제될 때 기록한다. (쿠폰, 사용자)당 한 행이라 코드는 1인 1회만 쓸 수 있다. */
 @Entity
 @Table(
         name = "coupon_redemption",
@@ -29,7 +29,7 @@ public class CouponRedemption {
     @Column(name = "coupon_id", nullable = false)
     private Long couponId;
 
-    // Denormalized so the user's coupon history doesn't need a join back to the coupon table.
+    // 쿠폰 테이블을 다시 조인하지 않고도 사용자의 쿠폰 내역을 보이도록 값을 복사해 둔다.
     @Column(nullable = false, length = 30)
     private String couponCode;
 

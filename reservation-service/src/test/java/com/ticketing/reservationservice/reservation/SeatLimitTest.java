@@ -26,9 +26,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The per-user, per-event seat cap, against the compose MySQL (rolled back). Only the other
- * services are mocked - the count query is the thing worth exercising for real. Run inside the
- * compose network with DB_HOST=mysql, like order-service's tests.
+ * 사용자별·공연별 좌석 상한을 compose MySQL(롤백)에서 확인한다. 다른 서비스만 mock이다. count 쿼리가 실제로
+ * 실행해 볼 가치가 있는 부분이다. order-service의 테스트처럼 compose 네트워크 안에서 DB_HOST=mysql로 실행한다.
  */
 @SpringBootTest(properties = {"reservation.max-seats-per-event=2", "reservation.hold-expire-sweep-cron=-"})
 @Transactional
@@ -91,14 +90,14 @@ class SeatLimitTest {
     @Test
     void onlyConfirmedAndUnexpiredHoldsCount() {
         LocalDateTime now = LocalDateTime.now();
-        reservationRepository.save(new Reservation(userId, 1L, eventId, now.minusMinutes(1))); // lapsed hold
+        reservationRepository.save(new Reservation(userId, 1L, eventId, now.minusMinutes(1))); // 끝난 홀드
         Reservation cancelled = reservationRepository.save(new Reservation(userId, 2L, eventId, now.plusMinutes(5)));
         cancelled.cancel();
         Reservation expired = reservationRepository.save(new Reservation(userId, 3L, eventId, now.plusMinutes(5)));
         expired.expire();
         assertThat(reservationRepository.countActiveSeats(userId, eventId, now)).isZero();
 
-        reservationRepository.save(new Reservation(userId, 4L, eventId, now.plusMinutes(5))); // live hold
+        reservationRepository.save(new Reservation(userId, 4L, eventId, now.plusMinutes(5))); // 살아 있는 홀드
         Reservation paid = reservationRepository.save(new Reservation(userId, 5L, eventId, now.minusMinutes(30)));
         paid.confirm();
         assertThat(reservationRepository.countActiveSeats(userId, eventId, now)).isEqualTo(2);

@@ -1,7 +1,7 @@
 server:
   port: 8080
-  # Sits behind nginx+gateway - without this, OAuth2's "{baseUrl}/login/oauth2/code/{registrationId}"
-  # redirect-uri resolves to the internal container hostname instead of the public localhost:8080.
+  # nginx와 게이트웨이 뒤에 있다. 이 설정이 없으면 OAuth2의 "{baseUrl}/login/oauth2/code/{registrationId}"
+  # 리다이렉트 URI가 공개 주소 localhost:8080이 아니라 내부 컨테이너 호스트 이름으로 풀린다.
   forward-headers-strategy: framework
 
 spring:
@@ -29,9 +29,9 @@ spring:
       hibernate:
         format_sql: ${JPA_SHOW_SQL:false}
     show-sql: ${JPA_SHOW_SQL:false}
-  # Schema changes are versioned SQL in db/migration (Flyway), not whatever Hibernate decides at startup.
-  # baseline-on-migrate lets a database that predates Flyway (built by the old ddl-auto: update) adopt V1 as
-  # already applied instead of failing on a non-empty schema; a brand-new database runs V1 to create everything.
+  # 스키마 변경은 Hibernate가 시작할 때 알아서 정하는 것이 아니라 db/migration(Flyway)의 버전 있는 SQL로 한다.
+  # baseline-on-migrate는 Flyway 이전에 만들어진 DB(예전 ddl-auto: update로 만든 것)가 비어 있지 않은 스키마에서 실패하지 않고
+  # V1을 이미 적용된 것으로 받아들이게 한다. 완전히 새로운 DB는 V1을 실행해서 모든 것을 만든다.
   flyway:
     baseline-on-migrate: true
     baseline-version: 1
@@ -53,12 +53,11 @@ spring:
           google:
             client-id: ${GOOGLE_CLIENT_ID:}
             client-secret: ${GOOGLE_CLIENT_SECRET:}
-            # No "openid" scope on purpose: keeps this a plain OAuth2 login (routed through
-            # CustomOAuth2UserService) instead of Spring's separate OIDC user-service path.
+            # "openid" 스코프는 일부러 넣지 않았다. 일반 OAuth2 로그인으로 유지해서(CustomOAuth2UserService를 거친다)
+            # Spring의 별도 OIDC 사용자 서비스 경로를 타지 않게 한다.
             scope: email,profile
-            # Hardcoded to the known public origin rather than the "{baseUrl}" template: this
-            # service sits behind nginx+gateway, and gateway's X-Forwarded-* propagation to the
-            # upstream doesn't reliably carry the port through, which corrupted this URL.
+            # "{baseUrl}" 템플릿 대신 알려진 공개 오리진으로 고정했다. 이 서비스는 nginx와 게이트웨이 뒤에 있는데,
+            # 게이트웨이가 업스트림으로 넘기는 X-Forwarded-*에 포트가 안정적으로 실리지 않아서 이 URL이 깨졌다.
             redirect-uri: "${APP_BACKEND_URL:http://localhost:8080}/login/oauth2/code/{registrationId}"
           kakao:
             client-id: ${KAKAO_CLIENT_ID:}
@@ -80,22 +79,22 @@ app:
   backend-url: ${APP_BACKEND_URL:http://localhost:8080}
 
 jwt:
-  # Deliberately no default: a secret baked into the source is a secret everyone has, and whoever holds it can
-  # forge tokens. The service refuses to start until JWT_SECRET is set (see .env.example).
+  # 일부러 기본값이 없다. 소스에 박아 둔 시크릿은 모두가 가진 시크릿이고, 그것을 가진 사람은 토큰을 위조할 수 있다.
+  # JWT_SECRET이 설정될 때까지 서비스는 시작을 거부한다(.env.example 참고).
   secret: ${JWT_SECRET}
   access-token-expiration-ms: ${JWT_ACCESS_EXPIRATION_MS:1800000}
   refresh-token-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000}
   admin-access-token-expiration-ms: ${JWT_ADMIN_ACCESS_EXPIRATION_MS:900000}
 
-# reCAPTCHA v2 server-side check (see CaptchaVerifier). No secret = captcha off; CAPTCHA_ENABLED=false
-# switches it off even when a secret is set (load tests).
+# reCAPTCHA v2 서버 쪽 검사(CaptchaVerifier 참고). 시크릿이 없으면 캡차는 꺼진다. CAPTCHA_ENABLED=false는
+# 시크릿이 있어도 캡차를 끈다(부하 테스트용).
 captcha:
   enabled: ${CAPTCHA_ENABLED:true}
   secret: ${RECAPTCHA_SECRET_KEY:}
   verify-url: https://www.google.com/recaptcha/api/siteverify
 
-# Metrics for Prometheus, on a separate port that only exists inside the docker network: nothing routes to it (the
-# gateway forwards /api/** only), so it is never reachable from outside and needs no authentication of its own.
+# Prometheus용 메트릭이며 docker 네트워크 안에만 있는 별도 포트로 내보낸다. 그 포트로 가는 라우트가 없어서
+# (게이트웨이는 /api/**만 전달한다) 밖에서는 닿지 않으므로 자체 인증이 필요 없다.
 management:
   server:
     port: 9090

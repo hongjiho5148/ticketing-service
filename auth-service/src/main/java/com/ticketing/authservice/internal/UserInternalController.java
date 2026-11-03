@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Service-to-service only - not routed through the public Gateway, reached directly within the docker network. */
+/** 서비스 사이 호출 전용이다. 공개 게이트웨이를 거치지 않고 docker 네트워크 안에서 직접 닿는다. */
 @RestController
 @RequestMapping("/internal/users")
 public class UserInternalController {
@@ -18,7 +18,7 @@ public class UserInternalController {
         this.userInternalService = userInternalService;
     }
 
-    // Declared before the {userId} mapping, and a literal segment always outranks a path variable anyway.
+    // {userId} 매핑보다 앞에 선언했고, 어차피 고정 문자열 세그먼트가 경로 변수보다 항상 우선한다.
     @GetMapping("/lookup")
     public UserInternalResponse lookup(@RequestParam String email) {
         return userInternalService.lookupByEmail(email.trim());

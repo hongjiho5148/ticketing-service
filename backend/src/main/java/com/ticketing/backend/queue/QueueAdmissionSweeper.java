@@ -16,12 +16,11 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * Periodically lets the next batch of waiters through, up to however many active slots are free.
+ * 주기적으로 다음 대기자 묶음을 들여보낸다. 빈 활성 슬롯 수만큼이다.
  *
- * <p>Guarded by a Redis lock so that when the backend is scaled out to multiple instances, only
- * one of them runs a given sweep tick - otherwise every instance would admit its own batch from
- * the same waiting set, letting through up to (replica count x active-capacity) people instead of
- * just active-capacity.
+ * <p>Redis 잠금으로 보호한다. backend를 여러 인스턴스로 늘렸을 때 주어진 스윕 주기를 인스턴스 하나만 돌리게
+ * 하기 위해서다. 그렇지 않으면 모든 인스턴스가 같은 대기 집합에서 자기만의 묶음을 들여보내서, 활성 용량만큼이
+ * 아니라 (복제본 수 x 활성 용량)명까지 통과시킨다.
  */
 @Component
 public class QueueAdmissionSweeper {
@@ -56,15 +55,15 @@ public class QueueAdmissionSweeper {
         this.waitingQueueRepository = waitingQueueRepository;
         this.activeCapacity = activeCapacity;
         this.passTokenTtlMs = passTokenTtlMs;
-        // Sized independently of the tick interval (with a floor) so a slow sweep under heavy DB
-        // load doesn't outlive its own lease - that raced with the finally-block unlock below and
-        // surfaced as IllegalMonitorStateException under the 5000-VU scale-out load test.
+        // 주기 간격과 별개로(하한을 두고) 정한다. 그래서 DB 부하가 큰 상황에서 느린 스윕이 자기 임대보다 오래
+        // 가지 않는다. 그런 일은 아래 finally 블록의 잠금 해제와 경합해서 5000-VU 스케일 아웃 부하 테스트에서
+        // IllegalMonitorStateException으로 나타났다.
         this.sweepLockLeaseMs = Math.max(admissionIntervalMs * 4, 2000);
     }
 
-    // The first run waits one interval like every later one: nobody is queued the moment the service starts, and a sweep
-    // kicking off in the background right after startup would let in people a caller is about to look at (it made tests
-    // that queue people up straight after the context starts fail now and then).
+    // 첫 실행도 이후의 모든 실행처럼 한 주기를 기다린다. 서비스가 막 시작된 순간에는 줄 선 사람이 없고, 시작 직후
+    // 백그라운드에서 스윕이 돌기 시작하면 호출한 쪽이 곧 살펴볼 사람들을 들여보내 버린다(컨텍스트가 시작된 직후
+    // 사람들을 줄 세우는 테스트가 가끔 실패하게 만들었다).
     @Scheduled(initialDelayString = "${queue.admission-interval-ms}", fixedRateString = "${queue.admission-interval-ms}")
     public void admitWaitingUsers() {
         RLock lock = redissonClient.getLock("lock:queue-sweep");
@@ -76,7 +75,7 @@ public class QueueAdmissionSweeper {
             return;
         }
         if (!acquired) {
-            return; // another instance is already running this tick
+            return; // 다른 인스턴스가 이미 이번 주기를 돌리고 있다
         }
         try {
             for (String key : redissonClient.getKeys().getKeysByPattern("queue:waiting:*")) {
@@ -89,17 +88,16 @@ public class QueueAdmissionSweeper {
                     lock.unlock();
                 }
             } catch (IllegalMonitorStateException e) {
-                // Lease already expired and the lock was reassigned elsewhere - nothing to unlock.
+                // 임대가 이미 끝나서 잠금이 다른 곳에 다시 배정됐다. 풀 것이 없다.
             }
         }
     }
 
     /**
-     * Takes out of the line the people who have not been heard from for the grace period: their browser neither holds a
-     * stream open nor asks for its status any more. Without this they stay in the line and, when their turn comes, are
-     * let in and sit on a slot for the whole pass lifetime while someone who is actually waiting stays behind them.
-     * Does nothing when the grace is 0 or less. A person taken out who comes back finds their token gone and joins again
-     * at the back.
+     * 유예 시간 동안 소식이 없는 사람들을 줄에서 뺀다. 그 사람들의 브라우저는 스트림을 열어 두지도, 상태를 묻지도 않는다.
+     * 이것이 없으면 그들은 줄에 남아 있다가 차례가 오면 입장해서 입장권 수명 내내 슬롯을 차지하고, 실제로 기다리는
+     * 사람은 그 뒤에 남게 된다. 유예가 0 이하이면 아무것도 하지 않는다. 줄에서 빠진 사람이 돌아오면 자기 토큰이 사라진 것을
+     * 보고 맨 뒤에 다시 선다.
      */
     void removeAbandoned(Long eventId) {
         if (abandonGraceMs <= 0) {
@@ -111,7 +109,7 @@ public class QueueAdmissionSweeper {
         if (stale.isEmpty()) {
             return;
         }
-        // Counted by what was really still in the line: a person let in a moment ago can still have a stale note here.
+        // 실제로 아직 줄에 있던 사람을 기준으로 센다. 방금 입장한 사람은 여기에 오래된 기록이 아직 남아 있을 수 있다.
         RBatch batch = redissonClient.createBatch();
         for (String token : stale) {
             batch.getScoredSortedSet(QueueService.waitingKey(eventId)).removeAsync(token);
@@ -154,16 +152,15 @@ public class QueueAdmissionSweeper {
         }
         admittedCounter.increment(toAdmit.size());
         redissonClient.getScoredSortedSet(QueueService.seenKey(eventId)).removeAll(toAdmit);
-        // Tell the connections waiting on any instance. A failure here only means they hear it at the next refresh.
+        // 어느 인스턴스에서든 기다리는 연결들에 알린다. 여기서 실패하면 그들이 다음 갱신 때 알게 될 뿐이다.
         try {
             queueStreams.announceAdmitted(eventId, expiresAt, toAdmit);
         } catch (RuntimeException e) {
             log.warn("could not announce {} admitted entries of event {}", toAdmit.size(), eventId, e);
         }
-        // Not a @Transactional method of this class: it is called from admitWaitingUsers() on this same object, so
-        // Spring's proxy would never intercept it and nothing would be saved. The repository call opens its own
-        // transaction, and it is one UPDATE for the whole batch.
-        // The history is only stats: if the DB hiccups, the people already let in Redis stay in and other events go on.
+        // 이 클래스의 @Transactional 메서드가 아니다. admitWaitingUsers()가 같은 객체에서 호출하므로 Spring 프록시가
+        // 가로채지 못해서 아무것도 저장되지 않는다. 리포지토리 호출이 자기 트랜잭션을 열고, 묶음 전체에 대해 UPDATE 한 번이다.
+        // 이력은 통계일 뿐이다. DB가 잠깐 흔들려도 이미 Redis에서 입장시킨 사람은 그대로 들어가 있고 다른 공연은 계속 진행된다.
         try {
             waitingQueueRepository.markPassed(toAdmit, LocalDateTime.now());
         } catch (RuntimeException e) {

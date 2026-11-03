@@ -19,9 +19,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Measuring what admitted people do with their slot: the time to the first seat is recorded once per admission, and only
- * for people who really were let in from the queue. Against the compose Redis and MySQL; run inside the compose network
- * with DB_HOST=mysql REDIS_HOST=redis.
+ * 입장한 사람들이 슬롯으로 무엇을 하는지의 측정이다. 첫 좌석까지의 시간은 입장당 한 번만 기록하고, 실제로 대기열에서
+ * 입장한 사람에 대해서만 기록한다. compose Redis와 MySQL에서 실행하고,
+ * compose 네트워크 안에서 DB_HOST=mysql REDIS_HOST=redis로 실행한다.
  */
 @SpringBootTest(properties = {"queue.active-capacity=1", "queue.admission-interval-ms=3600000"})
 @Transactional
@@ -64,7 +64,7 @@ class AdmissionUseTrackerTest {
         double reservedBefore = reserved();
 
         tracker.onReservationCreated(user, eventId, LocalDateTime.now().plusSeconds(42).toString());
-        tracker.onReservationCreated(user, eventId, LocalDateTime.now().plusSeconds(90).toString()); // a second seat, or a redelivery
+        tracker.onReservationCreated(user, eventId, LocalDateTime.now().plusSeconds(90).toString()); // 두 번째 좌석, 또는 다시 전달된 메시지
 
         assertThat(timer().count()).isEqualTo(countBefore + 1);
         assertThat(reserved()).isEqualTo(reservedBefore + 1);
@@ -77,11 +77,11 @@ class AdmissionUseTrackerTest {
         long second = 9_700_000_000L + SEQ.incrementAndGet() % 1_000_000;
         tokens.add(queueService.enter(first, eventId).queueToken());
         tokens.add(queueService.enter(second, eventId).queueToken());
-        sweeper.admitForEvent(eventId); // capacity 1: only the first is let in
+        sweeper.admitForEvent(eventId); // 용량 1: 첫 번째만 입장한다
         long countBefore = timer().count();
 
-        tracker.onReservationCreated(second, eventId, LocalDateTime.now().toString()); // still waiting
-        tracker.onReservationCreated(9_800_000_000L, eventId, LocalDateTime.now().toString()); // never queued
+        tracker.onReservationCreated(second, eventId, LocalDateTime.now().toString()); // 아직 기다리는 중
+        tracker.onReservationCreated(9_800_000_000L, eventId, LocalDateTime.now().toString()); // 대기열에 선 적 없음
 
         assertThat(timer().count()).isEqualTo(countBefore);
     }

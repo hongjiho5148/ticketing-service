@@ -21,9 +21,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * A late release request for a hold that is already gone must not free the hold of whoever took the seat since.
- * Runs against the compose MySQL/Redis (rolled back); the sweepers are switched off. Run inside the compose network
- * with DB_HOST=mysql REDIS_HOST=redis.
+ * 이미 없어진 홀드에 대한 늦은 해제 요청이 그 사이 좌석을 잡은 사람의 홀드를 풀어서는 안 된다.
+ * compose MySQL/Redis(롤백)에서 실행하고 스위퍼는 꺼 둔다. compose 네트워크 안에서
+ * DB_HOST=mysql REDIS_HOST=redis로 실행한다.
  */
 @SpringBootTest(properties = {"seat.hold-expiry-sweep-cron=-", "alert.open-sweep-cron=-"})
 @Transactional
@@ -62,7 +62,7 @@ class SeatReleaseOwnershipTest {
         LocalDateTime second = LocalDateTime.now().plusMinutes(5).plusSeconds(2);
         seatService.hold(seat.getId(), second);
 
-        // the first holder's late release (e.g. a slow expiry sweep) arrives now
+        // 첫 홀더의 늦은 해제(예: 느린 만료 스윕)가 지금 도착한다
         seatService.release(seat.getId(), first);
 
         Seat current = reload();
@@ -105,7 +105,7 @@ class SeatReleaseOwnershipTest {
         LocalDateTime hold = LocalDateTime.of(2030, 1, 1, 12, 0, 0, 123_456_789);
         seatService.hold(seat.getId(), hold);
 
-        // the other service's DB rounds/truncates to microseconds on its own
+        // 다른 서비스의 DB는 스스로 마이크로초로 반올림하거나 자른다
         seatService.release(seat.getId(), hold.truncatedTo(ChronoUnit.MICROS));
 
         assertThat(reload().getStatus()).isEqualTo(SeatStatus.AVAILABLE);

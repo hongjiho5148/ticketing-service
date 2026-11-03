@@ -20,11 +20,11 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // Set when the server says the email isn't verified yet - the lost-mail case, where the user needs a way to get a new link.
+  // 서버가 이메일이 아직 인증되지 않았다고 하면 설정한다. 메일을 잃어버린 경우이며, 사용자는 새 링크를 받을 방법이 필요하다.
   const [needsVerification, setNeedsVerification] = useState(false);
   const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  // Bumped to get a fresh, unsolved widget: a token is good for one attempt, successful or not.
+  // 새롭고 아직 풀지 않은 위젯을 얻으려고 올린다. 토큰은 성공이든 아니든 한 번의 시도에만 쓸 수 있다.
   const [captchaKey, setCaptchaKey] = useState(0);
 
   const notice =

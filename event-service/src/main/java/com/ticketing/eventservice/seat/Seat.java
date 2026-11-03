@@ -56,10 +56,10 @@ public class Seat {
     private SeatStatus status;
 
     /**
-     * Set whenever hold() is called (backend tells us when its own reservation hold would expire).
-     * SeatHoldExpirySweeper uses this to self-heal a stuck HOLD even if the caller (backend) never
-     * follows up with a release - e.g. it crashed between a successful hold and saving its own
-     * Reservation row, which now lives in a different service/DB than this one.
+     * hold()가 호출될 때마다 설정한다(backend가 자기 예약 홀드가 언제 만료되는지 알려 준다).
+     * SeatHoldExpirySweeper는 이것을 이용해서, 호출한 쪽(backend)이 해제를 끝내 요청하지 않아도
+     * 멈춰 있는 HOLD를 스스로 치유한다. 예를 들어 홀드에 성공한 뒤 자기 Reservation 행을 저장하기 전에 죽은 경우이고,
+     * 그 행은 이제 이 서비스와 다른 서비스/DB에 있다.
      */
     private LocalDateTime holdExpireAt;
 
@@ -88,16 +88,16 @@ public class Seat {
     }
 
     /**
-     * True while this seat is in HOLD and that hold is the one that expires at {@code holdExpireAt}. The expiry time
-     * doubles as the hold's identity: a seat can only be re-held after it was released, and that takes far longer than
-     * the 1ms tolerance, so two different holds never compare equal. (Tolerance because the two services store the
-     * time in their own DBs and MySQL rounds fractional seconds.)
+     * 이 좌석이 HOLD 상태이고 그 홀드가 {@code holdExpireAt}에 끝나는 홀드와 같을 때 true다. 만료 시각이 홀드의 정체성
+     * 역할을 한다. 좌석은 해제된 뒤에야 다시 잡을 수 있고 그것은 1ms 허용 오차보다 훨씬 오래 걸리므로 서로 다른
+     * 두 홀드가 같다고 비교되는 일은 없다. (허용 오차가 있는 것은 두 서비스가 시각을 각자의 DB에 저장하고
+     * MySQL이 소수 초를 반올림하기 때문이다.)
      */
     public boolean isHeldWith(LocalDateTime expectedHoldExpireAt) {
         return status == SeatStatus.HOLD && sameHold(expectedHoldExpireAt);
     }
 
-    /** True if this seat was sold out of exactly that hold - lets a repeated sell (a retried payment) succeed quietly. */
+    /** 이 좌석이 정확히 그 홀드로 팔렸으면 true다. 반복된 판매 처리(다시 시도한 결제)가 조용히 성공하게 한다. */
     public boolean isSoldFrom(LocalDateTime expectedHoldExpireAt) {
         return status == SeatStatus.SOLD && sameHold(expectedHoldExpireAt);
     }
@@ -113,7 +113,7 @@ public class Seat {
         this.holdExpireAt = null;
     }
 
-    /** Keeps holdExpireAt on purpose: it records which hold bought the seat (see isSoldFrom). Only HOLD seats are ever swept. */
+    /** holdExpireAt을 일부러 남긴다. 어느 홀드가 이 좌석을 샀는지를 기록하기 때문이다(isSoldFrom 참고). 스윕 대상은 HOLD 좌석뿐이다. */
     public void sell() {
         this.status = SeatStatus.SOLD;
     }

@@ -19,18 +19,18 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * Publishes what OutboxRecorder stored. It runs outside any database transaction: the broker is a network call, and a
- * transaction around it would hold a pooled connection while waiting (the same trap the reservation path avoids).
+ * OutboxRecorder가 저장한 것을 발행한다. DB 트랜잭션 밖에서 돈다. 브로커는 네트워크 호출이고, 그것을 감싼
+ * 트랜잭션은 기다리는 동안 풀의 커넥션을 붙잡는다(예약 경로가 피하는 것과 같은 함정이다).
  *
- * <p>Each poll first <b>claims</b> a batch of unsent rows with a short lease (one atomic UPDATE), so several instances -
- * or the poll and a {@link #kick()} running at the same moment - never send the same row. If a claimant dies mid-send the
- * lease runs out and another poll takes the rows over.
+ * <p>폴링마다 먼저 짧은 임대로 전송 전 행 묶음을 <b>가져간다</b>(원자적 UPDATE 한 번). 그래서 여러 인스턴스가 -
+ * 또는 폴링과 같은 순간에 도는 {@link #kick()}이 - 같은 행을 두 번 보내지 않는다. 가져간 쪽이 전송 도중 죽으면
+ * 임대가 끝나고 다른 폴링이 그 행을 넘겨받는다.
  *
- * <p>Delivery is still at-least-once: a row is marked sent only after the broker acknowledged it, so a crash between the
- * two (or a lease that expires while a slow send is still in flight) can send it again. Consumers must tolerate
- * duplicates. Order is kept within a poll - the first failure stops the batch and gives the rest back, so later events
- * never overtake an earlier one. Across instances, rows claimed by different polls may go out in either order, which
- * only matters for events sharing a key (today every event has its own).
+ * <p>전달은 여전히 최소 한 번(at-least-once)이다. 브로커가 확인한 뒤에야 행을 전송 완료로 표시하므로, 둘 사이에서
+ * 죽거나(또는 느린 전송이 진행 중인데 임대가 끝나면) 다시 보내질 수 있다. 소비자는 중복을 견뎌야 한다. 한 폴링
+ * 안에서는 순서가 유지된다. 첫 실패가 묶음을 멈추고 나머지를 돌려주므로 뒤의 이벤트가 앞의 이벤트를 앞지르지 않는다.
+ * 인스턴스 사이에서는 다른 폴링이 가져간 행이 어느 순서로든 나갈 수 있는데, 키를 공유하는 이벤트에만 문제가 된다
+ * (지금은 모든 이벤트가 자기 키를 가진다).
  */
 @Component
 public class OutboxRelay {
@@ -48,7 +48,7 @@ public class OutboxRelay {
     private final Counter sentCounter;
     private final Counter failureCounter;
 
-    /** At most one extra poll waits behind a running one; more requests are dropped, since that poll sees everything. */
+    /** 돌고 있는 폴링 뒤에서 기다리는 추가 폴링은 최대 하나다. 그 폴링이 모든 것을 보므로 더 많은 요청은 버린다. */
     private final ExecutorService kicker = new ThreadPoolExecutor(
             1, 1, 0, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(1), new ThreadPoolExecutor.DiscardPolicy());
 
@@ -82,9 +82,9 @@ public class OutboxRelay {
     }
 
     /**
-     * Asks for a poll right now instead of waiting for the next tick; called after an event is committed so it leaves
-     * within milliseconds. Returns at once - the poll runs on its own thread. The scheduled poll stays as the safety
-     * net for anything this misses (a failed send, a restart, an event recorded by another instance).
+     * 다음 주기를 기다리지 않고 지금 폴링해 달라고 요청한다. 이벤트가 커밋된 뒤에 호출해서 몇 밀리초 안에 나가게 한다.
+     * 바로 돌아오며 폴링은 자기 스레드에서 돈다. 예약된 폴링은 이것이 놓친 것(실패한 전송, 재시작,
+     * 다른 인스턴스가 기록한 이벤트)을 위한 안전망으로 남는다.
      */
     public void kick() {
         kicker.execute(this::relayOnce);
@@ -95,7 +95,7 @@ public class OutboxRelay {
         kicker.shutdown();
     }
 
-    /** Sends one batch of unsent events in order; returns how many reached the broker. */
+    /** 전송 전 이벤트 한 묶음을 순서대로 보내고, 브로커에 닿은 개수를 돌려준다. */
     public int relayOnce() {
         LocalDateTime now = LocalDateTime.now();
         String token = UUID.randomUUID().toString();
@@ -114,7 +114,7 @@ public class OutboxRelay {
                 repository.release(token);
                 break;
             } catch (Exception e) {
-                // Kafka is down or slow. Nothing is lost - the rows go back to unsent and the next poll starts from this one.
+                // Kafka가 죽었거나 느리다. 잃는 것은 없다. 행은 전송 전으로 돌아가고 다음 폴링이 여기서부터 시작한다.
                 repository.release(token);
                 failureCounter.increment();
                 warnThrottled(batch.get(0), batch.size() - sent, e);
@@ -128,8 +128,8 @@ public class OutboxRelay {
     }
 
     /**
-     * The poll runs twice a second, so an outage would otherwise write two warnings a second; one every 30s is enough.
-     * It says how long the oldest waiting event has been stuck - the number to alert on.
+     * 폴링은 초당 두 번 돈다. 장애 때 경고를 초당 두 번 쓰지 않도록 30초에 한 번이면 충분하다.
+     * 가장 오래 기다린 이벤트가 얼마나 막혀 있는지를 알려 준다. 알림을 걸어야 할 숫자다.
      */
     private void warnThrottled(OutboxEvent oldest, int waiting, Exception e) {
         long now = System.currentTimeMillis();
@@ -141,7 +141,7 @@ public class OutboxRelay {
         }
     }
 
-    /** Sent rows are only kept for a while (to look at what went out); unsent ones are never deleted. */
+    /** 전송 완료 행은 한동안만 둔다(무엇이 나갔는지 보기 위해). 전송 전 행은 절대 지우지 않는다. */
     @Scheduled(cron = "${outbox.purge-cron:0 0 * * * *}")
     public void purgeSent() {
         int deleted = repository.deleteSentBefore(LocalDateTime.now().minusHours(retentionHours));

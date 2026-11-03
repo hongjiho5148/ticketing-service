@@ -37,7 +37,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         Long userId = Long.valueOf(String.valueOf(oAuth2User.getAttributes().get("internalUserId")));
         User user = userRepository.findById(userId).orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
 
-        // Social login never yields a token for an admin account - admins use the admin app's own login.
+        // 소셜 로그인은 관리자 계정의 토큰을 발급하지 않는다. 관리자는 관리자 앱의 자체 로그인을 쓴다.
         if (user.getRole() == Role.ADMIN) {
             response.sendRedirect(frontendUrl + "/login?error=oauth2");
             return;

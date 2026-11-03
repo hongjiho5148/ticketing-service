@@ -16,7 +16,7 @@ export function formatRemaining(ms: number): string {
   return `${pad(minutes)}:${pad(seconds)}`;
 }
 
-// Owns the once-a-second tick so the page around it doesn't re-render every second.
+// 초당 한 번 도는 틱을 여기서 맡아서, 주변 페이지가 매초 다시 그려지지 않게 한다.
 function useRemaining(target: string, onReached: () => void): number {
   const targetMs = new Date(target).getTime();
   const [remaining, setRemaining] = useState(() => targetMs - Date.now());
@@ -46,10 +46,10 @@ interface HoldTimerProps {
   onExpire: () => void;
 }
 
-/** How long the held seat stays reserved. Turns urgent in the last minute and hands over to onExpire at zero. */
+/** 잡아 둔 좌석이 얼마나 더 예약 상태로 남는지. 마지막 1분에 긴급해지고 0이 되면 onExpire에 넘긴다. */
 export function HoldTimer({ expireAt, onExpire }: HoldTimerProps) {
   const remaining = useRemaining(expireAt, onExpire);
-  // The first reading is the whole hold, which gives the bar its 100% without hard-coding the 5 minutes.
+  // 첫 값이 홀드 전체이므로, 5분을 하드코딩하지 않고도 막대가 100%에서 시작한다.
   const [total] = useState(() => Math.max(new Date(expireAt).getTime() - Date.now(), 1));
   const percent = Math.min(100, Math.max(0, (remaining / total) * 100));
   const urgent = remaining < 60_000;
@@ -68,15 +68,14 @@ export function HoldTimer({ expireAt, onExpire }: HoldTimerProps) {
 }
 
 interface PassTimerProps {
-  /** Local clock time (ms) at which the queue pass runs out. */
+  /** 대기열 입장권이 끝나는 로컬 시계 시각(ms). */
   deadline: number;
   onExpire: () => void;
 }
 
 /**
- * How long the queue pass has left. The pass is short on purpose (a slot is held for whoever has it), so the person
- * choosing seats should see the clock instead of being turned away without warning. Goes urgent in the last minute and
- * hands over to onExpire at zero.
+ * 대기열 입장권이 얼마나 남았는지. 입장권은 일부러 짧다(슬롯을 가진 사람 몫으로 잡아 두기 때문이다). 그래서 좌석을 고르는
+ * 사람이 경고 없이 쫓겨나지 않고 시계를 볼 수 있어야 한다. 마지막 1분에 긴급해지고 0이 되면 onExpire에 넘긴다.
  */
 export function PassTimer({ deadline, onExpire }: PassTimerProps) {
   const remaining = useRemaining(new Date(deadline).toISOString(), onExpire);
@@ -104,7 +103,7 @@ interface OpenCountdownProps {
   onOpen: () => void;
 }
 
-/** Big countdown to a UPCOMING event's booking start. */
+/** 오픈 예정(UPCOMING) 공연의 예매 시작까지의 큰 카운트다운. */
 export function OpenCountdown({ openAt, onOpen }: OpenCountdownProps) {
   const remaining = useRemaining(openAt, onOpen);
   return (

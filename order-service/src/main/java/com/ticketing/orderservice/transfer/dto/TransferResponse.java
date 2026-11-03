@@ -8,11 +8,11 @@ import java.time.LocalDateTime;
 public record TransferResponse(
         Long transferId,
         Long orderId,
-        // INCOMING: sent to the caller, OUTGOING: sent by the caller.
+        // INCOMING: 호출자가 받은 것, OUTGOING: 호출자가 보낸 것.
         String direction,
-        // PENDING is reported as EXPIRED once the window has closed, even before anyone answers.
+        // 창이 닫히면 아무도 응답하지 않았어도 PENDING은 EXPIRED로 보고한다.
         TransferStatus status,
-        // The sender's name for incoming transfers, the masked recipient email for outgoing ones.
+        // 받은 양도는 보낸 사람의 이름, 보낸 양도는 마스킹한 받는 사람의 이메일이다.
         String counterpart,
         String eventTitle,
         String venue,

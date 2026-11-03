@@ -1,4 +1,4 @@
-/* Style modules, in cascade order. tokens first; page-level modules last so they can refine shared components. */
+/* 스타일 모듈이며 캐스케이드 순서다. 토큰이 먼저이고, 페이지 단위 모듈은 공용 컴포넌트를 다듬을 수 있도록 마지막이다. */
 @import "./styles/tokens.css";
 @import "./styles/base.css";
 @import "./styles/layout.css";

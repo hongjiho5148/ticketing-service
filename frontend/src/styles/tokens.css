@@ -1,18 +1,18 @@
 /*
- * PickSeat design tokens.
+ * PickSeat 디자인 토큰.
  *
- * One idea: a printed ticket. Warm paper, ink-black type, a single vermilion accent, and numbers set in a
- * monospace face like the figures on a stub. Grays are all warm (never mixed with cool ones), and shadows are
- * tinted brown instead of black so surfaces sit on the paper instead of floating over it.
+ * 하나의 아이디어는 인쇄된 티켓이다. 따뜻한 종이, 잉크처럼 검은 글자, 주홍색 강조 하나, 그리고 티켓 조각의 숫자처럼 고정폭
+ * 글꼴로 놓은 숫자다. 회색은 모두 따뜻한 계열이고(차가운 것과 섞지 않는다), 그림자는 검정이 아니라 갈색 기운이 돌아서
+ * 표면이 종이 위에 떠 있지 않고 놓여 있게 한다.
  */
 :root {
-  /* Surfaces */
+  /* 표면 */
   --paper: #f4f0e8;
   --paper-2: #ebe5d8;
   --paper-3: #e0d8c7;
   --card: #fffdf8;
 
-  /* Ink (text) - every step passes WCAG AA on --paper except --ink-4, which is for disabled/decorative use */
+  /* 잉크(글자) - --ink-4를 뺀 모든 단계가 --paper 위에서 WCAG AA를 통과한다. --ink-4는 비활성/장식용이다 */
   --ink: #16130e;
   --ink-2: #463f33;
   --ink-3: #6b6355;
@@ -21,14 +21,14 @@
   --line: #ddd4c3;
   --line-strong: #c4b9a3;
 
-  /* The one accent */
+  /* 유일한 강조색 */
   --accent: #d2381f;
   --accent-hover: #b52b14;
   --accent-soft: #fbe7e1;
   --accent-ink: #8f2412;
   --on-accent: #ffffff;
 
-  /* Seat grades: functional colors, deliberately earthy so they don't compete with the accent */
+  /* 좌석 등급: 기능적인 색이며 강조색과 경쟁하지 않도록 일부러 흙빛으로 잡았다 */
   --grade-vip: #1f1b16;
   --grade-vip-soft: #e4ded2;
   --grade-r: #b97d1f;
@@ -36,7 +36,7 @@
   --grade-s: #2f7566;
   --grade-s-soft: #d5ebe4;
 
-  /* Status */
+  /* 상태 */
   --ok: #2c7249;
   --ok-soft: #dcefe3;
   --warn: #9a5c0d;
@@ -45,30 +45,30 @@
   --danger-soft: #f8dcd8;
   --sold: #e4ddcd;
 
-  /* Type */
+  /* 글꼴 */
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
     "Noto Sans KR", "Malgun Gothic", sans-serif;
-  /* Hangul has no glyphs in the mono face, so it falls through to the UI face instead of a system fallback */
+  /* 고정폭 글꼴에는 한글 글리프가 없으므로 시스템 대체 글꼴이 아니라 UI 글꼴로 넘어간다 */
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, "Pretendard Variable", Pretendard, monospace;
 
-  /* Shape: tighter on small controls, softer on containers */
+  /* 모양: 작은 컨트롤은 더 각지게, 컨테이너는 더 부드럽게 */
   --r-xs: 6px;
   --r-sm: 10px;
   --r-md: 14px;
   --r-lg: 20px;
   --r-xl: 28px;
 
-  /* Warm-tinted shadows, one light source (top-left) */
+  /* 따뜻한 색을 띤 그림자, 광원은 하나(왼쪽 위) */
   --shadow-1: 0 1px 2px rgb(70 45 20 / 0.07);
   --shadow-2: 0 1px 2px rgb(70 45 20 / 0.06), 0 12px 28px -16px rgb(70 45 20 / 0.38);
   --shadow-pop: 0 28px 64px -24px rgb(40 24 10 / 0.5);
 
-  /* Layout */
+  /* 레이아웃 */
   --container: 1240px;
   --gutter: clamp(16px, 4vw, 40px);
   --header-h: 64px;
 
-  /* z-index scale */
+  /* z-index 단계 */
   --z-header: 40;
   --z-dropdown: 50;
   --z-modal: 100;

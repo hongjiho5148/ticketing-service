@@ -32,13 +32,13 @@ const FILTERS: { key: OrderFilter; label: string }[] = [
   { key: "closed", label: "취소·실패" },
 ];
 
-// A hold that ran out before any payment was made: no money moved and nothing happened to the customer, so it is not
-// listed at all (it would only read as a failure they did nothing to cause).
+// 결제하기 전에 홀드가 끝난 주문이다. 돈이 오가지 않았고 고객에게 일어난 일도 없으므로 아예 목록에 올리지 않는다
+// (고객이 일으키지 않은 실패로만 읽힐 것이다).
 function isUnpaidExpiry(order: OrderHistoryItem): boolean {
   return order.status === "PENDING" && !order.holdExpireAt;
 }
 
-// Paid, then given back in full by the server (the seat hold ran out while paying, or the coupon/points no longer applied).
+// 결제한 뒤 서버가 전액 돌려준 건이다(결제하는 동안 좌석 홀드가 끝났거나 쿠폰/포인트가 더는 적용되지 않았다).
 function isAutoRefunded(order: OrderHistoryItem): boolean {
   return order.status === "FAILED" && (order.refundedAmount ?? 0) > 0;
 }
@@ -50,12 +50,12 @@ function matchesFilter(order: OrderHistoryItem, filter: OrderFilter): boolean {
   return order.status !== "PAID" && !(order.status === "PENDING" && !!order.holdExpireAt);
 }
 
-// Colors the card's left edge and the dot in front of the status: paid = green, waiting = amber,
-// ended = gray, failed/expired = red.
+// 카드의 왼쪽 가장자리와 상태 앞의 점에 색을 입힌다. 결제 완료 = 초록, 대기 = 호박색,
+// 끝남 = 회색, 실패/만료 = 빨강.
 function statusTone(order: OrderHistoryItem): string {
   if (order.status === "PAID") return "is-paid";
   if (order.status === "PENDING") return order.holdExpireAt ? "is-pending" : "is-problem";
-  if (isAutoRefunded(order)) return "is-ended"; // settled: the money is back
+  if (isAutoRefunded(order)) return "is-ended"; // 정리됨: 돈이 돌아왔다
   if (order.status === "FAILED") return "is-problem";
   return "is-ended";
 }
@@ -98,7 +98,7 @@ export function OrdersPanel() {
       })
       .catch((err) => setError(extractErrorMessage(err)))
       .finally(() => setIsLoading(false));
-    // Tickets only exist once the show is close, so this just decorates paid orders with their QR state.
+    // 티켓은 공연이 가까워져야 생기므로, 결제된 주문에 QR 상태를 덧붙이는 용도일 뿐이다.
     fetchMyTickets()
       .then((list) => setTicketsByOrder(new Map(list.map((t) => [t.orderId, t]))))
       .catch(() => undefined);
@@ -117,8 +117,8 @@ export function OrdersPanel() {
       .finally(() => setIsLoadingMore(false));
   }
 
-  // The refund depends on how close the show is, so ask the server what cancelling would return
-  // *before* the user confirms - and never show a number computed here.
+  // 환불액은 공연이 얼마나 가까운지에 달려 있으므로, 사용자가 확인하기 *전에* 취소하면 얼마가 돌아오는지를 서버에 묻는다.
+  // 여기서 계산한 숫자는 절대 보여 주지 않는다.
   async function handleStartCancel(order: OrderHistoryItem) {
     setCancellingId(order.orderId);
     try {
@@ -141,8 +141,8 @@ export function OrdersPanel() {
     setCancelTarget(null);
     setCancellingId(order.orderId);
     try {
-      // Sent along so the server refuses (instead of silently refunding less) if the tier ticked
-      // over between this dialog opening and the click.
+      // 함께 보낸다. 이 대화상자가 열린 뒤 클릭하기 전에 구간이 넘어갔다면 서버가 조용히 더 적게
+      // 환불하지 않고 거절하게 하기 위해서다.
       await cancelOrder(order.orderId, preview.refundAmount);
       const status: OrderStatus = preview.refundPercent === 100 ? "CANCELLED" : "PARTIALLY_REFUNDED";
       setOrders((prev) =>
@@ -163,7 +163,7 @@ export function OrdersPanel() {
     }
   }
 
-  // The seat hold ran out while the list was open: the order can no longer be paid.
+  // 목록이 열려 있는 동안 좌석 홀드가 끝났다. 이 주문은 더는 결제할 수 없다.
   function handleHoldExpired(orderId: number) {
     setOrders((prev) => prev.map((o) => (o.orderId === orderId ? { ...o, holdExpireAt: null } : o)));
   }

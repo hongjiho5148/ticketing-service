@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { LegalLayout } from "../components/LegalLayout";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 
-// Set VITE_CONTACT_EMAIL in frontend/.env to show a real address; the default is a visible placeholder.
+// 실제 주소를 보여 주려면 frontend/.env에 VITE_CONTACT_EMAIL을 설정한다. 기본값은 눈에 보이는 자리 표시자다.
 const CONTACT_EMAIL = import.meta.env.VITE_CONTACT_EMAIL || "pickseat@example.com";
 
 const FAQ = [

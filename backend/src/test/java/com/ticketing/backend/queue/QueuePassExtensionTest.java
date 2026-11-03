@@ -18,9 +18,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * A pass is short (here 60 seconds) so that someone let in who does nothing gives the slot back soon, and is lengthened
- * (here to 300 seconds) for someone who has taken a seat so that they are not cut off in the middle of buying. Against
- * the compose Redis and MySQL; run inside the compose network with DB_HOST=mysql REDIS_HOST=redis.
+ * 입장권은 짧게(여기서는 60초) 두어서 입장하고 아무것도 하지 않는 사람이 슬롯을 곧 돌려주게 하고, 좌석을 잡은 사람에게는
+ * (여기서는 300초로) 연장해서 구매 도중에 끊기지 않게 한다. compose Redis와 MySQL에서 실행하고,
+ * compose 네트워크 안에서 DB_HOST=mysql REDIS_HOST=redis로 실행한다.
  */
 @SpringBootTest(properties = {
     "queue.active-capacity=5",
@@ -82,7 +82,7 @@ class QueuePassExtensionTest {
         long u = enterAndAdmit(user());
         String token = tokens.get(0);
         queueService.extendPassesOfHolder(u, eventId);
-        redissonClient.<String>getScoredSortedSet(QueueService.activeKey(eventId)).add(System.currentTimeMillis() + 900_000, token); // already longer
+        redissonClient.<String>getScoredSortedSet(QueueService.activeKey(eventId)).add(System.currentTimeMillis() + 900_000, token); // 이미 더 길다
 
         assertThat(queueService.extendPassesOfHolder(u, eventId)).isZero();
 
@@ -93,12 +93,12 @@ class QueuePassExtensionTest {
     void aPassThatHasRunOutIsNotRevivedAndSomeoneWaitingHasNothingToExtend() {
         long expired = enterAndAdmit(user());
         RScoredSortedSet<String> active = redissonClient.getScoredSortedSet(QueueService.activeKey(eventId));
-        active.add(System.currentTimeMillis() - 1_000, tokens.get(0)); // ran out a second ago
+        active.add(System.currentTimeMillis() - 1_000, tokens.get(0)); // 1초 전에 끝났다
         long notAdmitted = user();
 
         assertThat(queueService.extendPassesOfHolder(expired, eventId)).isZero();
         assertThat(queueService.isPassTokenValid(eventId, tokens.get(0))).isFalse();
-        assertThat(queueService.extendPassesOfHolder(notAdmitted, eventId)).isZero(); // never queued
+        assertThat(queueService.extendPassesOfHolder(notAdmitted, eventId)).isZero(); // 대기열에 선 적 없음
     }
 
     @Test

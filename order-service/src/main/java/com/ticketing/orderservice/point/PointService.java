@@ -6,10 +6,9 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// noRollbackFor ApiException: OrderService.pay() catches the failures thrown from here and carries on
-// (refunding the card payment and marking the order failed) inside the same transaction. Without
-// this, the first ApiException to leave one of these @Transactional methods would flag the whole
-// shared transaction rollback-only and that recovery path could never commit.
+// noRollbackFor ApiException: OrderService.pay()가 여기서 던진 실패를 잡아서 같은 트랜잭션 안에서 계속
+// 진행한다(카드 결제 환불, 주문 실패 처리). 이 설정이 없으면 이 @Transactional 메서드 중 하나에서 처음
+// ApiException이 나가는 순간 공유 트랜잭션 전체가 롤백 전용으로 표시되어 그 복구 경로가 커밋될 수 없다.
 @Service
 @Transactional(noRollbackFor = ApiException.class)
 public class PointService {
@@ -32,7 +31,7 @@ public class PointService {
         return transactionRepository.findTop30ByUserIdOrderByIdDesc(userId);
     }
 
-    /** Spends points with no ledger row yet - the caller records USE once the whole payment has gone through. */
+    /** 아직 원장 행 없이 포인트를 쓴다. 전체 결제가 끝난 뒤에 호출한 쪽이 USE를 기록한다. */
     public void take(Long userId, long amount) {
         if (accountRepository.deduct(userId, amount) == 0) {
             throw new ApiException(ErrorCode.POINTS_INSUFFICIENT);
@@ -50,7 +49,7 @@ public class PointService {
         transactionRepository.save(new PointTransaction(userId, delta, type, orderId));
     }
 
-    /** Takes back what a cancelled order earned - as much as the balance still covers, never below zero. */
+    /** 취소된 주문이 적립했던 것을 회수한다. 잔액이 감당하는 만큼만 회수하고 0 아래로 내려가지 않는다. */
     public void clawbackEarned(Long userId, Long orderId) {
         long earned = transactionRepository.findByOrderIdAndType(orderId, PointTransactionType.EARN).stream()
                 .mapToLong(PointTransaction::getDelta)

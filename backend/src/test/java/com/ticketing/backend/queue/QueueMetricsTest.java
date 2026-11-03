@@ -16,9 +16,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * What Prometheus sees of the queue: how many people are waiting and holding a slot, and how many joined, were let in and
- * got their slot back. Numbers are compared before and after, because the compose Redis may hold other queues. Run inside
- * the compose network with DB_HOST=mysql REDIS_HOST=redis.
+ * Prometheus가 대기열에 대해 보는 것이다. 기다리는 사람과 슬롯을 쥔 사람이 몇 명인지, 몇 명이 들어와 입장하고
+ * 슬롯을 돌려줬는지. compose Redis에 다른 대기열이 있을 수 있어서 숫자는 전후로 비교한다.
+ * compose 네트워크 안에서 DB_HOST=mysql REDIS_HOST=redis로 실행한다.
  */
 @SpringBootTest(properties = {"queue.active-capacity=2", "queue.admission-interval-ms=3600000"})
 @Transactional
@@ -65,7 +65,7 @@ class QueueMetricsTest {
         assertThat(count("queue_entered_total")).isEqualTo(enteredBefore + 3);
         assertThat(gauge("queue_waiting_users")).isEqualTo(waitingBefore + 3);
 
-        sweeper.admitForEvent(eventId); // capacity 2: two get in, one keeps waiting
+        sweeper.admitForEvent(eventId); // 용량 2: 둘은 들어가고 하나는 계속 기다린다
         assertThat(count("queue_admitted_total")).isEqualTo(admittedBefore + 2);
         assertThat(gauge("queue_waiting_users")).isEqualTo(waitingBefore + 1);
         assertThat(gauge("queue_active_users")).isEqualTo(activeBefore + 2);

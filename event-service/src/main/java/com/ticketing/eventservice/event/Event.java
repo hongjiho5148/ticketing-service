@@ -23,8 +23,8 @@ import org.hibernate.annotations.CreationTimestamp;
 public class Event {
 
     /**
-     * Seats can be taken until this long before the show starts. It is the same moment the QR tickets are issued and the
-     * last moment a ticket can be handed over, so nothing is sold that could not be used or passed on in time.
+     * 공연 시작 얼마 전까지 좌석을 잡을 수 있는지다. QR 티켓이 발급되는 순간이자 티켓을 넘길 수 있는 마지막 순간과
+     * 같아서, 쓰거나 제때 넘길 수 없는 표는 팔지 않는다.
      */
     public static final Duration SALES_CLOSE_BEFORE_START = Duration.ofHours(2);
 
@@ -51,13 +51,13 @@ public class Event {
     @Column(nullable = false, length = 20)
     private EventStatus status;
 
-    // The column default keeps ddl-auto's ALTER TABLE valid for events that already exist - they
-    // were all concerts before genres were introduced.
+    // 컬럼 기본값 덕분에 이미 있는 공연 테이블에도 ddl-auto의 ALTER TABLE이 유효하다.
+    // 장르가 생기기 전에는 모두 콘서트였다.
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20, columnDefinition = "varchar(20) not null default 'CONCERT'")
     private EventCategory category = EventCategory.CONCERT;
 
-    /** KOPIS performance id (mt20id) for events imported from the public performing-arts data; null for hand-made ones. */
+    /** 공공 공연예술 데이터에서 가져온 공연의 KOPIS 공연 id(mt20id). 직접 만든 공연은 null이다. */
     @Column(length = 40)
     private String externalId;
 
@@ -93,14 +93,14 @@ public class Event {
                 : "https://www.kopis.or.kr/por/db/pblprfr/pblprfrView.do?menuId=MNU_00020&mt20Id=" + externalId;
     }
 
-    /** The last moment, exclusive, at which a seat of this show can be taken. */
+    /** 이 공연의 좌석을 잡을 수 있는 마지막 순간이다(그 시각은 포함하지 않는다). */
     public LocalDateTime getSalesCloseAt() {
         return startAt.minus(SALES_CLOSE_BEFORE_START);
     }
 
     /**
-     * Whether booking is over: the show's sales window has ended, or somebody marked it closed. Judged from the clock rather
-     * than the stored status, because the status only catches up with the clock on the next sweeper tick.
+     * 예매가 끝났는지다. 공연의 판매 구간이 끝났거나 누군가 닫은 것으로 표시했다. 저장된 상태가 아니라 시계로 판정하는데,
+     * 상태는 다음 스위퍼 주기에야 시계를 따라잡기 때문이다.
      */
     public boolean isSalesClosed(LocalDateTime now) {
         return status == EventStatus.CLOSED || !now.isBefore(getSalesCloseAt());

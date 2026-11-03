@@ -13,12 +13,12 @@ import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Component;
 
 /**
- * What people do with the slot they were let in for: how long after being admitted they hold their first seat, and how
- * many of the admitted ever do. Nothing here changes who gets in; it is the evidence for how long a pass should last (a
- * pass that outlives the time people really need, or that most never use, keeps others waiting).
+ * 입장한 사람들이 받은 슬롯으로 무엇을 하는지다. 입장하고 얼마 뒤에 첫 좌석을 잡는지, 입장한 사람 중 몇 명이나
+ * 잡는지. 여기서는 누가 들어가는지를 바꾸지 않는다. 입장권이 얼마나 오래 유효해야 하는지에 대한 근거다(사람들이
+ * 실제로 필요로 하는 시간보다 오래가거나 대부분 쓰지 않는 입장권은 다른 사람들을 기다리게 한다).
  *
- * <p>Fed by the reservation-created event. Only the first reservation after an admission counts, and that is remembered
- * in Redis, so a person holding four seats is counted once and a redelivered message does not count twice.
+ * <p>예약 생성 이벤트로 채운다. 입장 뒤 첫 예약만 센다. 그 사실은 Redis에 기억하므로, 좌석 네 개를 잡은
+ * 사람도 한 번만 세고 다시 전달된 메시지도 두 번 세지 않는다.
  */
 @Component
 public class AdmissionUseTracker {
@@ -41,17 +41,17 @@ public class AdmissionUseTracker {
                 .description("People let in from the queue who went on to hold a seat (counted once each)").register(meterRegistry);
     }
 
-    /** @param createdAt when the reservation was made, an ISO-8601 local date-time as the event carries it */
+    /** @param createdAt 예약을 만든 시각. 이벤트가 담아 오는 대로 ISO-8601 로컬 날짜-시간이다 */
     public void onReservationCreated(Long userId, Long eventId, String createdAt) {
         Optional<WaitingQueue> admission = waitingQueueRepository.findByUserIdAndEventId(userId, eventId).stream()
                 .filter(entry -> entry.getStatus() == QueueEntryStatus.PASSED && entry.getPassedAt() != null)
                 .max(Comparator.comparing(WaitingQueue::getPassedAt));
         if (admission.isEmpty()) {
-            return; // not through the queue (or admitted before the history was kept)
+            return; // 대기열을 거치지 않았다(또는 이력을 남기기 전에 입장했다)
         }
         RBucket<Boolean> counted = redissonClient.getBucket("queue:first-reservation:" + admission.get().getQueueToken());
         if (!counted.trySet(true, 2, TimeUnit.HOURS)) {
-            return; // already counted this admission
+            return; // 이 입장은 이미 센 것이다
         }
         Duration took = Duration.between(admission.get().getPassedAt(), LocalDateTime.parse(createdAt));
         toFirstReservation.record(took.isNegative() ? Duration.ZERO : took);

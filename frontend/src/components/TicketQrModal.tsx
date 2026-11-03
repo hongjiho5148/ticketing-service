@@ -9,7 +9,7 @@ interface TicketQrModalProps {
   onClose: () => void;
 }
 
-// Fetches the signed QR token for one order and renders it; shared by the ticket and order cards.
+// 주문 하나의 서명된 QR 토큰을 가져와서 그린다. 티켓 카드와 주문 카드가 함께 쓴다.
 export function TicketQrModal({ orderId, eventTitle, onClose }: TicketQrModalProps) {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

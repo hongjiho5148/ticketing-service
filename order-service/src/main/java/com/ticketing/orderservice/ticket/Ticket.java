@@ -32,8 +32,8 @@ public class Ticket {
     @JoinColumn(name = "order_id", nullable = false, unique = true)
     private Orders order;
 
-    // Embedded as the QR token's JWT "jti" claim - the scan endpoint looks a ticket up by this,
-    // never by ticketId directly, so a captured/replayed token can only ever match its own ticket.
+    // QR 토큰의 JWT "jti" 클레임에 넣는다. 스캔 엔드포인트는 ticketId가 아니라 이 값으로 티켓을 찾으므로,
+    // 가로채서 재생한 토큰은 자기 티켓에만 일치할 수 있다.
     @Column(name = "token_jti", nullable = false, unique = true, length = 36)
     private String tokenJti;
 

@@ -14,11 +14,10 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 /**
- * Checks a reCAPTCHA token with Google's siteverify API. The token comes from the widget in the
- * browser and is single-use, so it is verified server-side here - a client can't vouch for itself.
- * With no secret key (or captcha.enabled=false) every check passes, which keeps local development
- * and load tests working without keys. It fails closed otherwise: if Google can't be reached,
- * the request is refused rather than waved through, since "captcha is down" is exactly what a bot hopes for.
+ * Google의 siteverify API로 reCAPTCHA 토큰을 검사한다. 토큰은 브라우저의 위젯에서 오고 한 번만 쓸 수 있으므로
+ * 여기 서버에서 검증한다. 클라이언트는 스스로를 보증할 수 없다. 시크릿 키가 없거나(또는 captcha.enabled=false)
+ * 이면 모든 검사가 통과하므로 키 없이도 로컬 개발과 부하 테스트가 된다. 그 밖에는 닫는다(fail closed). Google에
+ * 닿지 못하면 요청을 그냥 통과시키지 않고 거절한다. "캡차가 죽었다"는 것은 봇이 바라는 바로 그 상황이기 때문이다.
  */
 @Component
 public class CaptchaVerifier {
@@ -52,7 +51,7 @@ public class CaptchaVerifier {
         return enabled && secret != null && !secret.isBlank();
     }
 
-    /** Returns normally for a valid token; throws ApiException (CAPTCHA_REQUIRED / CAPTCHA_FAILED / CAPTCHA_UNAVAILABLE) otherwise. */
+    /** 유효한 토큰이면 정상적으로 돌아오고, 아니면 ApiException(CAPTCHA_REQUIRED / CAPTCHA_FAILED / CAPTCHA_UNAVAILABLE)을 던진다. */
     public void verify(String token) {
         if (!isActive()) {
             return;

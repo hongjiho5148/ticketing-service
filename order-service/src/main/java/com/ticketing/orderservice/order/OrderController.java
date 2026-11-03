@@ -41,7 +41,7 @@ public class OrderController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    /** Called right before the payment window opens: registers the payment id the window must use. */
+    /** 결제창이 열리기 직전에 호출한다. 그 창이 써야 하는 결제 id를 등록한다. */
     @PostMapping("/{orderId}/payment-intent")
     public PaymentIntentResponse createPaymentIntent(@PathVariable Long orderId) {
         return orderService.createPaymentIntent(SecurityUtil.getCurrentUserId(), orderId);

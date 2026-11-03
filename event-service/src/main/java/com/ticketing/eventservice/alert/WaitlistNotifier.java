@@ -18,10 +18,10 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
- * Mails the "취소표 알림" waitlist when seats go back on sale. Runs after the releasing transaction
- * commits (so the seat really is AVAILABLE when the mail lands) and off the request thread (so a
- * slow SMTP server can't hold up a release). At most waitlist-notify-per-seat people per freed
- * seat, oldest first, each claimed with an atomic UPDATE so concurrent releases never double-mail.
+ * 좌석이 다시 판매로 돌아가면 "취소표 알림" 대기자에게 메일을 보낸다. 좌석을 푸는 트랜잭션이 커밋된 뒤에
+ * (메일이 도착했을 때 좌석이 정말로 AVAILABLE이도록) 요청 스레드 밖에서 실행한다(느린 SMTP 서버가 해제를
+ * 붙잡지 못하게). 풀린 좌석 하나당 최대 waitlist-notify-per-seat명까지, 오래된 순서로 보내며, 각각 원자적
+ * UPDATE로 먼저 가져가므로 동시에 일어난 해제가 같은 사람에게 두 번 메일을 보내지 않는다.
  */
 @Component
 public class WaitlistNotifier {
@@ -53,7 +53,7 @@ public class WaitlistNotifier {
         notifyWaitlist(released);
     }
 
-    /** The listener above only moves this onto another thread; kept separate so it can be driven synchronously. */
+    /** 위의 리스너는 이것을 다른 스레드로 옮길 뿐이다. 동기적으로 구동할 수 있도록 따로 두었다. */
     void notifyWaitlist(SeatsReleasedEvent released) {
         try {
             Event event = eventRepository.findById(released.eventId()).orElse(null);
@@ -72,7 +72,7 @@ public class WaitlistNotifier {
 
     private void notifyOne(Event event, WaitlistSubscription subscription) {
         if (subscriptionRepository.claim(subscription.getId(), LocalDateTime.now()) == 0) {
-            return; // another release got here first
+            return; // 다른 해제가 먼저 여기에 도착했다
         }
         try {
             UserInternalResponse user = authServiceClient.getUser(subscription.getUserId());

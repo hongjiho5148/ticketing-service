@@ -7,7 +7,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface PointAccountRepository extends JpaRepository<PointAccount, Long> {
 
-    /** Spends points atomically; 0 rows updated means the balance wasn't enough (checked inside the same statement). */
+    /** 포인트를 원자적으로 쓴다. 갱신된 행이 0이면 잔액이 부족했다는 뜻이다(같은 문장 안에서 확인한다). */
     @Modifying
     @Query("UPDATE PointAccount p SET p.balance = p.balance - :amount WHERE p.userId = :userId AND p.balance >= :amount")
     int deduct(@Param("userId") Long userId, @Param("amount") long amount);

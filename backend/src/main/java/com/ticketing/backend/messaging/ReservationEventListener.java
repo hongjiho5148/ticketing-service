@@ -9,10 +9,10 @@ import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Reads the reservation-created event for what it means for the queue. A person who has taken a seat is buying, so their
- * pass is lengthened (QueueService.extendPassesOfHolder) - that has to work, so an error there is retried and then
- * dead-lettered like any other. How soon after being let in they took the seat is only recorded for the metrics
- * (AdmissionUseTracker); a failure of that part is logged and not retried.
+ * 예약 생성 이벤트가 대기열에 어떤 의미인지를 읽는다. 좌석을 잡은 사람은 구매 중이므로 입장권을 연장한다
+ * (QueueService.extendPassesOfHolder). 이것은 반드시 동작해야 하므로 거기서 난 오류는 다른 것과 마찬가지로
+ * 재시도한 뒤 데드 레터로 보낸다. 입장하고 얼마 만에 좌석을 잡았는지는 메트릭을 위해서만 기록하며
+ * (AdmissionUseTracker), 그 부분의 실패는 로그만 남기고 재시도하지 않는다.
  */
 @Component
 public class ReservationEventListener {

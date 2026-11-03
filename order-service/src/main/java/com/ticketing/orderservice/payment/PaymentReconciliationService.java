@@ -20,15 +20,15 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Settles the case pay() never got the chance to: the customer paid at PortOne, but the browser closed or the
- * server calls kept failing, so the order is still PENDING. Looks at one such order whose seat hold is no longer
- * alive and asks PortOne about every payment id issued for it:
+ * pay()가 처리할 기회를 얻지 못한 경우를 정리한다. 고객은 PortOne에서 결제했지만 브라우저가 닫혔거나
+ * 서버 호출이 계속 실패해서 주문이 아직 PENDING이다. 좌석 홀드가 더는 살아 있지 않은 그런 주문을 하나
+ * 보고, 그 주문에 발급된 모든 결제 id를 PortOne에 묻는다.
  * <ul>
- *   <li>the reservation was confirmed after all (a commit failed after the seat was sold) -> finish the order;</li>
- *   <li>otherwise the seat is lost -> refund in full and fail the order.</li>
+ *   <li>예약이 사실은 확정됐다면(좌석이 팔린 뒤 커밋이 실패했다) -> 주문을 마무리한다.</li>
+ *   <li>그렇지 않으면 좌석을 잃은 것이다 -> 전액 환불하고 주문을 실패 처리한다.</li>
  * </ul>
- * It does nothing while the hold is alive (the customer can still finish through pay()) and nothing at all when
- * reservation-service cannot be reached - refunding a customer whose hold is in fact alive would be worse than waiting.
+ * 홀드가 살아 있는 동안은 아무것도 하지 않고(고객이 pay()로 마무리할 수 있다) reservation-service에 닿지
+ * 못할 때도 아무것도 하지 않는다. 홀드가 실제로는 살아 있는 고객에게 환불하는 것이 기다리는 것보다 나쁘다.
  */
 @Service
 @Transactional(propagation = Propagation.SUPPORTS)
@@ -68,7 +68,7 @@ public class PaymentReconciliationService {
         }
         List<PaymentAttempt> attempts = attemptRepository.findByOrderIdOrderByIdDesc(orderId);
         if (attempts.isEmpty()) {
-            return; // the payment window was never opened for this order
+            return; // 이 주문에 대해서는 결제창이 한 번도 열리지 않았다
         }
 
         ReservationDetailResponse reservation;
@@ -91,7 +91,7 @@ public class PaymentReconciliationService {
             try {
                 payment = portOneClient.getPayment(attempt.getPaymentId());
             } catch (RuntimeException e) {
-                continue; // PortOne has no such payment: the window was opened but never completed
+                continue; // PortOne에 그런 결제가 없다: 창은 열었지만 끝내 완료하지 않았다
             }
             if (payment == null || !payment.isPaid()) {
                 continue;
@@ -119,7 +119,7 @@ public class PaymentReconciliationService {
         try {
             portOneClient.cancelPayment(attempt.getPaymentId(), "결제 후 좌석 홀드 만료로 자동 환불");
         } catch (RuntimeException e) {
-            // Left PENDING so the next tick tries again; if it keeps failing it needs a manual refund in the console.
+            // PENDING으로 두어서 다음 주기에 다시 시도한다. 계속 실패하면 콘솔에서 수동으로 환불해야 한다.
             log.error("AUTO-REFUND FAILED for PortOne payment {} (order {}) - refund it manually: {}",
                     attempt.getPaymentId(), order.getId(), e.getMessage());
             return;
@@ -135,7 +135,7 @@ public class PaymentReconciliationService {
         try {
             reservationServiceClient.cancel(order.getReservationId());
         } catch (RuntimeException e) {
-            // best effort: the expiry sweepers free the seat anyway
+            // 최선 노력: 만료 스위퍼가 어차피 좌석을 풀어 준다
         }
     }
 }

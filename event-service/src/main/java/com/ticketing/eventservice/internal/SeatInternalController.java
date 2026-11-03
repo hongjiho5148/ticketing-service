@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Service-to-service only - not routed through the public Gateway, reached directly within the docker network. */
+/** 서비스 사이 호출 전용이다. 공개 게이트웨이를 거치지 않고 docker 네트워크 안에서 직접 닿는다. */
 @RestController
 @RequestMapping("/internal/seats")
 public class SeatInternalController {
@@ -41,7 +41,7 @@ public class SeatInternalController {
         return seatInternalService.hold(seatId, request.holdExpireAt());
     }
 
-    /** The body is optional: without it the seat is released unconditionally (kept for older callers). */
+    /** 본문은 선택이다. 없으면 좌석을 조건 없이 푼다(옛 호출자를 위해 남겨 두었다). */
     @PostMapping("/{seatId}/release")
     public ResponseEntity<Void> release(
             @PathVariable Long seatId, @RequestBody(required = false) ReleaseSeatRequest request) {
@@ -49,7 +49,7 @@ public class SeatInternalController {
         return ResponseEntity.ok().build();
     }
 
-    /** The body is optional: without it the seat is sold unconditionally (kept for older callers). */
+    /** 본문은 선택이다. 없으면 좌석을 조건 없이 판매 처리한다(옛 호출자를 위해 남겨 두었다). */
     @PostMapping("/{seatId}/sell")
     public ResponseEntity<Void> sell(
             @PathVariable Long seatId, @RequestBody(required = false) SellSeatRequest request) {

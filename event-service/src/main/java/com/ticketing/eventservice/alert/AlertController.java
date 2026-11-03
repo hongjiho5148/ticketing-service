@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Per-user alert subscriptions on an event. SecurityConfig requires a login for these despite the public GET /api/events/**. */
+/** 공연에 대한 사용자별 알림 구독이다. 공개 GET /api/events/**가 있어도 SecurityConfig는 이들에 로그인을 요구한다. */
 @RestController
 @RequestMapping("/api/events/{eventId}")
 public class AlertController {

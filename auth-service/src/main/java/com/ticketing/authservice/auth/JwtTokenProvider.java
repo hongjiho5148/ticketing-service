@@ -37,8 +37,8 @@ public class JwtTokenProvider {
         return createToken(userId, email, role, accessTokenExpirationMs);
     }
 
-    // Admin sessions are deliberately shorter-lived than user ones - a stolen admin token is the
-    // one that matters, and the admin app has no refresh flow, so they just log in again.
+    // 관리자 세션은 일부러 사용자 세션보다 짧다. 탈취되면 문제가 큰 것은 관리자 토큰이고,
+    // 관리자 앱에는 갱신 흐름이 없어서 그냥 다시 로그인한다.
     public String createAdminAccessToken(Long userId, String email, Role role) {
         return createToken(userId, email, role, adminAccessTokenExpirationMs);
     }

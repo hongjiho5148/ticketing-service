@@ -18,9 +18,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The list a customer sees must match what applying a code would accept. Runs against the compose MySQL
- * and rolls back, so the dev coupons already in the table are left alone (and are filtered out below by a
- * per-test code prefix). Run inside the compose network with DB_HOST=mysql, like the other order-service tests.
+ * 고객에게 보이는 목록은 코드를 적용할 때 받아들여지는 것과 같아야 한다. compose MySQL에서 실행하고 롤백하므로
+ * 테이블에 이미 있는 개발용 쿠폰은 건드리지 않는다(테스트마다 붙이는 코드 접두사로 아래에서 걸러 낸다).
+ * 다른 order-service 테스트처럼 compose 네트워크 안에서 DB_HOST=mysql로 실행한다.
  */
 @SpringBootTest(properties = {"ticket.issuance-sweep-cron=-", "reminder.sweep-cron=-"})
 @Transactional

@@ -6,7 +6,7 @@ import com.ticketing.orderservice.order.Orders;
 import com.ticketing.orderservice.payment.Payment;
 import java.time.LocalDateTime;
 
-/** One row of the admin order list. buyerName/buyerEmail are null when auth-service can't resolve the user. */
+/** 관리자 주문 목록의 한 행. auth-service가 사용자를 찾지 못하면 buyerName/buyerEmail은 null이다. */
 public record AdminOrderResponse(
         Long orderId,
         Long eventId,

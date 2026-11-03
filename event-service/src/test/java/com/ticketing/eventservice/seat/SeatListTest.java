@@ -29,10 +29,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The seat list and the detail page's seat summaries are computed by the database (a projection and GROUP BY queries)
- * instead of loading every Seat entity of the event, so these pin down that the numbers still come out right with
- * seats in every status. Against the compose MySQL/Redis (rolled back); run inside the compose network with
- * DB_HOST=mysql REDIS_HOST=redis.
+ * 좌석 목록과 상세 화면의 좌석 요약은 공연의 모든 Seat 엔티티를 불러오지 않고 데이터베이스가(프로젝션과 GROUP BY
+ * 쿼리로) 계산한다. 그래서 이 테스트들은 모든 상태의 좌석이 있어도 숫자가 여전히 맞게 나오는지를 고정한다.
+ * compose MySQL/Redis(롤백)에서 실행하고 compose 네트워크 안에서 DB_HOST=mysql REDIS_HOST=redis로 실행한다.
  */
 @SpringBootTest(properties = {"seat.hold-expiry-sweep-cron=-", "alert.open-sweep-cron=-"})
 @Transactional
@@ -110,8 +109,8 @@ class SeatListTest {
         EventDetailResponse detail = eventService.getEventDetail(event.getId());
 
         assertThat(detail.seatSummary()).containsExactly(
-                new SeatGradeSummary("R", 4, 3), // one of the four R seats is held
-                new SeatGradeSummary("S", 2, 1)); // one of the two S seats is sold
+                new SeatGradeSummary("R", 4, 3), // R석 네 개 중 하나가 잡혀 있다
+                new SeatGradeSummary("S", 2, 1)); // S석 두 개 중 하나가 팔렸다
         assertThat(detail.sectionSummary()).containsExactly(
                 new SeatSectionSummary("A구역", "R", 10000, 4, 3),
                 new SeatSectionSummary("B구역", "S", 5000, 2, 1));

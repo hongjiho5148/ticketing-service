@@ -5,9 +5,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
 
 /**
- * Keeps one {@link TokenBucket} per (rule, client) key in memory. That is enough while the gateway
- * is a single instance (it is pinned to one container); with several gateway replicas each would
- * count on its own and the buckets would have to move to a shared store such as Redis.
+ * (규칙, 클라이언트) 키마다 {@link TokenBucket} 하나를 메모리에 둔다. 게이트웨이가 인스턴스 하나일 때는(컨테이너
+ * 하나에 고정되어 있다) 충분하다. 게이트웨이 복제본이 여럿이면 각자 따로 세므로 버킷을 Redis 같은 공유 저장소로
+ * 옮겨야 한다.
  */
 public class RateLimiter {
 
@@ -35,7 +35,7 @@ public class RateLimiter {
         long waitNanos = bucket.tryConsume(now);
 
         if (calls.incrementAndGet() % CLEANUP_EVERY_N_CALLS == 0) {
-            // Drop buckets nobody has touched since they refilled, so a stream of one-off client IPs can't grow the map forever.
+            // 다시 가득 찬 뒤로 아무도 건드리지 않은 버킷은 버린다. 일회성 클라이언트 IP가 이어져도 맵이 영원히 커지지 않게 한다.
             buckets.values().removeIf(b -> b.isFullAndIdle(now));
         }
 

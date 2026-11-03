@@ -18,7 +18,7 @@ public class PointAccount {
     @Column(name = "user_id")
     private Long userId;
 
-    // Only changed through PointAccountRepository's atomic UPDATEs, never by setting the field.
+    // PointAccountRepository의 원자적 UPDATE로만 바꾸고 필드를 직접 설정하지 않는다.
     @Column(nullable = false)
     private Long balance;
 

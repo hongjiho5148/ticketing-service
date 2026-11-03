@@ -29,10 +29,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
- * Proves the point of splitting pay() into short transactions: while it waits on PortOne and on reservation-service no
- * database transaction (and so no pooled connection) is open. This class is deliberately NOT @Transactional - a
- * test-managed transaction would be open around everything - so it commits real rows and deletes them afterwards.
- * Compose MySQL; run inside the compose network with DB_HOST=mysql.
+ * pay()를 짧은 트랜잭션으로 나눈 목적을 증명한다. PortOne과 reservation-service를 기다리는 동안에는 DB 트랜잭션
+ * (그래서 풀의 커넥션도)이 열려 있지 않다. 이 클래스는 일부러 @Transactional로 하지 않았다. 테스트가 관리하는
+ * 트랜잭션은 모든 것을 감싸서 열려 있게 되므로, 실제 행을 커밋하고 끝나면 지운다.
+ * compose MySQL을 쓰고, compose 네트워크 안에서 DB_HOST=mysql로 실행한다.
  */
 @SpringBootTest(properties = {"ticket.issuance-sweep-cron=-", "reminder.sweep-cron=-"})
 class PayTransactionScopeTest {
@@ -94,7 +94,7 @@ class PayTransactionScopeTest {
 
         assertThat(txDuringPortOne).isFalse();
         assertThat(txDuringConfirm).isFalse();
-        // and each step really committed on its own
+        // 그리고 각 단계가 실제로 따로 커밋됐다
         assertThat(response.paymentStatus()).isEqualTo(PaymentStatus.SUCCESS);
         assertThat(orderRepository.findById(orderId).orElseThrow().getStatus()).isEqualTo(OrderStatus.PAID);
         assertThat(paymentRepository.findByOrderId(orderId)).isPresent();

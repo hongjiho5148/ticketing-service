@@ -15,13 +15,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
- * The admission sweep must leave the history rows PASSED. This class is deliberately NOT @Transactional: inside a
- * test-wide transaction a missing transaction in the sweeper is invisible (the entity change is flushed with the test's
- * own), which is how rows staying WAITING in the running service went unnoticed. Here every write must be committed by
- * the sweeper itself, and the rows are deleted afterwards. Configured exactly like ReservationConfirmedListenerTest so
- * both share one Spring context: every extra context brings its own Kafka consumers into the same group, and the
- * rebalances they cause delay that test's listener. Run inside the compose network with DB_HOST=mysql REDIS_HOST=redis
- * KAFKA_BOOTSTRAP_SERVERS=kafka:9092.
+ * 입장 스윕은 이력 행을 PASSED로 남겨야 한다. 이 클래스는 일부러 @Transactional로 하지 않았다. 테스트 전체 트랜잭션 안에서는
+ * 스위퍼에 트랜잭션이 빠져 있어도 보이지 않는다(엔티티 변경이 테스트 자신의 것과 함께 flush된다). 그래서 실행 중인
+ * 서비스에서 행이 WAITING으로 남는 것을 알아채지 못했다. 여기서는 모든 쓰기를 스위퍼가 직접 커밋해야 하고,
+ * 끝나면 행을 지운다. ReservationConfirmedListenerTest와 똑같이 구성해서 둘이 Spring 컨텍스트 하나를 공유한다.
+ * 컨텍스트가 하나 늘 때마다 같은 그룹에 Kafka 컨슈머가 따로 붙고, 그것이 일으키는 리밸런스가 그 테스트의 리스너를 지연시킨다.
+ * compose 네트워크 안에서 DB_HOST=mysql REDIS_HOST=redis KAFKA_BOOTSTRAP_SERVERS=kafka:9092로 실행한다.
  */
 @SpringBootTest(properties = {"queue.active-capacity=5", "queue.admission-interval-ms=3600000"})
 class QueueAdmissionHistoryTest {
@@ -64,9 +63,9 @@ class QueueAdmissionHistoryTest {
             inLine.add(enter());
         }
         String first = inLine.get(0);
-        String last = inLine.get(5); // capacity 5, so this one keeps waiting
+        String last = inLine.get(5); // 용량 5라서 이 사람은 계속 기다린다
 
-        sweeper.admitWaitingUsers(); // the same entry point the timer calls
+        sweeper.admitWaitingUsers(); // 타이머가 호출하는 것과 같은 진입점
 
         inLine.subList(0, 5).forEach(t -> assertThat(row(t).getStatus()).isEqualTo(QueueEntryStatus.PASSED));
         assertThat(row(first).getPassedAt()).isNotNull();
@@ -83,7 +82,7 @@ class QueueAdmissionHistoryTest {
             inLine.add(enter());
         }
         sweeper.admitWaitingUsers();
-        redissonClient.getScoredSortedSet("queue:active:" + eventId).remove(inLine.get(0)); // a slot frees up
+        redissonClient.getScoredSortedSet("queue:active:" + eventId).remove(inLine.get(0)); // 슬롯이 하나 빈다
 
         sweeper.admitWaitingUsers();
 

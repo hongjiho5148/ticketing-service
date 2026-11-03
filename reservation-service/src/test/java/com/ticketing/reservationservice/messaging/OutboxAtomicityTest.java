@@ -24,10 +24,10 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
- * The outbox only does its job if the event and the reservation commit or roll back together. Deliberately NOT
- * @Transactional: a test-managed transaction would wrap everything and hide whether the service's own transaction
- * rolled back. Nothing is ever committed here (every case fails before the commit), so there is nothing to clean up.
- * Compose MySQL; run inside the compose network with DB_HOST=mysql.
+ * 아웃박스는 이벤트와 예약이 함께 커밋되거나 함께 롤백될 때만 제 역할을 한다. 일부러 @Transactional로 하지 않았다.
+ * 테스트가 관리하는 트랜잭션은 모든 것을 감싸서 서비스 자체의 트랜잭션이 롤백됐는지를 가려 버린다.
+ * 여기서는 아무것도 커밋되지 않으므로(모든 경우가 커밋 전에 실패한다) 정리할 것이 없다.
+ * compose MySQL을 쓰고, compose 네트워크 안에서 DB_HOST=mysql로 실행한다.
  */
 @SpringBootTest(properties = {
     "reservation.hold-expire-sweep-cron=-",
@@ -41,7 +41,7 @@ class OutboxAtomicityTest {
     @Autowired private ReservationService reservationService;
     @Autowired private ReservationRepository reservationRepository;
 
-    @MockitoBean private OutboxRecorder recorder; // a plain mock (not the transactional proxy), so it can be made to fail
+    @MockitoBean private OutboxRecorder recorder; // 실패하도록 만들 수 있는 단순 mock(트랜잭션 프록시가 아님)
     @MockitoBean private EventServiceClient eventServiceClient;
     @MockitoBean private QueueServiceClient queueServiceClient;
     @MockitoBean private KafkaTemplate<String, String> kafkaTemplate;
@@ -62,9 +62,9 @@ class OutboxAtomicityTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("outbox write failed");
 
-        // the reservation row was rolled back with it ...
+        // 예약 행도 함께 롤백됐다 ...
         assertThat(reservationRepository.countActiveSeats(userId, eventId, LocalDateTime.now())).isZero();
-        // ... and the seat that event-service had already held is released rather than left stuck
+        // ... 그리고 event-service가 이미 잡았던 좌석은 막힌 채로 남지 않고 풀린다
         verify(eventServiceClient).release(eq(seatId), any());
     }
 }

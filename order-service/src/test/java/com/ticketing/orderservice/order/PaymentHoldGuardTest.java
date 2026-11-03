@@ -34,9 +34,9 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * What pay() does when the seat hold ran out while the customer was paying. PortOne and reservation-service are
- * mocked; the orders, payments and benefits are real (compose MySQL, rolled back). Run inside the compose network
- * with DB_HOST=mysql, like the other order-service tests.
+ * 고객이 결제하는 동안 좌석 홀드가 끝났을 때 pay()가 하는 일이다. PortOne과 reservation-service는
+ * mock이고, 주문·결제·혜택은 실제다(compose MySQL, 롤백). 다른 order-service 테스트처럼
+ * compose 네트워크 안에서 DB_HOST=mysql로 실행한다.
  */
 @SpringBootTest(properties = {"ticket.issuance-sweep-cron=-", "reminder.sweep-cron=-"})
 @Transactional
@@ -90,7 +90,7 @@ class PaymentHoldGuardTest {
         assertThat(order.getStatus()).isEqualTo(OrderStatus.FAILED);
         verify(portOneClient).cancelPayment(eq(paymentId), anyString());
         verify(reservationServiceClient).cancel(order.getReservationId());
-        // The order list tells "paid, then refunded" from "never went through" by this.
+        // 주문 목록은 이 값으로 "결제했다가 환불됨"과 "결제가 아예 안 됨"을 구분한다.
         assertThat(paymentOf(order).getRefundedAmount()).isEqualTo(PRICE);
     }
 
@@ -131,7 +131,7 @@ class PaymentHoldGuardTest {
                 .isInstanceOfSatisfying(ApiException.class,
                         e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.RESERVATION_SERVICE_UNAVAILABLE));
 
-        // still PENDING so the same payment id can be retried while the hold lasts
+        // 아직 PENDING이라 홀드가 유지되는 동안 같은 결제 id로 다시 시도할 수 있다
         assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING);
         verify(portOneClient, never()).cancelPayment(anyString(), anyString());
         verify(reservationServiceClient, never()).cancel(anyLong());

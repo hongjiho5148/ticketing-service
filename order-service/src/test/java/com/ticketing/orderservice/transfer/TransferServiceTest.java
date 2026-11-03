@@ -33,10 +33,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Ticket-transfer rules against the compose MySQL (rolled back). The auth/event lookups and the
- * notifier are mocked; the order row lock, the single-pending-transfer constraint and the atomic
- * status transitions are the parts exercised for real. Run inside the compose network with
- * DB_HOST=mysql, like OrderBenefitServiceTest.
+ * compose MySQL(롤백)에서 확인하는 티켓 양도 규칙이다. auth/event 조회와 알림은 mock이고, 주문 행 잠금,
+ * 대기 중인 양도는 하나뿐이라는 제약, 원자적인 상태 전환이 실제로 실행해 보는 부분이다.
+ * OrderBenefitServiceTest처럼 compose 네트워크 안에서 DB_HOST=mysql로 실행한다.
  */
 @SpringBootTest(properties = {"ticket.issuance-sweep-cron=-", "reminder.sweep-cron=-"})
 @Transactional
@@ -108,7 +107,7 @@ class TransferServiceTest {
         transfers.accept(buyerId, created.transferId());
 
         assertThat(order.holderId()).isEqualTo(buyerId);
-        assertThat(order.getUserId()).isEqualTo(sellerId); // payment bookkeeping stays with the buyer
+        assertThat(order.getUserId()).isEqualTo(sellerId); // 결제 기록은 구매자에게 남는다
         assertThat(orderInternalService.hasPaidOrder(buyerId, 777L)).isTrue();
         assertThat(orderInternalService.hasPaidOrder(sellerId, 777L)).isFalse();
     }
@@ -121,7 +120,7 @@ class TransferServiceTest {
         assertThat(ticketRepository.findByHolderOrderByIssuedAtDesc(sellerId)).hasSize(1);
         assertThat(ticketRepository.findByHolderOrderByIssuedAtDesc(buyerId)).isEmpty();
 
-        // Once a QR ticket exists the window is shut, whatever the clock says.
+        // QR 티켓이 생기면 시계가 뭐라고 하든 창은 닫힌다.
         expectError(() -> transfers.create(sellerId, order.getId(), "buyer@example.com"), ErrorCode.TRANSFER_CLOSED);
 
         order.transferTo(buyerId);
@@ -149,7 +148,7 @@ class TransferServiceTest {
         em.clear();
         assertThat(transfers.list(buyerId).get(0).status()).isEqualTo(TransferStatus.EXPIRED);
         expectError(() -> transfers.accept(buyerId, created.transferId()), ErrorCode.TRANSFER_CLOSED);
-        em.clear(); // the close was a bulk UPDATE; drop the cached entity so the read hits the DB
+        em.clear(); // 닫는 것은 대량 UPDATE였다. 캐시된 엔티티를 버려서 읽기가 DB에 닿게 한다
         assertThat(transferRepository.findById(created.transferId()).orElseThrow().getStatus())
                 .isEqualTo(TransferStatus.EXPIRED);
     }
@@ -166,7 +165,7 @@ class TransferServiceTest {
         Orders order = paidOrder();
         transfers.accept(buyerId, transfers.create(sellerId, order.getId(), "buyer@example.com").transferId());
 
-        // The recipient is now the holder but may not pass it on again; the buyer no longer holds it at all.
+        // 받은 사람은 이제 소지자지만 다시 넘길 수는 없고, 구매자는 더는 소지자가 아니다.
         when(authServiceClient.lookupByEmail("third@example.com"))
                 .thenReturn(new UserInternalResponse(buyerId + 1, "third@example.com", "제삼자", true));
         expectError(() -> transfers.create(buyerId, order.getId(), "third@example.com"), ErrorCode.TRANSFER_NOT_ALLOWED);
@@ -195,12 +194,12 @@ class TransferServiceTest {
 
         TransferResponse first = transfers.create(sellerId, order.getId(), "buyer@example.com");
         transfers.decline(buyerId, first.transferId());
-        em.clear(); // the close was a bulk UPDATE; drop the cached entity so the read hits the DB
+        em.clear(); // 닫는 것은 대량 UPDATE였다. 캐시된 엔티티를 버려서 읽기가 DB에 닿게 한다
         assertThat(transferRepository.findById(first.transferId()).orElseThrow().getStatus()).isEqualTo(TransferStatus.DECLINED);
 
-        TransferResponse second = transfers.create(sellerId, order.getId(), "buyer@example.com"); // free to try again
+        TransferResponse second = transfers.create(sellerId, order.getId(), "buyer@example.com"); // 다시 시도해도 된다
         transfers.cancel(sellerId, second.transferId());
-        em.clear(); // the close was a bulk UPDATE; drop the cached entity so the read hits the DB
+        em.clear(); // 닫는 것은 대량 UPDATE였다. 캐시된 엔티티를 버려서 읽기가 DB에 닿게 한다
         assertThat(transferRepository.findById(second.transferId()).orElseThrow().getStatus()).isEqualTo(TransferStatus.CANCELLED);
 
         expectError(() -> transfers.accept(buyerId, second.transferId()), ErrorCode.TRANSFER_NOT_PENDING);

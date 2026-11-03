@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Gated to ROLE_ADMIN by the /api/events/admin/** matcher in SecurityConfig. */
+/** ROLE_ADMIN만 접근할 수 있다. 이 제한은 SecurityConfig의 /api/events/admin/** 매처가 건다. */
 @RestController
 @RequestMapping("/api/events/admin/import")
 public class KopisImportController {

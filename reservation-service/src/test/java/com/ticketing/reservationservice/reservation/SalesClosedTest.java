@@ -23,9 +23,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Seats can only be taken until 2 hours before the show starts. event-service decides that (salesClosed in the seat it
- * returns, judged from its clock); the reservation side must refuse before holding anything. Against the compose MySQL
- * (rolled back); run inside the compose network with DB_HOST=mysql.
+ * 좌석은 공연 시작 2시간 전까지만 잡을 수 있다. 이를 판정하는 것은 event-service다(돌려주는 좌석의 salesClosed,
+ * 자기 시계로 판정). 예약 쪽은 아무것도 잡기 전에 거절해야 한다. compose MySQL(롤백)에서 실행하고
+ * compose 네트워크 안에서 DB_HOST=mysql로 실행한다.
  */
 @SpringBootTest(properties = {"reservation.hold-expire-sweep-cron=-"})
 @Transactional

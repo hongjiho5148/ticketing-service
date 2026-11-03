@@ -12,7 +12,7 @@ class RefundPolicyTest {
 
     private static Orders orderStartingIn(Duration lead, int price, int pointsUsed) {
         Orders order = new Orders(1L, 1L, 1L, NOW.plus(lead), 1L, price + pointsUsed);
-        order.applyBenefits(null, 0, pointsUsed); // charged = price, points = pointsUsed
+        order.applyBenefits(null, 0, pointsUsed); // 청구액 = 가격, 포인트 = pointsUsed
         return order;
     }
 
@@ -42,7 +42,7 @@ class RefundPolicyTest {
         tooLate.applyBenefits("WELCOME10", 10_000, 0);
         RefundQuote lateQuote = RefundPolicy.quote(tooLate, NOW);
         assertThat(lateQuote.couponRestored()).isFalse();
-        assertThat(lateQuote.couponForfeited()).isFalse(); // nothing is cancelled, so nothing is forfeited
+        assertThat(lateQuote.couponForfeited()).isFalse(); // 아무것도 취소되지 않았으므로 몰수되는 것도 없다
     }
 
     @Test

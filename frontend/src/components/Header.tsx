@@ -13,14 +13,14 @@ export function Header() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  // The menu remembers which page it was opened on, so any navigation closes it without an effect.
+  // 메뉴는 자기가 열린 페이지를 기억하므로, 어떤 이동이든 effect 없이 메뉴를 닫는다.
   const [menuOpenedOn, setMenuOpenedOn] = useState<string | null>(null);
   const isMenuOpen = menuOpenedOn === pathname;
   const closeMenu = () => setMenuOpenedOn(null);
   const [isConfirmingLogout, setIsConfirmingLogout] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Besides navigation, the menu closes on Escape and on any click outside it.
+  // 이동 말고도 Escape와 메뉴 바깥을 누르면 메뉴가 닫힌다.
   useEffect(() => {
     if (!isMenuOpen) return;
     function onPointerDown(e: PointerEvent) {

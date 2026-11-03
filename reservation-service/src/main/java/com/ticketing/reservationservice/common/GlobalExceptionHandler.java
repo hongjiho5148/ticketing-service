@@ -17,7 +17,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(e.getErrorCode().getStatus()).body(ErrorResponse.of(e.getErrorCode()));
     }
 
-    /** Same seat-contention races as backend used to handle before the split - the reservation table's unique seat_id constraint lives here now. */
+    /** 분리 전에 backend가 처리하던 것과 같은 좌석 경합이다. reservation 테이블의 seat_id 유니크 제약이 이제 여기에 있다. */
     @ExceptionHandler({
         ObjectOptimisticLockingFailureException.class,
         DataIntegrityViolationException.class,

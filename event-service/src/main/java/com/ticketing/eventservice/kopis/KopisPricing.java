@@ -7,8 +7,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * KOPIS describes prices as free text ("VIP석 150,000원, R석 130,000원, S석 100,000원" or "전석 30,000원").
- * This only extracts the amounts; the seat map built from them is our own, since KOPIS has no seating data.
+ * KOPIS는 가격을 자유 형식 문자열로 준다("VIP석 150,000원, R석 130,000원, S석 100,000원" 또는 "전석 30,000원").
+ * 여기서는 금액만 뽑는다. 그것으로 만든 좌석 배치는 우리가 직접 만든 것이다. KOPIS에는 좌석 데이터가 없기 때문이다.
  */
 final class KopisPricing {
 
@@ -35,7 +35,7 @@ final class KopisPricing {
         return prices;
     }
 
-    /** Collapses any number of KOPIS price points into at most the three grades the app knows: VIP, R, S. */
+    /** KOPIS 가격대를 몇 개든 앱이 아는 세 등급(VIP, R, S) 이하로 합친다. */
     static List<GradePrice> toGrades(List<Integer> pricesDescending) {
         int n = pricesDescending.size();
         if (n == 0) {

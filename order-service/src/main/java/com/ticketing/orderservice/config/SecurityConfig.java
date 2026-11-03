@@ -28,14 +28,14 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
-                // CORS is handled once, at the gateway edge (CorsFilter there) - adding it again
-                // here would double up Access-Control-Allow-Origin on the response and the
-                // browser rejects that as invalid, so this service deliberately does none of it.
+                // CORS는 게이트웨이 가장자리(그쪽 CorsFilter)에서 한 번만 처리한다. 여기서 또 처리하면
+                // 응답에 Access-Control-Allow-Origin이 두 번 붙고 브라우저는 이를 잘못된 응답으로 거절하므로,
+                // 이 서비스는 일부러 CORS를 전혀 다루지 않는다.
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/error").permitAll()
-                        // Metrics are served on the separate management port (9090), which only exists inside the docker
-                        // network; this security chain covers that port too, and Prometheus carries no token.
+                        // 메트릭은 docker 네트워크 안에만 있는 별도 관리 포트(9090)로 내보낸다. 이 보안 체인이 그 포트에도
+                        // 적용되는데, Prometheus는 토큰을 들고 오지 않는다.
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/internal/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")

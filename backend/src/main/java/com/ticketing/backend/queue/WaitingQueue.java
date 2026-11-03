@@ -15,9 +15,9 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 /**
- * History/stats record of a queue entry. The live queue position is tracked in Redis (see
- * QueueService/QueueAdmissionSweeper); this table just records what happened, matching the
- * original design's "실제 순번은 Redis ZSET에서 관리, 이 테이블은 통계/이력 기록용" note.
+ * 대기열 항목의 이력/통계 기록이다. 실시간 대기 순번은 Redis에서 추적한다(QueueService/QueueAdmissionSweeper
+ * 참고). 이 테이블은 일어난 일만 기록하며, 원래 설계의
+ * "실제 순번은 Redis ZSET에서 관리, 이 테이블은 통계/이력 기록용" 메모를 따른다.
  */
 @Entity
 @Table(name = "waiting_queue")

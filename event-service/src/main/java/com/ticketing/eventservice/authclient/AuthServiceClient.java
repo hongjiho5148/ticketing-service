@@ -7,9 +7,9 @@ import com.ticketing.eventservice.remote.RemoteService;
 import com.ticketing.eventservice.remote.RemoteServices;
 
 /**
- * Talks to auth-service directly over the docker network - never through the public Gateway.
- * Only used for best-effort notification lookups (recipient email + opt-in), so callers handle a
- * failure themselves instead of this client turning it into an ApiException.
+ * 공개 게이트웨이를 거치지 않고 docker 네트워크로 auth-service와 직접 통신한다.
+ * 알림용 조회(수신자 이메일과 수신 동의)에만 쓰는 최선 노력 호출이라, 실패는 이 클라이언트가
+ * ApiException으로 바꾸지 않고 호출하는 쪽이 직접 처리한다.
  */
 @Component
 public class AuthServiceClient {

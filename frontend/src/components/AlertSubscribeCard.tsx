@@ -59,7 +59,7 @@ export function AlertSubscribeCard({ eventId, kind }: AlertSubscribeCardProps) {
     }
   }
 
-  // Kakao logins can come without an email; those accounts have nowhere to send the alert to.
+  // 카카오 로그인은 이메일 없이 올 수 있다. 그런 계정은 알림을 보낼 곳이 없다.
   const hasEmail = Boolean(user?.email);
 
   return (

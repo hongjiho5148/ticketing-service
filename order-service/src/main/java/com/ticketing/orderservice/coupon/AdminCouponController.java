@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Gated to ROLE_ADMIN by the /api/admin/** matcher in SecurityConfig, not by anything in here. */
+/** ROLE_ADMIN만 접근할 수 있다. 이 제한은 이 클래스가 아니라 SecurityConfig의 /api/admin/** 매처가 건다. */
 @RestController
 @RequestMapping("/api/admin/coupons")
 public class AdminCouponController {

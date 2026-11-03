@@ -8,7 +8,7 @@ const TABS = [
   { key: "orders", label: "주문 내역" },
 ] as const;
 
-// One place for everything about a purchase: the entry tickets (QR) and the orders behind them.
+// 구매에 대한 모든 것을 한곳에 둔다. 입장 티켓(QR)과 그 뒤의 주문이다.
 export function MyTicketsPage() {
   const [searchParams] = useSearchParams();
   const tab = TABS.find((t) => t.key === searchParams.get("tab"))?.key ?? "tickets";

@@ -27,8 +27,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * pay() only accepts a payment id the server issued for that very order. Against the compose MySQL (rolled back);
- * PortOne and reservation-service are mocked. Run inside the compose network with DB_HOST=mysql.
+ * pay()는 서버가 바로 그 주문을 위해 발급한 결제 id만 받아들인다. compose MySQL에서 실행한다(롤백).
+ * PortOne과 reservation-service는 mock이다. compose 네트워크 안에서 DB_HOST=mysql로 실행한다.
  */
 @SpringBootTest(properties = {"ticket.issuance-sweep-cron=-", "reminder.sweep-cron=-"})
 @Transactional
@@ -94,7 +94,7 @@ class PaymentAttemptTest {
     @Test
     void onePaidPaymentCannotBePresentedForAnotherOrderOfTheSamePrice() {
         Orders paidFor = verifiedOrder();
-        Orders other = verifiedOrder(); // same price, same buyer
+        Orders other = verifiedOrder(); // 같은 가격, 같은 구매자
         String paymentOfFirst = orderService.createPaymentIntent(userId, paidFor.getId()).paymentId();
 
         assertThatThrownBy(() -> orderService.pay(userId, other.getId(), new PaymentRequest(paymentOfFirst)))

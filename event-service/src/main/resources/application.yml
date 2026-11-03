@@ -19,9 +19,9 @@ spring:
       hibernate:
         format_sql: ${JPA_SHOW_SQL:false}
     show-sql: ${JPA_SHOW_SQL:false}
-  # Schema changes are versioned SQL in db/migration (Flyway), not whatever Hibernate decides at startup.
-  # baseline-on-migrate lets a database that predates Flyway (built by the old ddl-auto: update) adopt V1 as
-  # already applied instead of failing on a non-empty schema; a brand-new database runs V1 to create everything.
+  # 스키마 변경은 Hibernate가 시작할 때 알아서 정하는 것이 아니라 db/migration(Flyway)의 버전 있는 SQL로 한다.
+  # baseline-on-migrate는 Flyway 이전에 만들어진 DB(예전 ddl-auto: update로 만든 것)가 비어 있지 않은 스키마에서 실패하지 않고
+  # V1을 이미 적용된 것으로 받아들이게 한다. 완전히 새로운 DB는 V1을 실행해서 모든 것을 만든다.
   flyway:
     baseline-on-migrate: true
     baseline-version: 1
@@ -41,11 +41,11 @@ spring:
           starttls:
             enable: true
 
-# Verification only here (auth-service is the one that mints tokens) - secret must match
-# auth-service's/backend's exactly since that's what makes a JWT it signs valid here too.
+# 여기서는 검증만 한다(토큰을 발급하는 것은 auth-service). 시크릿은 auth-service/backend와 정확히 같아야 한다.
+# 그래야 그쪽에서 서명한 JWT가 여기서도 유효하다.
 jwt:
-  # Deliberately no default: a secret baked into the source is a secret everyone has, and whoever holds it can
-  # forge tokens. The service refuses to start until JWT_SECRET is set (see .env.example).
+  # 일부러 기본값이 없다. 소스에 박아 둔 시크릿은 모두가 가진 시크릿이고, 그것을 가진 사람은 토큰을 위조할 수 있다.
+  # JWT_SECRET이 설정될 때까지 서비스는 시작을 거부한다(.env.example 참고).
   secret: ${JWT_SECRET}
 
 redis:
@@ -57,7 +57,7 @@ seat:
   hold-expiry-sweep-cron: "0 * * * * *"
 
 event:
-  # How often to mark shows whose sales window is over as closed (the booking rule itself is judged from the clock).
+  # 판매 구간이 끝난 공연을 얼마나 자주 닫힘으로 표시할지(예매 규칙 자체는 시계로 판정한다).
   sales-close-sweep-cron: "0 * * * * *"
 
 order:
@@ -72,8 +72,8 @@ alert:
   # "오픈 알림": how often to look for events whose openAt has passed, and how many mails to send per tick.
   open-sweep-cron: "0 * * * * *"
   open-batch-size: 50
-  # "취소표 알림": subscribers notified per freed seat, oldest first - a cap so one cancellation
-  # doesn't mail the whole waitlist for a single seat.
+  # "취소표 알림": 풀린 좌석 하나당 알림을 받는 구독자 수이며 오래된 순이다. 취소 한 건이
+  # 좌석 하나 때문에 대기자 전체에게 메일을 보내지 않도록 건 상한이다.
   waitlist-notify-per-seat: 3
 
 kopis:
@@ -84,8 +84,8 @@ kopis:
 app:
   frontend-url: ${APP_FRONTEND_URL:http://localhost:5173}
 
-# Metrics for Prometheus, on a separate port that only exists inside the docker network: nothing routes to it (the
-# gateway forwards /api/** only), so it is never reachable from outside and needs no authentication of its own.
+# Prometheus용 메트릭이며 docker 네트워크 안에만 있는 별도 포트로 내보낸다. 그 포트로 가는 라우트가 없어서
+# (게이트웨이는 /api/**만 전달한다) 밖에서는 닿지 않으므로 자체 인증이 필요 없다.
 management:
   server:
     port: 9090

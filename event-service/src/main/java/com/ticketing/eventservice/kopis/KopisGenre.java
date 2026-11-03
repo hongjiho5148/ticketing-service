@@ -1,6 +1,6 @@
 package com.ticketing.eventservice.kopis;
 
-/** The KOPIS genre codes (the {@code shcate} filter) we offer for import. */
+/** 가져오기로 제공하는 KOPIS 장르 코드({@code shcate} 필터)다. */
 public enum KopisGenre {
     PLAY("AAAA"),
     MUSICAL("GGGA"),

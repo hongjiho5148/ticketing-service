@@ -11,13 +11,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Self-healing safety net: releases any seat stuck in HOLD past its holdExpireAt, independent of
- * whether the caller (backend's Reservation) ever follows up with a release. Since the hold and
- * the Reservation row now live in different services/DBs, this is what bounds an orphaned hold
- * (e.g. backend crashed right after a successful hold call) to a few minutes instead of forever -
- * backend's own ReservationExpirySweeper does the same release call on its side; both landing on
- * an already-AVAILABLE seat is harmless since release() just unconditionally sets that status.
- * Seats it frees are announced per event so the cancellation-ticket waitlist hears about them.
+ * 스스로 치유하는 안전망이다. 호출한 쪽(backend의 Reservation)이 해제를 끝내 요청하는지와 상관없이 holdExpireAt을
+ * 넘겨서 HOLD에 멈춰 있는 좌석을 푼다. 홀드와 Reservation 행이 이제 서로 다른 서비스/DB에 있으므로, 이것이
+ * 고아가 된 홀드(예: backend가 홀드 호출에 성공한 직후 죽은 경우)를 영원이 아니라 몇 분으로 한정한다.
+ * backend의 ReservationExpirySweeper도 자기 쪽에서 같은 해제 호출을 한다. 둘이 이미 AVAILABLE인 좌석에 닿아도
+ * release()가 그 상태를 조건 없이 설정할 뿐이라 해가 없다. 이 스위퍼가 푼 좌석은 공연별로 알려서 취소표 대기자가
+ * 소식을 듣게 한다.
  */
 @Component
 public class SeatHoldExpirySweeper {

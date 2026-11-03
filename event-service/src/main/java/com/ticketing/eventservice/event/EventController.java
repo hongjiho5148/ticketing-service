@@ -37,7 +37,7 @@ public class EventController {
             @RequestParam(defaultValue = "20") int size) {
         Sort sort = Sort.by("desc".equalsIgnoreCase(sortDir) ? Sort.Direction.DESC : Sort.Direction.ASC, "startAt");
         Pageable pageable = PageRequest.of(page, size, sort);
-        // endDate is inclusive for the caller (a calendar month ends on its last day); the service window is half-open.
+        // endDate는 호출자 입장에서는 그 날을 포함한다(달력의 한 달은 마지막 날에 끝난다). 서비스의 구간은 끝을 포함하지 않는다.
         return eventService.listEvents(
                 status, category, keyword, startDate, endDate == null ? null : endDate.plusDays(1), pageable);
     }

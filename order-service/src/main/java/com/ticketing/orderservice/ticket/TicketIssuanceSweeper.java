@@ -19,12 +19,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Same cron-sweep shape as event-service's SeatHoldExpirySweeper: find rows matching a condition,
- * act on each. Here that's "paid orders whose show starts within the issuance window and don't
- * have a ticket yet" - re-checked every tick, so a candidate that enters the window gets issued on
- * the first tick it qualifies and is then skipped (existsByOrderId) on every later tick. The
- * "ticket issued" mail is sent right after, in the same pass - a failure there never blocks
- * issuance itself (the ticket is already saved by that point), it's just logged.
+ * event-service의 SeatHoldExpirySweeper와 같은 크론 스윕 구조다. 조건에 맞는 행을 찾아 하나씩 처리한다.
+ * 여기서는 "공연이 발급 구간 안에 시작하고 아직 티켓이 없는 결제 주문"이며, 주기마다 다시 확인한다. 그래서
+ * 구간에 들어온 후보는 조건을 만족하는 첫 주기에 발급되고, 이후 주기에서는 건너뛴다(existsByOrderId).
+ * "티켓 발급" 메일은 같은 처리 안에서 곧바로 보내며, 그 실패가 발급 자체를 막지는 않는다(그 시점에 티켓은
+ * 이미 저장됐고, 로그만 남긴다).
  */
 @Component
 public class TicketIssuanceSweeper {

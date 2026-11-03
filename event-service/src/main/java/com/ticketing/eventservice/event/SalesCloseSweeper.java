@@ -8,10 +8,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Marks a show closed once its sales window is over (Event.SALES_CLOSE_BEFORE_START before it starts), so the list says
- * "예매종료" and the detail page stops offering seats. The status is only the visible side of it: whether a seat can be
- * taken is decided from the clock (Event.isSalesClosed), so the minute this runs behind makes no difference to what can be
- * booked. Same cron-sweep shape as OpenAlertSweeper.
+ * 판매 구간이 끝난 공연(시작 Event.SALES_CLOSE_BEFORE_START 전)을 닫힘으로 표시해서 목록에는 "예매종료"가 나오고
+ * 상세 화면은 좌석을 더는 보여 주지 않는다. 상태는 눈에 보이는 쪽일 뿐이다. 좌석을 잡을 수 있는지는 시계로
+ * 판정하므로(Event.isSalesClosed) 이 작업이 1분 늦는다고 해서 예매할 수 있는 것이 달라지지는 않는다.
+ * OpenAlertSweeper와 같은 크론 스윕 구조다.
  */
 @Component
 public class SalesCloseSweeper {

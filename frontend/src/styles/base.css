@@ -1,4 +1,4 @@
-/* ---------- Reset & document ---------- */
+/* ---------- 리셋과 문서 ---------- */
 
 *,
 *::before,
@@ -37,7 +37,7 @@ body {
   font-feature-settings: "tnum" 0;
 }
 
-/* A whisper of paper grain so the flat color doesn't read as a screen. Fixed + click-through. */
+/* 평평한 색이 화면처럼 읽히지 않도록 종이 결을 아주 살짝 얹는다. 고정이고 클릭은 통과한다. */
 body::before {
   content: "";
   position: fixed;
@@ -91,7 +91,7 @@ img {
   top: 12px;
 }
 
-/* ---------- Typography ---------- */
+/* ---------- 타이포그래피 ---------- */
 
 h1,
 h2,
@@ -136,7 +136,7 @@ p {
   color: var(--accent);
 }
 
-/* Figures the way a ticket prints them. Apply to any run of numbers that should line up. */
+/* 티켓이 인쇄하는 방식의 숫자다. 줄이 맞아야 하는 숫자 묶음에 적용한다. */
 .num,
 .price-summary strong,
 .wallet-balance strong {
@@ -145,7 +145,7 @@ p {
   letter-spacing: -0.02em;
 }
 
-/* ---------- Buttons ---------- */
+/* ---------- 버튼 ---------- */
 
 button {
   min-height: 44px;
@@ -202,7 +202,7 @@ button:disabled {
   background: #8f1d17;
 }
 
-/* Quiet text-link style for tertiary actions */
+/* 보조 동작을 위한 조용한 텍스트 링크 스타일 */
 .btn-link,
 .seat-link {
   min-height: 0;
@@ -225,7 +225,7 @@ button:disabled {
   text-decoration-color: var(--accent);
 }
 
-/* ---------- Forms ---------- */
+/* ---------- 폼 ---------- */
 
 input,
 select,

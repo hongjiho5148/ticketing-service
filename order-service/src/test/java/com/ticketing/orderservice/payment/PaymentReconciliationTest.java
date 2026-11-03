@@ -31,9 +31,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Orders the customer paid for at PortOne without pay() ever finishing them. PortOne and reservation-service are
- * mocked, the rest is real (compose MySQL, rolled back); the cron is off and the reconciler is driven by hand. Run
- * inside the compose network with DB_HOST=mysql.
+ * 고객이 PortOne에서 결제했지만 pay()가 끝내 마무리하지 못한 주문이다. PortOne과 reservation-service는
+ * mock이고 나머지는 실제다(compose MySQL, 롤백). 크론은 꺼 두고 조정 작업을 손으로 돌린다.
+ * compose 네트워크 안에서 DB_HOST=mysql로 실행한다.
  */
 @SpringBootTest(properties = {"ticket.issuance-sweep-cron=-", "reminder.sweep-cron=-"})
 @Transactional
@@ -91,7 +91,7 @@ class PaymentReconciliationTest {
 
     @Test
     void aHoldStillMarkedHoldingButPastItsExpiryCountsAsGone() {
-        reservationIs("HOLDING", LocalDateTime.now().minusSeconds(30)); // the sweeper has not run yet
+        reservationIs("HOLDING", LocalDateTime.now().minusSeconds(30)); // 스위퍼는 아직 돌지 않았다
         portOneSaysPaid();
 
         reconciliation.reconcile(order.getId());

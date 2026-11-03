@@ -8,10 +8,10 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
- * Sends the verification mail off the request thread. SMTP takes seconds, and signup used to wait
- * for it (and to fail whole if it failed). Running after the commit means the link in the mail
- * always points at a user that really exists, and no mail goes out for a signup that rolled back.
- * A send failure is logged here; the user can ask for a fresh mail with POST /api/auth/resend-verification.
+ * 인증 메일을 요청 스레드 밖에서 보낸다. SMTP는 몇 초가 걸리고, 예전에는 가입이 그것을 기다렸다가
+ * (실패하면 가입 전체가 실패했다). 커밋 뒤에 실행하므로 메일의 링크는 항상 실제로 존재하는 사용자를 가리키고,
+ * 롤백된 가입에 대해서는 메일이 나가지 않는다. 전송 실패는 여기서 로그로 남기며,
+ * 사용자는 POST /api/auth/resend-verification으로 새 메일을 요청할 수 있다.
  */
 @Component
 public class VerificationMailListener {

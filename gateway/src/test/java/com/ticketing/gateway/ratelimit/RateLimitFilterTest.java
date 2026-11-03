@@ -34,7 +34,7 @@ class RateLimitFilterTest {
         rule.setMethods(List.of(method));
         rule.setPaths(List.of(path));
         rule.setCapacity(capacity);
-        rule.setPerMinute(capacity); // slow enough that nothing refills during a test
+        rule.setPerMinute(capacity); // 테스트 동안 아무것도 다시 채워지지 않을 만큼 느리다
         rule.setSkipGlobal(skipGlobal);
         return rule;
     }
@@ -69,9 +69,9 @@ class RateLimitFilterTest {
         assertThat(call("POST", "/api/orders/7/transfer", "1.1.1.1").getStatus()).isEqualTo(200);
         assertThat(call("POST", "/api/orders/8/transfer", "1.1.1.1").getStatus()).isEqualTo(429);
 
-        // Same path, different method: not the transfer rule.
+        // 같은 경로지만 메서드가 다르다. 양도 규칙이 아니다.
         assertThat(call("GET", "/api/orders/9/transfer", "1.1.1.1").getStatus()).isEqualTo(200);
-        // A login attempt isn't charged to the transfer bucket.
+        // 로그인 시도는 양도 버킷에 올라가지 않는다.
         assertThat(call("POST", "/api/auth/login", "1.1.1.1").getStatus()).isEqualTo(200);
     }
 
@@ -86,13 +86,13 @@ class RateLimitFilterTest {
 
     @Test
     void ruleTrafficAlsoCountsAgainstTheGlobalBucketUnlessItOptsOut() throws Exception {
-        // queue polling opts out, so hammering it never uses up the global allowance...
+        // 대기열 폴링은 빠지므로, 아무리 두드려도 전체 허용량을 쓰지 않는다...
         for (int i = 0; i < 50; i++) {
             assertThat(call("GET", "/api/queue/status", "4.4.4.4").getStatus()).isEqualTo(200);
         }
         assertThat(call("GET", "/api/events", "4.4.4.4").getStatus()).isEqualTo(200);
 
-        // ...while a rule without skip-global is charged to it as well: 2 logins + 6 more = the 8 globally allowed.
+        // ...반면 skip-global이 없는 규칙은 전체에도 올라간다. 로그인 2번 + 6번 더 = 전체 허용 8번.
         call("POST", "/api/auth/login", "5.5.5.5");
         call("POST", "/api/auth/login", "5.5.5.5");
         for (int i = 0; i < 6; i++) {
