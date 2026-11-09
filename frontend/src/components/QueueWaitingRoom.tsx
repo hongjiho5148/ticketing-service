@@ -16,6 +16,13 @@ interface QueueWaitingRoomProps {
 
 const POLL_INTERVAL_MS = 2000;
 
+// 서버의 추정은 "모든 앞사람이 입장권을 끝까지 쥔다"는 가정의 상한이라 "최대"라고 적는다. 몇 초면 들어가는 경우는 곧 입장한다고 알린다.
+function describeWait(seconds: number | null): string {
+  if (seconds === null || seconds <= 2) return "곧 입장해요";
+  if (seconds < 60) return `예상 대기시간 최대 약 ${seconds}초`;
+  return `예상 대기시간 최대 약 ${Math.ceil(seconds / 60)}분`;
+}
+
 export function QueueWaitingRoom({ eventId, onPassed, notice }: QueueWaitingRoomProps) {
   const [rankNo, setRankNo] = useState<number | null>(null);
   const [estimatedWaitSeconds, setEstimatedWaitSeconds] = useState<number | null>(null);
@@ -92,8 +99,11 @@ export function QueueWaitingRoom({ eventId, onPassed, notice }: QueueWaitingRoom
       .then((entered) => {
         if (cancelled) return;
         queueToken = entered.queueToken;
-        setRankNo(entered.rankNo);
-        setEstimatedWaitSeconds(entered.estimatedWaitSeconds);
+        // 순번 0은 이미 입장해 있는 자리를 돌려받은 것이다. 곧 도착하는 입장 알림이 화면을 넘기므로 순번을 그리지 않는다.
+        if (entered.rankNo > 0) {
+          setRankNo(entered.rankNo);
+          setEstimatedWaitSeconds(entered.estimatedWaitSeconds);
+        }
         void watch(entered.queueToken);
       })
       .catch((err) => {
@@ -177,9 +187,7 @@ export function QueueWaitingRoom({ eventId, onPassed, notice }: QueueWaitingRoom
             <p className="queue-rank">
               내 순번 <strong>{rankNo}번째</strong>
             </p>
-            <p className="queue-wait">
-              예상 대기시간 약 {estimatedWaitSeconds ?? 0}초
-            </p>
+            <p className="queue-wait">{describeWait(estimatedWaitSeconds)}</p>
             <p className="queue-notice">순서가 되면 자동으로 예매 화면으로 이동합니다. 페이지를 벗어나지 마세요.</p>
           </>
         )}

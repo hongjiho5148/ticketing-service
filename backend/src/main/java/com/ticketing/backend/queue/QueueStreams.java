@@ -167,10 +167,16 @@ public class QueueStreams {
     /** 자리가 움직인 모든 사람에게 새 순번을 보낸다. 묶음이 얼마나 자주 입장하든 초당 한 번 이하다. */
     @Scheduled(initialDelayString = "${queue.stream.flush-interval-ms:1000}", fixedDelayString = "${queue.stream.flush-interval-ms:1000}")
     public void flushRanks() {
+        Map<Long, Integer> freeByEvent = new java.util.HashMap<>(); // 예상 대기시간에 쓰는 빈 슬롯 수를 공연마다 한 번만 읽는다
         for (Stream stream : new ArrayList<>(streams.values())) {
             if (stream.dirty) {
                 stream.dirty = false;
-                pushRank(stream);
+                try {
+                    int free = freeByEvent.computeIfAbsent(stream.eventId, queueService::freeSlots);
+                    pushRank(stream, queueService.estimateWaitSeconds(stream.rank, free));
+                } catch (RuntimeException e) {
+                    log.warn("could not push the new rank for event {}", stream.eventId, e);
+                }
             }
         }
     }
@@ -205,7 +211,7 @@ public class QueueStreams {
                 stream.sink.complete();
             } else if ("WAITING".equals(status.status())) {
                 stream.rank = status.rankNo();
-                pushRank(stream);
+                pushRank(stream, status.estimatedWaitSeconds());
             } else {
                 push(stream, status);
             }
@@ -251,10 +257,10 @@ public class QueueStreams {
     }
 
     /** 이미 그 숫자를 가진 경우가 아니면 클라이언트에게 순번을 알린다. */
-    private void pushRank(Stream stream) {
+    private void pushRank(Stream stream, long estimatedWaitSeconds) {
         long rank = stream.rank;
         if (rank != stream.lastSentRank) {
-            push(stream, QueueStatusResponse.waiting(rank, queueService.estimateWaitSeconds(rank)));
+            push(stream, QueueStatusResponse.waiting(rank, estimatedWaitSeconds));
         }
     }
 
