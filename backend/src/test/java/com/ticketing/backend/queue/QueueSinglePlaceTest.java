@@ -1,7 +1,10 @@
 package com.ticketing.backend.queue;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.ticketing.backend.common.ApiException;
+import com.ticketing.backend.common.ErrorCode;
 import com.ticketing.backend.eventclient.EventServiceClient;
 import com.ticketing.backend.queue.dto.QueueEnterResponse;
 import com.ticketing.backend.queue.dto.QueueStatusResponse;
@@ -95,20 +98,29 @@ class QueueSinglePlaceTest {
     }
 
     @Test
-    void anAdmittedPersonEnteringAgainGetsTheSamePassBack() {
+    void anAdmittedPersonEnteringAgainGivesUpThePassAndStandsAtTheBack() {
         long a = user();
         QueueEnterResponse first = enter(a);
         enter(user());
-        enter(user());
+        QueueEnterResponse third = enter(user());
         sweeper.admitForEvent(eventId); // 용량 2: a와 두 번째 사람이 입장하고 셋째는 기다린다
+        assertThat(queueService.isPassTokenValid(eventId, first.queueToken())).isTrue();
+        double before = meterRegistry.counter("queue_passes_dropped_total").count();
 
-        QueueEnterResponse again = enter(a);
+        QueueEnterResponse again = enter(a); // 입장한 사람이 새로고침했다
 
-        assertThat(again.queueToken()).isEqualTo(first.queueToken());
-        assertThat(again.rankNo()).isZero(); // 순번 없이 돌려준다. 상태를 물으면 PASSED가 온다
-        assertThat(queueService.isPassTokenValid(eventId, again.queueToken())).isTrue();
-        assertThat(queueService.status(again.queueToken()).status()).isEqualTo("PASSED");
-        assertThat(waitingCount()).isEqualTo(1);
+        assertThat(again.queueToken()).isNotEqualTo(first.queueToken());
+        assertThat(again.rankNo()).isEqualTo(2); // 기다리던 셋째의 뒤다
+        assertThat(queueService.isPassTokenValid(eventId, first.queueToken())).isFalse(); // 입장권은 포기했다
+        assertThatThrownBy(() -> queueService.status(first.queueToken()))
+                .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.QUEUE_TOKEN_NOT_FOUND));
+        assertThat(queueService.status(third.queueToken()).rankNo()).isEqualTo(1); // 셋째는 그대로 맨 앞이다
+        assertThat(waitingCount()).isEqualTo(2);
+        assertThat(meterRegistry.counter("queue_passes_dropped_total").count() - before).isEqualTo(1.0);
+
+        sweeper.admitForEvent(eventId); // 돌려받은 슬롯은 줄 앞 사람이 가져간다
+        assertThat(queueService.isPassTokenValid(eventId, third.queueToken())).isTrue();
+        assertThat(queueService.isPassTokenValid(eventId, again.queueToken())).isFalse();
     }
 
     @Test
@@ -158,17 +170,36 @@ class QueueSinglePlaceTest {
     }
 
     @Test
-    void theEstimateCountsThePeopleAheadOnceTheSlotsAreFull() {
+    void theEstimateIsWhenTheFirstSlotActuallyFreesUp() {
         enter(user());
         enter(user());
         QueueEnterResponse third = enter(user());
-        sweeper.admitForEvent(eventId); // 용량 2: 처음 둘이 입장하고 셋째는 기다린다
+        sweeper.admitForEvent(eventId); // 용량 2: 처음 둘이 방금 입장하고 셋째는 기다린다
+        queueService.invalidateSlots(eventId);
 
         QueueStatusResponse status = queueService.status(third.queueToken());
 
         assertThat(status.status()).isEqualTo("WAITING");
         assertThat(status.rankNo()).isEqualTo(1);
-        assertThat(status.estimatedWaitSeconds()).isEqualTo(300); // 빈 슬롯 없음 + 한 바퀴 = 입장권 수명 5분
+        assertThat(status.estimatedWaitSeconds()).isBetween(298L, 300L); // 방금 입장했으니 입장권이 거의 5분 남았다
+    }
+
+    @Test
+    void theEstimateFollowsWhenEachAdmittedPassReallyEnds() {
+        QueueEnterResponse a = enter(user());
+        QueueEnterResponse b = enter(user());
+        QueueEnterResponse c = enter(user());
+        QueueEnterResponse d = enter(user());
+        sweeper.admitForEvent(eventId); // 용량 2: a와 b가 입장하고 c와 d는 기다린다
+        var active = redissonClient.<String>getScoredSortedSet("queue:active:" + eventId);
+        long now = System.currentTimeMillis();
+        active.add((double) (now + 60_000), a.queueToken()); // a의 입장권은 1분 뒤에 끝난다
+        active.add((double) (now + 200_000), b.queueToken()); // b의 입장권은 3분 20초 뒤에 끝난다
+        queueService.invalidateSlots(eventId);
+
+        // 줄 맨 앞의 c는 가장 먼저 비는 슬롯(a의 것)을, d는 그다음(b의 것)을 받는다. 5분을 일괄로 잡지 않는다.
+        assertThat(queueService.status(c.queueToken()).estimatedWaitSeconds()).isBetween(58L, 61L);
+        assertThat(queueService.status(d.queueToken()).estimatedWaitSeconds()).isBetween(198L, 201L);
     }
 
     @Test

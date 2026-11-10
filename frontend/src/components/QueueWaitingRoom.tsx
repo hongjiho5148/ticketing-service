@@ -16,11 +16,14 @@ interface QueueWaitingRoomProps {
 
 const POLL_INTERVAL_MS = 2000;
 
-// 서버의 추정은 "모든 앞사람이 입장권을 끝까지 쥔다"는 가정의 상한이라 "최대"라고 적는다. 몇 초면 들어가는 경우는 곧 입장한다고 알린다.
+// 서버의 추정은 입장해 있는 사람들의 입장권이 끝나는 시각으로 센 근사치다(구매하며 일찍 나가면 더 빠르고 좌석을 잡아 입장권이
+// 연장되면 더 느리다). 몇 초면 들어가는 경우는 곧 입장한다고 알린다.
 function describeWait(seconds: number | null): string {
   if (seconds === null || seconds <= 2) return "곧 입장해요";
-  if (seconds < 60) return `예상 대기시간 최대 약 ${seconds}초`;
-  return `예상 대기시간 최대 약 ${Math.ceil(seconds / 60)}분`;
+  if (seconds < 60) return `예상 대기시간 약 ${seconds}초`;
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  return rest === 0 ? `예상 대기시간 약 ${minutes}분` : `예상 대기시간 약 ${minutes}분 ${rest}초`;
 }
 
 export function QueueWaitingRoom({ eventId, onPassed, notice }: QueueWaitingRoomProps) {
@@ -99,7 +102,7 @@ export function QueueWaitingRoom({ eventId, onPassed, notice }: QueueWaitingRoom
       .then((entered) => {
         if (cancelled) return;
         queueToken = entered.queueToken;
-        // 순번 0은 이미 입장해 있는 자리를 돌려받은 것이다. 곧 도착하는 입장 알림이 화면을 넘기므로 순번을 그리지 않는다.
+        // 순번 0은 줄에 선 직후 순번을 읽기 전에 이미 입장 처리된 사람이다. 곧 도착하는 입장 알림이 화면을 넘기므로 "0번째"를 그리지 않는다.
         if (entered.rankNo > 0) {
           setRankNo(entered.rankNo);
           setEstimatedWaitSeconds(entered.estimatedWaitSeconds);

@@ -180,13 +180,13 @@ public class QueueStreams {
     /** 자리가 움직인 모든 사람에게 새 순번을 보낸다. 묶음이 얼마나 자주 입장하든 초당 한 번 이하다. */
     @Scheduled(initialDelayString = "${queue.stream.flush-interval-ms:1000}", fixedDelayString = "${queue.stream.flush-interval-ms:1000}")
     public void flushRanks() {
-        Map<Long, Integer> freeByEvent = new java.util.HashMap<>(); // 예상 대기시간에 쓰는 빈 슬롯 수를 공연마다 한 번만 읽는다
+        long now = System.currentTimeMillis();
         for (Stream stream : new ArrayList<>(streams.values())) {
             if (stream.dirty) {
                 stream.dirty = false;
                 try {
-                    int free = freeByEvent.computeIfAbsent(stream.eventId, queueService::freeSlots);
-                    pushRank(stream, queueService.estimateWaitSeconds(stream.rank, free));
+                    // 슬롯이 비는 시각은 QueueService가 공연마다 잠깐 보관하므로 연결마다 Redis를 읽지 않는다
+                    pushRank(stream, queueService.estimateWaitSeconds(stream.rank, queueService.slotsOf(stream.eventId), now));
                 } catch (RuntimeException e) {
                     log.warn("could not push the new rank for event {}", stream.eventId, e);
                 }
