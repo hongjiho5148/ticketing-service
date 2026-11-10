@@ -4,6 +4,7 @@
 --   docker exec -i ticketing-mysql mysql -uticketing -pticketing ticketing_auth < loadtest/seed_spike_users.sql
 --
 -- 끝나고 지우려면:  DELETE FROM users WHERE email LIKE 'spike%@example.com';
+SET NAMES utf8mb4; -- 컨테이너의 mysql 클라이언트 기본 문자셋은 latin1이다
 SET @n = 1000;
 SET SESSION cte_max_recursion_depth = 100000;
 

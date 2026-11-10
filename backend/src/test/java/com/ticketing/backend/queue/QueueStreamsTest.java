@@ -111,6 +111,47 @@ class QueueStreamsTest {
     }
 
     @Test
+    void aNewConnectionForTheSameTokenTakesOverAndTheOldOneClosingDoesNotUnregisterIt() throws Exception {
+        String c = join();
+        Recorder first = new Recorder();
+        QueueStreams.Stream firstStream = streams.register(c, first);
+        Recorder second = new Recorder();
+        streams.register(c, second); // 같은 사람이 새로고침했거나 탭을 하나 더 열었다
+
+        assertThat(first.completed).isTrue(); // 이전 연결은 새 연결이 대신하고 닫는다
+        assertThat(streams.connections()).isEqualTo(1);
+
+        streams.remove(c, firstStream); // 이전 연결이 닫혔다는 알림이 뒤늦게 온다
+        assertThat(streams.connections()).isEqualTo(1); // 나중 연결의 등록은 그대로다
+
+        sweeper.admitForEvent(eventId); // 용량 2: c가 입장한다
+        await(() -> !second.updates.isEmpty() && "PASSED".equals(second.last().status()));
+        assertThat(second.last().passToken()).isEqualTo(c);
+    }
+
+    @Test
+    void aFullHouseStillLetsAnExistingTokenReconnect() {
+        String first = join();
+        join();
+        join();
+        join();
+        connect(first);
+        connect(queueTokenAt(1));
+        connect(queueTokenAt(2));
+        connect(queueTokenAt(3)); // 연결 상한 4개가 모두 찼다
+
+        connect(first); // 새로고침은 새 연결이 아니라 기존 자리를 바꾸는 것이라 거절되지 않는다
+
+        assertThat(streams.connections()).isEqualTo(4);
+        assertThatThrownBy(() -> streams.register(join(), new Recorder()))
+                .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.QUEUE_STREAM_FULL));
+    }
+
+    private String queueTokenAt(int index) {
+        return tokens.get(index);
+    }
+
+    @Test
     void whoeverIsLetInIsToldAtOnceAndTheRestMoveUp() throws Exception {
         String a = join();
         String b = join();
