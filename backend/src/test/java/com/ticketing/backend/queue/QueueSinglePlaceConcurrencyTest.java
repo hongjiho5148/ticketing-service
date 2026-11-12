@@ -2,6 +2,7 @@ package com.ticketing.backend.queue;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.ticketing.backend.common.ApiException;
 import com.ticketing.backend.eventclient.EventServiceClient;
 import com.ticketing.backend.queue.dto.QueueEnterResponse;
 import java.util.ArrayList;
@@ -50,7 +51,7 @@ class QueueSinglePlaceConcurrencyTest {
     }
 
     @Test
-    void manyRequestsAtOnceFromOnePersonMakeOnePlace() throws Exception {
+    void manyRequestsAtOnceFromOnePersonLeaveOnePlaceInTheLine() throws Exception {
         int requests = 8;
         ExecutorService pool = Executors.newFixedThreadPool(requests);
         CountDownLatch go = new CountDownLatch(1);
@@ -70,9 +71,20 @@ class QueueSinglePlaceConcurrencyTest {
         pool.awaitTermination(10, TimeUnit.SECONDS);
         responses.forEach(r -> tokens.add(r.queueToken()));
 
+        // 요청이 차례로 처리되며 뒤의 요청이 앞의 자리를 대신하므로 대기표는 요청마다 다르지만 살아 있는 자리는 하나뿐이다.
         Set<String> distinct = responses.stream().map(QueueEnterResponse::queueToken).collect(Collectors.toSet());
-        assertThat(distinct).hasSize(1);
+        assertThat(distinct).hasSize(requests);
+        assertThat(distinct.stream().filter(this::alive).count()).as("tokens still in the line").isEqualTo(1);
         assertThat(redissonClient.getScoredSortedSet("queue:waiting:" + EVENT_ID).size()).isEqualTo(1);
-        assertThat(waitingQueueRepository.findByUserIdAndEventId(USER_ID, EVENT_ID)).hasSize(1);
+        assertThat(waitingQueueRepository.findByUserIdAndEventId(USER_ID, EVENT_ID)).hasSize(requests); // 이력은 요청마다 하나
+    }
+
+    private boolean alive(String queueToken) {
+        try {
+            queueService.status(queueToken);
+            return true;
+        } catch (ApiException e) {
+            return false;
+        }
     }
 }

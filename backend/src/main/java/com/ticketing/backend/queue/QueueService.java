@@ -73,7 +73,7 @@ public class QueueService {
             MeterRegistry meterRegistry) {
         this.enteredCounter = Counter.builder("queue_entered_total").description("People who joined a queue").register(meterRegistry);
         this.reenteredCounter = Counter.builder("queue_reentered_total")
-                .description("Entries answered with the waiting place the person already had, instead of a new one").register(meterRegistry);
+                .description("Re-entries that gave up the person's earlier waiting place (they stand at the back)").register(meterRegistry);
         this.droppedPassCounter = Counter.builder("queue_passes_dropped_total")
                 .description("Passes given up because their holder entered the line again (they stand at the back)").register(meterRegistry);
         this.releasedCounter = Counter.builder("queue_slots_released_total")
@@ -103,8 +103,10 @@ public class QueueService {
             throw new ApiException(ErrorCode.SALES_CLOSED); // 더는 아무도 예매할 수 없는 공연을 위해 줄 서 있을 이유가 없다
         }
 
-        // 사용자·공연당 자리는 하나다. 새로고침, 탭 여러 개, 개발 모드의 이중 실행이 같은 사람을 줄에 여러 번 세우지 못하게 한다.
-        // 확인하고 만드는 사이에 같은 사람의 요청이 끼어들 수 없도록 사용자·공연별 잠금 안에서 한다.
+        // 사용자·공연당 자리는 하나이고, 다시 들어오면(새로고침, 탭을 하나 더 열기, 더블 클릭) 이전 자리를 버리고 맨 뒤에 새로
+        // 선다. 기다리던 사람이든 입장해 있던 사람이든 같다. 새로고침으로 앞자리나 입장권을 지키는 일이 없고, 한 사람이 줄에 여러
+        // 자리를 차지하지도 못한다. 이전 자리를 치우고 새로 만드는 사이에 같은 사람의 요청이 끼어들 수 없도록 사용자·공연별 잠금
+        // 안에서 한다.
         RLock lock = redissonClient.getLock(enterLockKey(eventId, userId));
         boolean locked;
         try {
@@ -118,14 +120,9 @@ public class QueueService {
         }
         try {
             RBucket<String> place = redissonClient.getBucket(placeKey(eventId, userId));
-            String existing = place.get();
-            if (existing != null) {
-                QueueEnterResponse again = existingPlace(eventId, existing);
-                if (again != null) {
-                    reenteredCounter.increment();
-                    return again;
-                }
-                // 그 자리는 이미 없다(입장권이 끝났거나 결제로 슬롯을 돌려줬거나 줄에서 빠졌다). 새로 선다.
+            String earlier = place.get();
+            if (earlier != null) {
+                giveUpEarlierPlace(eventId, earlier); // 이미 없으면(입장권이 끝났거나 결제로 슬롯을 돌려줬거나 줄에서 빠졌다) 치울 것이 없다
             }
 
             String queueToken = UUID.randomUUID().toString();
@@ -146,6 +143,15 @@ public class QueueService {
             waitingQueueRepository.save(new WaitingQueue(userId, eventId, queueToken, rankNo));
             enteredCounter.increment();
 
+            if (earlier != null) {
+                // 이전 자리를 치우는 순간 입장 처리가 그 사람을 막 입장시키고 있었다면(입장 목록에 넣기 전에 읽은 뒤였다면) 입장권이
+                // 뒤늦게 생긴다. 새 자리를 만든 뒤 한 번 더 치워서, 아무도 쓰지 않는 입장권이 슬롯을 붙잡지 않게 한다.
+                if (redissonClient.getScoredSortedSet(activeKey(eventId)).remove(earlier)) {
+                    droppedPassCounter.increment();
+                    invalidateSlots(eventId);
+                }
+            }
+
             return new QueueEnterResponse(queueToken, rankNo, estimateWaitSeconds(rankNo, slotsOf(eventId), System.currentTimeMillis()));
         } finally {
             if (lock.isHeldByCurrentThread()) {
@@ -155,24 +161,23 @@ public class QueueService {
     }
 
     /**
-     * 이 사람이 아직 줄에서 기다리는 중이면 그 자리(지금 순번)를 돌려준다. 새로고침이나 탭을 하나 더 열어도 줄 맨 뒤로 가지
-     * 않는다. 이미 입장해 있던 사람이 다시 들어오면 입장권을 포기한 것으로 보고 그 슬롯을 돌려준 뒤 null을 돌려주어 맨 뒤에
-     * 새로 서게 한다(입장해서 새로고침한 사람이 입장권도 쥐고 줄 앞자리도 지키는 일은 없다). 그 자리가 이미 없어도 null이다.
+     * 다시 들어온 사람의 이전 자리를 치운다. 기다리던 중이었으면 대기 목록에서 빼고(이력은 이탈로 표시), 입장해 있었으면 입장권을
+     * 포기시켜 슬롯을 돌려준다. 그 슬롯은 줄 앞 사람이 가져간다. 이미 없는 자리면 아무 일도 하지 않는다.
      */
-    private QueueEnterResponse existingPlace(Long eventId, String queueToken) {
-        // 대기 목록을 먼저 본다(입장 처리의 쓰기 순서와 반대로 읽는 이유는 statusOf 참고). 입장 목록을 먼저 보면 입장하는 순간의
-        // 사람을 "둘 다 없음"으로 보고, 입장권을 쥔 채 새로 서는 사람이 생긴다.
-        long rankNo = rankOf(redissonClient.getScoredSortedSet(waitingKey(eventId)), queueToken);
-        if (rankNo > 0) {
-            touch(eventId, List.of(queueToken)); // 돌아온 사람이다. 아직 여기 있다
-            return new QueueEnterResponse(queueToken, rankNo, estimateWaitSeconds(rankNo, slotsOf(eventId), System.currentTimeMillis()));
+    private void giveUpEarlierPlace(Long eventId, String queueToken) {
+        if (redissonClient.getScoredSortedSet(waitingKey(eventId)).remove(queueToken)) {
+            redissonClient.getScoredSortedSet(seenKey(eventId)).remove(queueToken);
+            reenteredCounter.increment();
+            try {
+                waitingQueueRepository.markAbandoned(List.of(queueToken));
+            } catch (RuntimeException e) {
+                // 이력은 통계일 뿐이다. DB가 잠깐 흔들려도 줄에 서는 것은 막지 않는다.
+            }
         }
-        RScoredSortedSet<String> active = redissonClient.getScoredSortedSet(activeKey(eventId));
-        if (active.remove(queueToken)) {
+        if (redissonClient.getScoredSortedSet(activeKey(eventId)).remove(queueToken)) {
             droppedPassCounter.increment();
             invalidateSlots(eventId);
         }
-        return null;
     }
 
     public QueueStatusResponse status(String queueToken) {

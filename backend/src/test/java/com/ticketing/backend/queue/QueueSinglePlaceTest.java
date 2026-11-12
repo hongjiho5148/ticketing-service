@@ -80,21 +80,30 @@ class QueueSinglePlaceTest {
     }
 
     @Test
-    void enteringAgainReturnsTheSameWaitingPlaceInsteadOfANewOne() {
+    void aWaitingPersonEnteringAgainStandsAtTheBackAndLeavesNoOldPlace() {
+        enter(user());
+        enter(user());
         long a = user();
-        enter(user());
-        enter(user());
-        sweeper.admitForEvent(eventId); // 용량 2: 앞의 두 사람이 입장하므로 a는 기다린다
         QueueEnterResponse first = enter(a);
+        QueueEnterResponse b = enter(user());
+        QueueEnterResponse c = enter(user());
+        sweeper.admitForEvent(eventId); // 용량 2: 앞의 두 사람이 입장하고 a, b, c가 1, 2, 3번째로 기다린다
+        assertThat(queueService.status(first.queueToken()).rankNo()).isEqualTo(1);
         double before = reentered();
 
-        QueueEnterResponse second = enter(a);
+        QueueEnterResponse again = enter(a); // 기다리던 a가 새로고침했다
 
-        assertThat(second.queueToken()).isEqualTo(first.queueToken());
-        assertThat(second.rankNo()).isEqualTo(first.rankNo()).isEqualTo(1);
-        assertThat(waitingCount()).isEqualTo(1); // 줄에는 이 사람 하나뿐이다
-        assertThat(waitingQueueRepository.findByUserIdAndEventId(a, eventId)).hasSize(1); // 이력 행도 하나다
+        assertThat(again.queueToken()).isNotEqualTo(first.queueToken());
+        assertThat(again.rankNo()).isEqualTo(3); // 맨 뒤다
+        assertThat(queueService.status(b.queueToken()).rankNo()).isEqualTo(1); // 앞사람들은 한 칸씩 당겨진다
+        assertThat(queueService.status(c.queueToken()).rankNo()).isEqualTo(2);
+        assertThatThrownBy(() -> queueService.status(first.queueToken()))
+                .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.QUEUE_TOKEN_NOT_FOUND));
+        assertThat(waitingCount()).isEqualTo(3); // 한 사람이 줄에서 둘로 세어지지 않는다
         assertThat(reentered() - before).isEqualTo(1.0);
+        List<WaitingQueue> rows = waitingQueueRepository.findByUserIdAndEventId(a, eventId);
+        assertThat(rows).hasSize(2);
+        assertThat(rows).extracting(WaitingQueue::getStatus).contains(QueueEntryStatus.ABANDONED); // 이전 자리의 이력은 이탈로 남는다
     }
 
     @Test
@@ -156,8 +165,9 @@ class QueueSinglePlaceTest {
         tokens.add(there.queueToken());
 
         assertThat(there.queueToken()).isNotEqualTo(here.queueToken());
-        assertThat(queueService.enter(a, eventId + 1).queueToken()).isEqualTo(there.queueToken());
-        assertThat(enter(a).queueToken()).isEqualTo(here.queueToken());
+        QueueEnterResponse hereAgain = enter(a); // 이 공연에서 다시 들어와도
+        assertThat(hereAgain.queueToken()).isNotEqualTo(here.queueToken());
+        assertThat(queueService.status(there.queueToken()).rankNo()).isEqualTo(1); // 다른 공연의 자리는 그대로다
     }
 
     @Test

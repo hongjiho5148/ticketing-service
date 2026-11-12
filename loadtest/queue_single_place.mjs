@@ -1,6 +1,8 @@
 // 대기열에 많은 사람이 한꺼번에 들어올 때 두 가지를 확인한다.
-//   1) 사용자·공연당 줄 자리는 하나다: 사람마다 입장 요청을 DUP번 동시에 보내도(더블 클릭, 새로고침, 개발 모드 이중 실행) 대기표는 하나다.
-//   2) 예상 대기시간(앞사람 수로 추정한 상한)이 실제 대기와 얼마나 맞는가: 들어올 때 받은 추정과 입장까지 걸린 시간을 순번 구간별로 비교한다.
+//   1) 사용자·공연당 줄 자리는 하나다: 사람마다 입장 요청을 DUP번 동시에 보내도(더블 클릭, 새로고침, 개발 모드 이중 실행) 살아 있는
+//      자리는 하나다. 다시 들어오면 이전 자리를 버리고 맨 뒤에 서므로 요청마다 대기표는 다르고, 가장 나중에 처리된 것만 줄에 남는다.
+//   2) 예상 대기시간(입장해 있는 사람들의 입장권이 끝나는 시각으로 추정)이 실제 대기와 얼마나 맞는가: 들어올 때 받은 추정과 입장까지
+//      걸린 시간을 추정값별로 비교한다. 이 비교는 --dup=1일 때만 의미가 있다(DUP>1이면 앞 요청의 자리가 버려져 순번이 뒤로 밀린다).
 //
 //   준비: spikeN@example.com 계정이 필요하다 -> loadtest/seed_spike_users.sql
 //         backend를 작은 정원과 짧은 입장권으로 띄워 줄이 실제로 생기게 한다(예: QUEUE_ACTIVE_CAPACITY=100, QUEUE_PASS_TOKEN_TTL_MS=20000,
@@ -63,7 +65,7 @@ for (let from = 1; from <= USERS; from += 25) {
   }
   for (const { n, r } of await Promise.all(batch)) {
     if (r.status !== 200) throw new Error(`spike${n} 로그인 실패(${r.status}): seed_spike_users.sql을 먼저 실행하고 캡차/레이트 리미팅을 끄세요`);
-    people.push({ n, jwt: r.json.accessToken, tokens: new Set(), enterRank: null, enterEstimate: null, enteredAt: 0, passedAt: null, errors: 0 });
+    people.push({ n, jwt: r.json.accessToken, tokens: new Set(), latestToken: null, latestAt: 0, enterRank: null, enterEstimate: null, enteredAt: 0, passedAt: null, errors: 0 });
   }
 }
 const waitingKey = `queue:waiting:${EVENT}`;
@@ -84,6 +86,7 @@ async function enterPerson(p) {
       enterMs.push(r.ms);
       if (r.status === 200) {
         p.tokens.add(r.json.queueToken);
+        if (r.at >= p.latestAt) { p.latestAt = r.at; p.latestToken = r.json.queueToken; } // 가장 나중에 처리된 요청의 자리만 줄에 남는다
         // 입장 요청이 서버에서 기다린 시간은 대기가 아니다. 추정을 받은 순간(첫 응답)부터 입장까지를 실제 대기로 센다.
         // 순번 0은 이미 입장해 있는 자리를 돌려받은 응답이라 추정이 없다.
         if (r.json.rankNo > 0 && (p.enterRank === null || r.at < p.enteredAt)) {
@@ -109,7 +112,7 @@ const otherStatuses = new Map(); // 200과 404가 아닌 응답
 const deadline = t0 + MAX_WAIT_S * 1000;
 async function waitPerson(p) {
   {
-    const token = [...p.tokens][0];
+    const token = p.latestToken;
     if (!token) return;
     let lastRank = null;
     let lastPollAt = p.enteredAt;
@@ -157,7 +160,9 @@ const withOne = people.filter((p) => p.tokens.size === 1).length;
 const passed = people.filter((p) => p.passedAt !== null);
 console.log("\n===== 결과 =====");
 console.log(`사람 ${USERS}명, 입장 요청 ${USERS * DUP}개(사람당 ${DUP}번 동시), 전체 ${total}초`);
-console.log(`대기표를 하나만 받은 사람: ${withOne} / ${USERS}   (서로 다른 대기표 ${unique.size}개, 기대값 ${USERS})`);
+console.log(DUP === 1
+  ? `대기표를 하나만 받은 사람: ${withOne} / ${USERS}   (서로 다른 대기표 ${unique.size}개, 기대값 ${USERS})`
+  : `서로 다른 대기표 ${unique.size}개(요청 ${USERS * DUP}개, 사람 ${USERS}명). 뒤의 요청이 앞의 자리를 대신하므로 줄에 남는 것은 사람당 하나다`);
 console.log(`입장한 사람: ${passed.length} / ${USERS}   입장 요청 실패 ${enterFailed}건, 상태 오류 ${people.reduce((a, p) => a + p.errors, 0) - enterFailed}건`);
 const em = [...enterMs].sort((a, b) => a - b);
 console.log(`입장 요청 응답 시간(ms): p50 ${pct(em, 50)}  p95 ${pct(em, 95)}  최대 ${em[em.length - 1]}`);
