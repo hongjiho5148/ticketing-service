@@ -106,33 +106,46 @@ public class QueueStreams {
                 emitter.complete();
             }
         };
-        register(queueToken, sink);
-        emitter.onCompletion(() -> remove(queueToken));
-        emitter.onTimeout(() -> remove(queueToken));
-        emitter.onError(e -> remove(queueToken));
+        Stream stream = register(queueToken, sink);
+        // 이 연결이 닫혀도 같은 대기표로 나중에 연 다른 연결(새로고침, 탭 두 개)의 등록은 건드리지 않는다.
+        emitter.onCompletion(() -> remove(queueToken, stream));
+        emitter.onTimeout(() -> remove(queueToken, stream));
+        emitter.onError(e -> remove(queueToken, stream));
         return emitter;
     }
 
-    void register(String queueToken, QueueStreamSink sink) {
-        if (streams.size() >= maxConnections) {
+    /**
+     * 같은 사람은 같은 대기표를 다시 쓰므로(새로고침, 탭 두 개) 한 대기표에 연결이 둘 이상 올 수 있다. 가장 나중에 연 연결이
+     * 이전 연결을 대신하고, 이전 연결은 닫는다. 닫지 않으면 등록부에서만 빠진 채 하트비트도 받지 못하고 오래 남는다.
+     */
+    Stream register(String queueToken, QueueStreamSink sink) {
+        if (!streams.containsKey(queueToken) && streams.size() >= maxConnections) {
             rejected.increment();
             throw new ApiException(ErrorCode.QUEUE_STREAM_FULL);
         }
         Long eventId = queueService.eventOf(queueToken); // 모르는 토큰이면 QUEUE_TOKEN_NOT_FOUND를 던진다
         // 상태를 읽기 전에 등록한다. 그 사이에 알려진 입장은 이 스트림에 적용되거나 읽은 값에 이미 보이므로 놓치는 일이 없다.
         Stream stream = new Stream(queueToken, eventId, sink);
-        streams.put(queueToken, stream);
+        Stream previous = streams.put(queueToken, stream);
+        if (previous != null) {
+            try {
+                previous.sink.complete();
+            } catch (RuntimeException ignored) {
+                // 이미 닫혔다
+            }
+        }
         QueueStatusResponse status;
         try {
             status = queueService.status(queueToken);
         } catch (RuntimeException e) {
-            streams.remove(queueToken);
+            streams.remove(queueToken, stream);
             throw e;
         }
         if ("WAITING".equals(status.status())) {
             stream.rank = status.rankNo();
         }
         push(stream, status);
+        return stream;
     }
 
     /** 스윕을 돌린 인스턴스에서 호출한다. Redis를 거쳐 모든 인스턴스의 연결에 닿는다. */
@@ -167,10 +180,16 @@ public class QueueStreams {
     /** 자리가 움직인 모든 사람에게 새 순번을 보낸다. 묶음이 얼마나 자주 입장하든 초당 한 번 이하다. */
     @Scheduled(initialDelayString = "${queue.stream.flush-interval-ms:1000}", fixedDelayString = "${queue.stream.flush-interval-ms:1000}")
     public void flushRanks() {
+        long now = System.currentTimeMillis();
         for (Stream stream : new ArrayList<>(streams.values())) {
             if (stream.dirty) {
                 stream.dirty = false;
-                pushRank(stream);
+                try {
+                    // 슬롯이 비는 시각은 QueueService가 공연마다 잠깐 보관하므로 연결마다 Redis를 읽지 않는다
+                    pushRank(stream, queueService.estimateWaitSeconds(stream.rank, queueService.slotsOf(stream.eventId), now));
+                } catch (RuntimeException e) {
+                    log.warn("could not push the new rank for event {}", stream.eventId, e);
+                }
             }
         }
     }
@@ -201,11 +220,11 @@ public class QueueStreams {
             QueueStatusResponse status = states.get(stream.queueToken);
             if (status == null) {
                 // 대기열에서 없어졌다(만료됐거나 빠졌다). 클라이언트가 물어서 알게 된다
-                streams.remove(stream.queueToken);
+                streams.remove(stream.queueToken, stream);
                 stream.sink.complete();
             } else if ("WAITING".equals(status.status())) {
                 stream.rank = status.rankNo();
-                pushRank(stream);
+                pushRank(stream, status.estimatedWaitSeconds());
             } else {
                 push(stream, status);
             }
@@ -242,6 +261,12 @@ public class QueueStreams {
         }
     }
 
+    /** 이 연결이 아직 그 대기표의 등록된 연결일 때만 뺀다. 이미 다른 연결이 대신했다면 그쪽을 지우지 않는다. */
+    void remove(String queueToken, Stream stream) {
+        streams.remove(queueToken, stream);
+    }
+
+    /** 그 대기표에 등록된 연결이 무엇이든 뺀다(테스트 정리용). */
     void remove(String queueToken) {
         streams.remove(queueToken);
     }
@@ -251,10 +276,10 @@ public class QueueStreams {
     }
 
     /** 이미 그 숫자를 가진 경우가 아니면 클라이언트에게 순번을 알린다. */
-    private void pushRank(Stream stream) {
+    private void pushRank(Stream stream, long estimatedWaitSeconds) {
         long rank = stream.rank;
         if (rank != stream.lastSentRank) {
-            push(stream, QueueStatusResponse.waiting(rank, queueService.estimateWaitSeconds(rank)));
+            push(stream, QueueStatusResponse.waiting(rank, estimatedWaitSeconds));
         }
     }
 
@@ -264,7 +289,7 @@ public class QueueStreams {
             stream.lastSentRank = status.rankNo();
             if ("PASSED".equals(status.status())) {
                 passedPushes.increment();
-                streams.remove(stream.queueToken);
+                streams.remove(stream.queueToken, stream);
                 stream.sink.complete();
             } else {
                 statusPushes.increment();
@@ -275,7 +300,7 @@ public class QueueStreams {
     }
 
     private void drop(Stream stream) {
-        streams.remove(stream.queueToken);
+        streams.remove(stream.queueToken, stream);
         try {
             stream.sink.complete();
         } catch (RuntimeException ignored) {
@@ -283,7 +308,7 @@ public class QueueStreams {
         }
     }
 
-    private static final class Stream {
+    static final class Stream {
         final String queueToken;
         final Long eventId;
         final QueueStreamSink sink;

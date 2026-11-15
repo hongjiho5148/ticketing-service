@@ -6,6 +6,8 @@
 -- 예매는 공연 시작 2시간 전까지만 되므로, 마지막의 "곧 마감" 공연은 시작이 2시간 30분 뒤라 30분 안에 예매가 닫힌다(마감 규칙 시연용).
 -- 지우려면:  DELETE s FROM seat s JOIN event e ON e.id = s.event_id WHERE e.description LIKE '%[데모 공연]%';
 --            DELETE FROM event WHERE description LIKE '%[데모 공연]%';
+-- 컨테이너의 mysql 클라이언트는 기본 문자셋이 latin1이라, 이 줄이 없으면 한글이 이중 인코딩되어 저장된다(앱에서 `ì œ ...`처럼 깨져 보인다).
+SET NAMES utf8mb4;
 SET SESSION cte_max_recursion_depth = 5000;
 
 -- 1) 공연

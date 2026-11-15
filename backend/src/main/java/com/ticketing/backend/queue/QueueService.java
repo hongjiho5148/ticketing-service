@@ -15,9 +15,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import org.redisson.api.RAtomicLong;
 import org.redisson.api.RBatch;
 import org.redisson.api.RBucket;
+import org.redisson.api.RLock;
 import org.redisson.api.RScoredSortedSet;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,16 +37,27 @@ public class QueueService {
     /** statusOfMany에서 왕복 한 번에 읽는 사람 수다(사람마다 명령 두 개). */
     private static final int STATUS_BATCH = 500;
 
+    /** 슬롯이 비는 시각을 공연마다 이만큼 보관한다(slotsOf 참고). */
+    static final long SLOTS_CACHE_MS = 1000;
+
+    private record SlotsSnapshot(long readAtMs, long[] expiresAt) {
+    }
+
+    private final ConcurrentHashMap<Long, SlotsSnapshot> slotsCache = new ConcurrentHashMap<>();
+
     private final RedissonClient redissonClient;
     private final WaitingQueueRepository waitingQueueRepository;
     private final EventServiceClient eventServiceClient;
     private final int activeCapacity;
     private final long admissionIntervalMs;
+    private final long passTokenTtlMs;
     private final boolean releaseSlotOnPurchase;
     private final long passExtensionMs;
     private final long pollCreditMs;
     private final Counter extendedCounter;
     private final Counter enteredCounter;
+    private final Counter reenteredCounter;
+    private final Counter droppedPassCounter;
     private final Counter releasedCounter;
 
     public QueueService(
@@ -52,11 +66,16 @@ public class QueueService {
             EventServiceClient eventServiceClient,
             @Value("${queue.active-capacity}") int activeCapacity,
             @Value("${queue.admission-interval-ms}") long admissionIntervalMs,
+            @Value("${queue.pass-token-ttl-ms:300000}") long passTokenTtlMs,
             @Value("${queue.release-slot-on-purchase:true}") boolean releaseSlotOnPurchase,
             @Value("${queue.pass-extension-ms:300000}") long passExtensionMs,
             @Value("${queue.poll-credit-ms:120000}") long pollCreditMs,
             MeterRegistry meterRegistry) {
         this.enteredCounter = Counter.builder("queue_entered_total").description("People who joined a queue").register(meterRegistry);
+        this.reenteredCounter = Counter.builder("queue_reentered_total")
+                .description("Re-entries that gave up the person's earlier waiting place (they stand at the back)").register(meterRegistry);
+        this.droppedPassCounter = Counter.builder("queue_passes_dropped_total")
+                .description("Passes given up because their holder entered the line again (they stand at the back)").register(meterRegistry);
         this.releasedCounter = Counter.builder("queue_slots_released_total")
                 .description("Active slots handed back because the buyer paid").register(meterRegistry);
         this.redissonClient = redissonClient;
@@ -64,6 +83,7 @@ public class QueueService {
         this.eventServiceClient = eventServiceClient;
         this.activeCapacity = activeCapacity;
         this.admissionIntervalMs = admissionIntervalMs;
+        this.passTokenTtlMs = passTokenTtlMs;
         this.releaseSlotOnPurchase = releaseSlotOnPurchase;
         this.passExtensionMs = passExtensionMs;
         this.pollCreditMs = pollCreditMs;
@@ -83,24 +103,81 @@ public class QueueService {
             throw new ApiException(ErrorCode.SALES_CLOSED); // 더는 아무도 예매할 수 없는 공연을 위해 줄 서 있을 이유가 없다
         }
 
-        String queueToken = UUID.randomUUID().toString();
+        // 사용자·공연당 자리는 하나이고, 다시 들어오면(새로고침, 탭을 하나 더 열기, 더블 클릭) 이전 자리를 버리고 맨 뒤에 새로
+        // 선다. 기다리던 사람이든 입장해 있던 사람이든 같다. 새로고침으로 앞자리나 입장권을 지키는 일이 없고, 한 사람이 줄에 여러
+        // 자리를 차지하지도 못한다. 이전 자리를 치우고 새로 만드는 사이에 같은 사람의 요청이 끼어들 수 없도록 사용자·공연별 잠금
+        // 안에서 한다.
+        RLock lock = redissonClient.getLock(enterLockKey(eventId, userId));
+        boolean locked;
+        try {
+            locked = lock.tryLock(3, 10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new ApiException(ErrorCode.QUEUE_BUSY);
+        }
+        if (!locked) {
+            throw new ApiException(ErrorCode.QUEUE_BUSY);
+        }
+        try {
+            RBucket<String> place = redissonClient.getBucket(placeKey(eventId, userId));
+            String earlier = place.get();
+            if (earlier != null) {
+                giveUpEarlierPlace(eventId, earlier); // 이미 없으면(입장권이 끝났거나 결제로 슬롯을 돌려줬거나 줄에서 빠졌다) 치울 것이 없다
+            }
 
-        RAtomicLong sequence = redissonClient.getAtomicLong(sequenceKey(eventId));
-        double score = sequence.incrementAndGet();
+            String queueToken = UUID.randomUUID().toString();
 
-        RScoredSortedSet<String> waiting = redissonClient.getScoredSortedSet(waitingKey(eventId));
-        waiting.add(score, queueToken);
+            RAtomicLong sequence = redissonClient.getAtomicLong(sequenceKey(eventId));
+            double score = sequence.incrementAndGet();
 
-        RBucket<Long> tokenEvent = redissonClient.getBucket(tokenEventKey(queueToken));
-        tokenEvent.set(eventId, Duration.ofHours(1));
-        touch(eventId, List.of(queueToken)); // 이 사람은 지금 여기 있다. 계속 그것을 보여 줘야 한다(touch 참고)
+            RScoredSortedSet<String> waiting = redissonClient.getScoredSortedSet(waitingKey(eventId));
+            waiting.add(score, queueToken);
 
-        long rankNo = rankOf(waiting, queueToken);
+            RBucket<Long> tokenEvent = redissonClient.getBucket(tokenEventKey(queueToken));
+            tokenEvent.set(eventId, Duration.ofHours(1));
+            place.set(queueToken, Duration.ofHours(1));
+            touch(eventId, List.of(queueToken)); // 이 사람은 지금 여기 있다. 계속 그것을 보여 줘야 한다(touch 참고)
 
-        waitingQueueRepository.save(new WaitingQueue(userId, eventId, queueToken, rankNo));
-        enteredCounter.increment();
+            long rankNo = rankOf(waiting, queueToken);
 
-        return new QueueEnterResponse(queueToken, rankNo, estimateWaitSeconds(rankNo));
+            waitingQueueRepository.save(new WaitingQueue(userId, eventId, queueToken, rankNo));
+            enteredCounter.increment();
+
+            if (earlier != null) {
+                // 이전 자리를 치우는 순간 입장 처리가 그 사람을 막 입장시키고 있었다면(입장 목록에 넣기 전에 읽은 뒤였다면) 입장권이
+                // 뒤늦게 생긴다. 새 자리를 만든 뒤 한 번 더 치워서, 아무도 쓰지 않는 입장권이 슬롯을 붙잡지 않게 한다.
+                if (redissonClient.getScoredSortedSet(activeKey(eventId)).remove(earlier)) {
+                    droppedPassCounter.increment();
+                    invalidateSlots(eventId);
+                }
+            }
+
+            return new QueueEnterResponse(queueToken, rankNo, estimateWaitSeconds(rankNo, slotsOf(eventId), System.currentTimeMillis()));
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
+    }
+
+    /**
+     * 다시 들어온 사람의 이전 자리를 치운다. 기다리던 중이었으면 대기 목록에서 빼고(이력은 이탈로 표시), 입장해 있었으면 입장권을
+     * 포기시켜 슬롯을 돌려준다. 그 슬롯은 줄 앞 사람이 가져간다. 이미 없는 자리면 아무 일도 하지 않는다.
+     */
+    private void giveUpEarlierPlace(Long eventId, String queueToken) {
+        if (redissonClient.getScoredSortedSet(waitingKey(eventId)).remove(queueToken)) {
+            redissonClient.getScoredSortedSet(seenKey(eventId)).remove(queueToken);
+            reenteredCounter.increment();
+            try {
+                waitingQueueRepository.markAbandoned(List.of(queueToken));
+            } catch (RuntimeException e) {
+                // 이력은 통계일 뿐이다. DB가 잠깐 흔들려도 줄에 서는 것은 막지 않는다.
+            }
+        }
+        if (redissonClient.getScoredSortedSet(activeKey(eventId)).remove(queueToken)) {
+            droppedPassCounter.increment();
+            invalidateSlots(eventId);
+        }
     }
 
     public QueueStatusResponse status(String queueToken) {
@@ -136,19 +213,21 @@ public class QueueService {
             RBatch batch = redissonClient.createBatch();
             for (String token : chunk) {
                 Long eventId = eventByToken.get(token);
-                batch.<String>getScoredSortedSet(activeKey(eventId)).getScoreAsync(token);
+                // 대기 목록을 먼저 읽는다. 이유는 statusOf 참고(입장 처리의 쓰기 순서와 반대로 읽어야 틈이 없다).
                 batch.<String>getScoredSortedSet(waitingKey(eventId)).rankAsync(token);
+                batch.<String>getScoredSortedSet(activeKey(eventId)).getScoreAsync(token);
             }
             List<?> responses = batch.execute().getResponses();
             long now = System.currentTimeMillis();
             for (int i = 0; i < chunk.size(); i++) {
                 String token = chunk.get(i);
-                Double activeExpiresAt = (Double) responses.get(2 * i);
-                Integer rank = (Integer) responses.get(2 * i + 1);
+                Integer rank = (Integer) responses.get(2 * i);
+                Double activeExpiresAt = (Double) responses.get(2 * i + 1);
                 if (activeExpiresAt != null && activeExpiresAt > now) {
                     result.put(token, QueueStatusResponse.passed(token, secondsUntil(activeExpiresAt)));
                 } else if (rank != null) {
-                    result.put(token, QueueStatusResponse.waiting(rank + 1L, estimateWaitSeconds(rank + 1L)));
+                    long[] slots = slotsOf(eventByToken.get(token)); // 공연마다 짧게 보관하므로 사람마다 Redis를 읽지 않는다
+                    result.put(token, QueueStatusResponse.waiting(rank + 1L, estimateWaitSeconds(rank + 1L, slots, now)));
                 }
             }
         }
@@ -182,18 +261,23 @@ public class QueueService {
     }
 
     private QueueStatusResponse statusOf(Long eventId, String queueToken) {
+        // 입장 처리는 "입장 목록에 넣고, 그다음 대기 목록에서 뺀다"의 두 단계다(QueueAdmissionSweeper). 읽는 순서는 그 반대로,
+        // 대기 목록을 먼저 본다. 입장 목록을 먼저 보면 "아직 없음"을 본 직후에 입장 처리가 두 단계를 모두 끝낼 수 있고, 그러면 대기
+        // 목록에서도 찾지 못해 방금 입장한 사람이 줄에서 빠진 것으로 보인다. 대기 목록에 없다고 본 때는 입장 목록 쪽 쓰기가 이미
+        // 끝나 있으므로 이 순서에서는 그런 틈이 없다.
+        RScoredSortedSet<String> waiting = redissonClient.getScoredSortedSet(waitingKey(eventId));
+        long rankNo = rankOf(waiting, queueToken);
+
         RScoredSortedSet<String> active = redissonClient.getScoredSortedSet(activeKey(eventId));
         Double activeExpiresAt = active.getScore(queueToken);
         if (activeExpiresAt != null && activeExpiresAt > System.currentTimeMillis()) {
             return QueueStatusResponse.passed(queueToken, secondsUntil(activeExpiresAt));
         }
 
-        RScoredSortedSet<String> waiting = redissonClient.getScoredSortedSet(waitingKey(eventId));
-        long rankNo = rankOf(waiting, queueToken);
         if (rankNo == 0) {
             throw new ApiException(ErrorCode.QUEUE_TOKEN_NOT_FOUND);
         }
-        return QueueStatusResponse.waiting(rankNo, estimateWaitSeconds(rankNo));
+        return QueueStatusResponse.waiting(rankNo, estimateWaitSeconds(rankNo, slotsOf(eventId), System.currentTimeMillis()));
     }
 
     /** 대기열 토큰이 속한 공연. */
@@ -239,6 +323,9 @@ public class QueueService {
                 releasedCounter.increment();
             }
         }
+        if (released > 0) {
+            invalidateSlots(eventId);
+        }
         return released;
     }
 
@@ -280,9 +367,78 @@ public class QueueService {
         return rank == null ? 0 : rank + 1L;
     }
 
-    long estimateWaitSeconds(long rankNo) {
-        long batches = (rankNo + activeCapacity - 1) / activeCapacity;
-        return batches * (admissionIntervalMs / 1000);
+    /**
+     * 슬롯마다 언제 비는지(끝나는 시각, 밀리초)를 오름차순으로 돌려준다. 비어 있는 슬롯은 0이고, 크기는 정원이다. 예상 대기시간을
+     * 계산하는 데 쓰고, 사람마다 읽으면 비싸서 공연마다 {@value #SLOTS_CACHE_MS}ms 동안 보관한다(몇 초 단위 추정이라 그만큼
+     * 오래돼도 상관없다). 입장하거나 슬롯을 돌려주면 바로 버린다.
+     */
+    long[] slotsOf(Long eventId) {
+        long now = System.currentTimeMillis();
+        SlotsSnapshot cached = slotsCache.get(eventId);
+        if (cached != null && now - cached.readAtMs < SLOTS_CACHE_MS) {
+            return cached.expiresAt;
+        }
+        // 한꺼번에 몰릴 때 보관이 끝난 순간 모든 요청이 같이 읽지 않도록, 한 요청만 읽고 나머지는 그 결과를 쓴다.
+        return slotsCache.compute(eventId, (key, old) -> {
+            long readAt = System.currentTimeMillis();
+            if (old != null && readAt - old.readAtMs < SLOTS_CACHE_MS) {
+                return old;
+            }
+            return new SlotsSnapshot(readAt, readSlots(eventId, readAt));
+        }).expiresAt;
+    }
+
+    private long[] readSlots(Long eventId, long now) {
+        List<Double> live = new ArrayList<>();
+        for (var entry : redissonClient.<String>getScoredSortedSet(activeKey(eventId)).entryRange(0, -1)) {
+            if (entry.getScore() > now) {
+                live.add(entry.getScore());
+            }
+        }
+        long[] slots = new long[Math.max(activeCapacity, live.size())];
+        int free = slots.length - live.size();
+        for (int i = 0; i < live.size(); i++) {
+            slots[free + i] = live.get(i).longValue(); // 정렬된 채로 온다
+        }
+        return slots;
+    }
+
+    void invalidateSlots(Long eventId) {
+        slotsCache.remove(eventId);
+    }
+
+    /**
+     * 내 앞에 몇 명이 있는지와 지금 입장해 있는 사람들의 입장권이 언제 끝나는지로 추정한 대기시간이다. 슬롯은 정원만큼 있고,
+     * 각자 비는 때가 다르다(비어 있으면 지금). 줄 앞에서부터 가장 먼저 비는 슬롯을 하나씩 받는다고 보고, 그 슬롯을 받은 사람의
+     * 입장권도 입장권 수명만큼 쥔다고 본다. 그러면 순번 r의 사람은 슬롯 (r-1)%정원 번째가 비는 때에, 정원만큼 한 바퀴 돌 때마다
+     * 입장권 수명을 더해서 들어간다. 입장한 사람들이 입장권을 끝까지 쥔다는 가정이라(구매하며 일찍 돌려주면 더 빠르고, 좌석을
+     * 잡아 입장권이 연장되면 더 느리다) 근사치다. 입장권 5분이 측정한 값이 아니라 시작값이므로 이 값도 그렇다
+     * (AdmissionUseTracker가 모으는 입장 뒤 첫 예약까지의 시간으로 바꿀 수 있다).
+     *
+     * @param slotExpiresAt {@link #slotsOf}가 돌려준 값
+     */
+    long estimateWaitSeconds(long rankNo, long[] slotExpiresAt, long nowMs) {
+        long tickSeconds = Math.max(1, (admissionIntervalMs + 999) / 1000);
+        if (slotExpiresAt.length == 0) {
+            return Math.max(tickSeconds, passTokenTtlMs / 1000);
+        }
+        // 순번 0은 줄에 선 직후 순번을 읽기 전에 이미 입장 처리된 사람이다(정원에 여유가 있으면 0.3초 주기를 기다릴 필요도 없이
+        // 곧바로 입장한다). 가장 앞 순번과 같게 다룬다. 이 처리가 없으면 아래 나머지 계산이 -1이 되어 배열 범위를 벗어난다.
+        long position = Math.max(1, rankNo);
+        int index = (int) ((position - 1) % slotExpiresAt.length);
+        long rounds = (position - 1) / slotExpiresAt.length;
+        long untilMs = Math.max(0, slotExpiresAt[index] - nowMs) + rounds * passTokenTtlMs;
+        // 이미 비어 있는 슬롯을 받을 때만 입장 주기(다음 입장 시각)가 걸린다. 자리가 나기를 기다리는 사람에게는 상관없다.
+        return untilMs <= 0 ? tickSeconds : (untilMs + 999) / 1000;
+    }
+
+    /** 사용자·공연당 줄 자리의 대기열 토큰을 가리키는 키다. 같은 사람이 여러 번 서지 못하게 한다. */
+    private String placeKey(Long eventId, Long userId) {
+        return "queue:place:" + eventId + ":" + userId;
+    }
+
+    private String enterLockKey(Long eventId, Long userId) {
+        return "queue:enter-lock:" + eventId + ":" + userId;
     }
 
     static String waitingKey(Long eventId) {

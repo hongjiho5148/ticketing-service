@@ -19,6 +19,7 @@ public enum ErrorCode {
     SALES_CLOSED(HttpStatus.GONE, "예매가 마감된 공연입니다. 공연 시작 2시간 전까지 예매할 수 있어요."),
     QUEUE_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "대기열 정보를 찾을 수 없습니다. 다시 입장해주세요."),
     QUEUE_STREAM_FULL(HttpStatus.SERVICE_UNAVAILABLE, "실시간 연결이 가득 찼습니다. 잠시 후 다시 시도해주세요."),
+    QUEUE_BUSY(HttpStatus.SERVICE_UNAVAILABLE, "같은 줄에 대한 요청이 겹쳐 처리하지 못했습니다. 잠시 후 다시 시도해주세요."),
     EVENT_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "좌석/이벤트 정보를 가져올 수 없습니다. 잠시 후 다시 시도해주세요.");
 
     private final HttpStatus status;

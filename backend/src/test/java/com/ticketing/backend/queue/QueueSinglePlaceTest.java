@@ -1,0 +1,222 @@
+package com.ticketing.backend.queue;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import com.ticketing.backend.common.ApiException;
+import com.ticketing.backend.common.ErrorCode;
+import com.ticketing.backend.eventclient.EventServiceClient;
+import com.ticketing.backend.queue.dto.QueueEnterResponse;
+import com.ticketing.backend.queue.dto.QueueStatusResponse;
+import io.micrometer.core.instrument.MeterRegistry;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.redisson.api.RedissonClient;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * 한 사람은 공연당 줄에 자리를 하나만 가진다. 이미 줄에 있는 사람이 다시 들어오면(새로고침, 탭 여러 개, 개발 모드의 이중 실행)
+ * 새 대기표를 만들지 않고 기존 것을 돌려준다. compose Redis와 MySQL에서 실행한다(데이터베이스 부분은 롤백하고, 테스트 공연의
+ * Redis 키는 끝나고 지운다). 용량은 2라서 세 번째 사람은 기다려야 하고, 입장 스위퍼의 자체 타이머는 꺼 두어서 테스트가 사람들을
+ * 입장시킬 때를 정한다. compose 네트워크 안에서 DB_HOST=mysql REDIS_HOST=redis로 실행한다.
+ */
+@SpringBootTest(properties = {"queue.active-capacity=2", "queue.admission-interval-ms=3600000"})
+@Transactional
+class QueueSinglePlaceTest {
+
+    private static final AtomicLong SEQ = new AtomicLong(System.currentTimeMillis());
+
+    @Autowired private QueueService queueService;
+    @Autowired private QueueAdmissionSweeper sweeper;
+    @Autowired private RedissonClient redissonClient;
+    @Autowired private WaitingQueueRepository waitingQueueRepository;
+    @Autowired private MeterRegistry meterRegistry;
+
+    @MockitoBean private EventServiceClient eventServiceClient;
+
+    private Long eventId;
+    private final List<Long> users = new ArrayList<>();
+    private final List<String> tokens = new ArrayList<>();
+
+    @BeforeEach
+    void setUp() {
+        eventId = 7_100_000_000L + SEQ.incrementAndGet() % 1_000_000;
+    }
+
+    @AfterEach
+    void cleanUpRedis() {
+        for (long id : new long[] {eventId, eventId + 1}) {
+            redissonClient.getKeys().delete("queue:waiting:" + id, "queue:active:" + id, "queue:seq:" + id, "queue:seen:" + id);
+            users.forEach(u -> redissonClient.getKeys().delete("queue:place:" + id + ":" + u));
+        }
+        tokens.forEach(t -> redissonClient.getKeys().delete("queue:event:" + t));
+    }
+
+    private long user() {
+        long id = 9_100_000_000L + SEQ.incrementAndGet() % 1_000_000;
+        users.add(id);
+        return id;
+    }
+
+    private QueueEnterResponse enter(long userId) {
+        QueueEnterResponse response = queueService.enter(userId, eventId);
+        tokens.add(response.queueToken());
+        return response;
+    }
+
+    private int waitingCount() {
+        return redissonClient.getScoredSortedSet("queue:waiting:" + eventId).size();
+    }
+
+    private double reentered() {
+        return meterRegistry.counter("queue_reentered_total").count();
+    }
+
+    @Test
+    void aWaitingPersonEnteringAgainStandsAtTheBackAndLeavesNoOldPlace() {
+        enter(user());
+        enter(user());
+        long a = user();
+        QueueEnterResponse first = enter(a);
+        QueueEnterResponse b = enter(user());
+        QueueEnterResponse c = enter(user());
+        sweeper.admitForEvent(eventId); // 용량 2: 앞의 두 사람이 입장하고 a, b, c가 1, 2, 3번째로 기다린다
+        assertThat(queueService.status(first.queueToken()).rankNo()).isEqualTo(1);
+        double before = reentered();
+
+        QueueEnterResponse again = enter(a); // 기다리던 a가 새로고침했다
+
+        assertThat(again.queueToken()).isNotEqualTo(first.queueToken());
+        assertThat(again.rankNo()).isEqualTo(3); // 맨 뒤다
+        assertThat(queueService.status(b.queueToken()).rankNo()).isEqualTo(1); // 앞사람들은 한 칸씩 당겨진다
+        assertThat(queueService.status(c.queueToken()).rankNo()).isEqualTo(2);
+        assertThatThrownBy(() -> queueService.status(first.queueToken()))
+                .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.QUEUE_TOKEN_NOT_FOUND));
+        assertThat(waitingCount()).isEqualTo(3); // 한 사람이 줄에서 둘로 세어지지 않는다
+        assertThat(reentered() - before).isEqualTo(1.0);
+        List<WaitingQueue> rows = waitingQueueRepository.findByUserIdAndEventId(a, eventId);
+        assertThat(rows).hasSize(2);
+        assertThat(rows).extracting(WaitingQueue::getStatus).contains(QueueEntryStatus.ABANDONED); // 이전 자리의 이력은 이탈로 남는다
+    }
+
+    @Test
+    void anAdmittedPersonEnteringAgainGivesUpThePassAndStandsAtTheBack() {
+        long a = user();
+        QueueEnterResponse first = enter(a);
+        enter(user());
+        QueueEnterResponse third = enter(user());
+        sweeper.admitForEvent(eventId); // 용량 2: a와 두 번째 사람이 입장하고 셋째는 기다린다
+        assertThat(queueService.isPassTokenValid(eventId, first.queueToken())).isTrue();
+        double before = meterRegistry.counter("queue_passes_dropped_total").count();
+
+        QueueEnterResponse again = enter(a); // 입장한 사람이 새로고침했다
+
+        assertThat(again.queueToken()).isNotEqualTo(first.queueToken());
+        assertThat(again.rankNo()).isEqualTo(2); // 기다리던 셋째의 뒤다
+        assertThat(queueService.isPassTokenValid(eventId, first.queueToken())).isFalse(); // 입장권은 포기했다
+        assertThatThrownBy(() -> queueService.status(first.queueToken()))
+                .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.QUEUE_TOKEN_NOT_FOUND));
+        assertThat(queueService.status(third.queueToken()).rankNo()).isEqualTo(1); // 셋째는 그대로 맨 앞이다
+        assertThat(waitingCount()).isEqualTo(2);
+        assertThat(meterRegistry.counter("queue_passes_dropped_total").count() - before).isEqualTo(1.0);
+
+        sweeper.admitForEvent(eventId); // 돌려받은 슬롯은 줄 앞 사람이 가져간다
+        assertThat(queueService.isPassTokenValid(eventId, third.queueToken())).isTrue();
+        assertThat(queueService.isPassTokenValid(eventId, again.queueToken())).isFalse();
+    }
+
+    @Test
+    void aPlaceThatIsGoneIsReplacedByANewOne() {
+        long a = user();
+        QueueEnterResponse first = enter(a);
+        sweeper.admitForEvent(eventId);
+        assertThat(queueService.releaseSlotsOfBuyer(a, eventId)).isEqualTo(1); // a가 결제해서 슬롯을 돌려줬다
+
+        QueueEnterResponse again = enter(a);
+
+        assertThat(again.queueToken()).isNotEqualTo(first.queueToken()); // 결제한 뒤 좌석을 더 사려면 다시 줄을 선다
+        assertThat(again.rankNo()).isEqualTo(1);
+    }
+
+    @Test
+    void aPersonWhoWasTakenOutOfTheLineCanJoinAgain() {
+        long a = user();
+        QueueEnterResponse first = enter(a);
+        redissonClient.getScoredSortedSet("queue:waiting:" + eventId).remove(first.queueToken()); // 이탈 정리가 빼 버렸다
+
+        QueueEnterResponse again = enter(a);
+
+        assertThat(again.queueToken()).isNotEqualTo(first.queueToken());
+        assertThat(waitingCount()).isEqualTo(1);
+    }
+
+    @Test
+    void theSamePersonOnTwoShowsHasOnePlaceOnEach() {
+        long a = user();
+        QueueEnterResponse here = enter(a);
+        QueueEnterResponse there = queueService.enter(a, eventId + 1);
+        tokens.add(there.queueToken());
+
+        assertThat(there.queueToken()).isNotEqualTo(here.queueToken());
+        QueueEnterResponse hereAgain = enter(a); // 이 공연에서 다시 들어와도
+        assertThat(hereAgain.queueToken()).isNotEqualTo(here.queueToken());
+        assertThat(queueService.status(there.queueToken()).rankNo()).isEqualTo(1); // 다른 공연의 자리는 그대로다
+    }
+
+    @Test
+    void differentPeopleStillGetTheirOwnPlaces() {
+        QueueEnterResponse first = enter(user());
+        QueueEnterResponse second = enter(user());
+
+        assertThat(second.queueToken()).isNotEqualTo(first.queueToken());
+        assertThat(waitingCount()).isEqualTo(2);
+    }
+
+    @Test
+    void theEstimateIsWhenTheFirstSlotActuallyFreesUp() {
+        enter(user());
+        enter(user());
+        QueueEnterResponse third = enter(user());
+        sweeper.admitForEvent(eventId); // 용량 2: 처음 둘이 방금 입장하고 셋째는 기다린다
+        queueService.invalidateSlots(eventId);
+
+        QueueStatusResponse status = queueService.status(third.queueToken());
+
+        assertThat(status.status()).isEqualTo("WAITING");
+        assertThat(status.rankNo()).isEqualTo(1);
+        assertThat(status.estimatedWaitSeconds()).isBetween(298L, 300L); // 방금 입장했으니 입장권이 거의 5분 남았다
+    }
+
+    @Test
+    void theEstimateFollowsWhenEachAdmittedPassReallyEnds() {
+        QueueEnterResponse a = enter(user());
+        QueueEnterResponse b = enter(user());
+        QueueEnterResponse c = enter(user());
+        QueueEnterResponse d = enter(user());
+        sweeper.admitForEvent(eventId); // 용량 2: a와 b가 입장하고 c와 d는 기다린다
+        var active = redissonClient.<String>getScoredSortedSet("queue:active:" + eventId);
+        long now = System.currentTimeMillis();
+        active.add((double) (now + 60_000), a.queueToken()); // a의 입장권은 1분 뒤에 끝난다
+        active.add((double) (now + 200_000), b.queueToken()); // b의 입장권은 3분 20초 뒤에 끝난다
+        queueService.invalidateSlots(eventId);
+
+        // 줄 맨 앞의 c는 가장 먼저 비는 슬롯(a의 것)을, d는 그다음(b의 것)을 받는다. 5분을 일괄로 잡지 않는다.
+        assertThat(queueService.status(c.queueToken()).estimatedWaitSeconds()).isBetween(58L, 61L);
+        assertThat(queueService.status(d.queueToken()).estimatedWaitSeconds()).isBetween(198L, 201L);
+    }
+
+    @Test
+    void whenSlotsAreFreeTheEstimateIsTheNextTick() {
+        QueueEnterResponse only = enter(user()); // 아직 아무도 입장시키지 않았지만 슬롯 2개가 비어 있다
+
+        assertThat(only.rankNo()).isEqualTo(1);
+        assertThat(only.estimatedWaitSeconds()).isEqualTo(3600); // 이 테스트는 입장 주기를 1시간으로 꺼 두었다
+    }
+}
