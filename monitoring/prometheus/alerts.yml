@@ -1,5 +1,4 @@
-# 알림 규칙이다. 이 구성에는 Alertmanager가 없으므로 Prometheus의 Alerts 페이지(그리고 Grafana의 발생 중인 알림)에 보인다.
-# 슬랙이나 메일 같은 채널에 연결하려면 Alertmanager를 추가해야 한다.
+# 알림 규칙이다. 울리면 Alertmanager를 거쳐 Slack으로 나가고(monitoring/alertmanager), Prometheus의 Alerts 화면에도 보인다.
 groups:
   - name: pickseat
     rules:
@@ -8,7 +7,23 @@ groups:
         for: 30s
         labels: { severity: critical }
         annotations:
-          summary: "{{ $labels.service }} ({{ $labels.instance }}) is not answering Prometheus"
+          summary: "{{ $labels.service }} ({{ $labels.instance }})가 Prometheus에 응답하지 않습니다"
+
+      # MySQL과 Redis는 서비스가 아니라 저장소라서 exporter가 따로 상태를 알려 준다. exporter는 살아 있어도
+      # 저장소에 접속하지 못하면 mysql_up, redis_up이 0이 된다. 서비스의 up 지표로는 이 장애를 볼 수 없다.
+      - alert: MySqlDown
+        expr: mysql_up == 0
+        for: 15s
+        labels: { severity: critical }
+        annotations:
+          summary: "MySQL에 접속할 수 없습니다. 예약, 주문, 인증이 모두 영향을 받습니다"
+
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 15s
+        labels: { severity: critical }
+        annotations:
+          summary: "Redis에 접속할 수 없습니다. 대기열과 좌석 잠금이 영향을 받습니다"
 
       # 계속 고장 난 서킷은 몇 초마다 열림과 반열림 사이를 오간다. 그래서 오래 끊기지 않고 열려 있어야 조건이 되는 것이 아니라
       # 열리는 순간 울리고 그 뒤 30초 동안 계속 울린다.
@@ -18,14 +33,14 @@ groups:
         keep_firing_for: 30s
         labels: { severity: warning }
         annotations:
-          summary: "{{ $labels.application }} stopped calling {{ $labels.name }}: its circuit is open"
+          summary: "{{ $labels.application }}가 {{ $labels.name }} 호출을 멈췄습니다(서킷이 열림)"
 
       - alert: OutboxBacklog
         expr: outbox_oldest_unsent_age_seconds > 30
         for: 20s
         labels: { severity: warning }
         annotations:
-          summary: "Kafka events have been waiting {{ $value }}s in the outbox - Kafka or the relay is not delivering"
+          summary: "Kafka 이벤트가 아웃박스에서 {{ $value | printf \"%.0f\" }}초째 대기 중입니다(Kafka 또는 릴레이가 전달하지 못함)"
 
       - alert: ServerErrorRate
         expr: |
@@ -34,11 +49,11 @@ groups:
         for: 1m
         labels: { severity: warning }
         annotations:
-          summary: "{{ $labels.application }}: more than 5% of requests are failing with 5xx"
+          summary: "{{ $labels.application }}: 요청의 5% 넘게 5xx로 실패하고 있습니다"
 
       - alert: DbConnectionsWaiting
         expr: hikaricp_connections_pending > 0
         for: 1m
         labels: { severity: warning }
         annotations:
-          summary: "{{ $labels.application }}: requests are waiting for a database connection (pool exhausted)"
+          summary: "{{ $labels.application }}: 요청이 DB 연결을 기다리고 있습니다(연결 풀 고갈)"

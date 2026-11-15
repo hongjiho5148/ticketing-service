@@ -250,6 +250,9 @@ cd admin-frontend && npm install && npm run dev
 - DB 스키마는 서비스가 기동할 때 Flyway가 적용합니다(`src/main/resources/db/migration`). 엔티티를 바꾸면 `V<n>__*.sql`을 함께 추가해야 합니다.
 - `nginx/nginx.conf`를 바꾼 뒤에는 `docker compose up -d --force-recreate nginx`로 반영합니다.
 - 모니터링: Grafana `http://localhost:3030`(대시보드 "PickSeat 운영 현황", 익명은 보기만), Prometheus `http://localhost:9091`(수집 대상·알림). 둘 다 이 컴퓨터에서만 열립니다. 관리자 비밀번호는 `GRAFANA_ADMIN_PASSWORD`(기본값은 로컬 개발용).
+- 알림: 알림 규칙이 울리면 Alertmanager(`http://localhost:9093`)를 거쳐 Slack으로 나갑니다. MySQL·Redis 상태는 exporter 컨테이너가 읽어서 Prometheus에 알립니다(`mysql_up`, `redis_up`).
+  - Slack 연결: Slack에서 Incoming Webhook 주소를 만든 뒤 `monitoring/alertmanager/secrets/slack_webhook_url` 파일에 한 줄로 넣습니다(예시는 같은 폴더의 `.example`). 이 파일은 git에 올라가지 않습니다. 넣은 뒤 `docker compose restart alertmanager`.
+  - 이 파일이 없거나 가짜 주소면 알림이 Slack에 닿지 못하고 Alertmanager 로그(`docker compose logs alertmanager`)에 오류가 남습니다. 서비스 동작에는 영향이 없습니다.
 - 서비스 중지: `docker compose stop` (다시 켜기: `docker compose up -d`)
 - 부하테스트 방법은 [`docs/design-notes.md`](docs/design-notes.md#부하테스트-실행)에 있습니다.
 

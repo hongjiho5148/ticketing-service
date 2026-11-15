@@ -248,6 +248,41 @@ services:
     ports:
       - "127.0.0.1:3030:3000"
 
+  # 알림을 Slack으로 보낸다. 웹훅 주소는 monitoring/alertmanager/secrets/slack_webhook_url 파일에 둔다(git에 올리지 않음).
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: ticketing-alertmanager
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./monitoring/alertmanager/secrets:/etc/alertmanager/secrets:ro
+      - alertmanager-data:/alertmanager
+    ports:
+      - "127.0.0.1:9093:9093"
+
+  # MySQL과 Redis 자체의 상태를 Prometheus가 읽을 수 있는 숫자로 바꿔 준다. 둘이 죽으면 mysql_up, redis_up이 0이 된다.
+  # 기존 mysql, redis 컨테이너는 그대로 두고 옆에서 읽기만 한다.
+  mysql-exporter:
+    image: prom/mysqld-exporter:v0.16.0
+    container_name: ticketing-mysql-exporter
+    restart: unless-stopped
+    command:
+      - --config.my-cnf=/etc/mysqld-exporter.cnf
+    volumes:
+      - ./monitoring/exporters/mysqld-exporter.cnf:/etc/mysqld-exporter.cnf:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.66.0
+    container_name: ticketing-redis-exporter
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    depends_on:
+      - redis
+
 networks:
   default:
     ipam:
@@ -259,3 +294,4 @@ volumes:
   redis-data:
   prometheus-data:
   grafana-data:
+  alertmanager-data:
