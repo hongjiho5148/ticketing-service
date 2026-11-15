@@ -5,3 +5,6 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+# Slack 웹훅 주소 같은 비밀. 예시 파일만 올린다.
+monitoring/alertmanager/secrets/*
+!monitoring/alertmanager/secrets/*.example

@@ -6,6 +6,12 @@ global:
 rule_files:
   - /etc/prometheus/alerts.yml
 
+# 규칙이 울리면 Alertmanager로 보내고, 거기서 Slack으로 나간다.
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
 scrape_configs:
   - job_name: services
     metrics_path: /actuator/prometheus
@@ -20,6 +26,14 @@ scrape_configs:
         labels: { service: reservation-service }
       - targets: ["order-service:9090"]
         labels: { service: order-service }
+
+  # MySQL과 Redis의 상태. 서비스가 아니라 저장소라서 따로 묶는다.
+  - job_name: datastores
+    static_configs:
+      - targets: ["mysql-exporter:9104"]
+        labels: { service: mysql }
+      - targets: ["redis-exporter:9121"]
+        labels: { service: redis }
 
   # backend는 여러 복제본으로 늘린다. Docker DNS에 모든 복제본을 물어본다(이름이 모든 복제본의 IP로 풀린다)
   - job_name: backend

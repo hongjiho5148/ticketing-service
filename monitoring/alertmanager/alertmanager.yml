@@ -1,0 +1,27 @@
+# 알림을 Slack으로 보낸다. 웹훅 주소는 비밀이라 이 파일에 쓰지 않고, 컨테이너에 마운트한
+# secrets/slack_webhook_url 파일에서 읽는다(그 파일은 git에 올리지 않는다. 만드는 법은 README의 "Slack 알림" 참고).
+global:
+  resolve_timeout: 2m
+
+route:
+  receiver: slack
+  # 같은 장애로 알림이 한꺼번에 여러 개 울려도 하나로 묶어서 보낸다.
+  group_by: [alertname, application, service]
+  # 장애를 빨리 알아채는 것이 목적이라 처음 알림은 10초만 모았다가 보낸다.
+  group_wait: 10s
+  group_interval: 1m
+  # 계속 이어지는 장애는 1시간마다 다시 알린다.
+  repeat_interval: 1h
+
+receivers:
+  - name: slack
+    slack_configs:
+      - api_url_file: /etc/alertmanager/secrets/slack_webhook_url
+        send_resolved: true
+        title: '{{ if eq .Status "firing" }}[장애] {{ else }}[복구] {{ end }}{{ .CommonLabels.alertname }}'
+        text: |-
+          {{ range .Alerts -}}
+          • {{ .Annotations.summary }}
+          {{ end -}}
+          심각도: {{ .CommonLabels.severity }}
+        color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
