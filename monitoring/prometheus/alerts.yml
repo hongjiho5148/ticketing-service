@@ -13,14 +13,14 @@ groups:
       # 저장소에 접속하지 못하면 mysql_up, redis_up이 0이 된다. 서비스의 up 지표로는 이 장애를 볼 수 없다.
       - alert: MySqlDown
         expr: mysql_up == 0
-        for: 15s
+        for: 10s
         labels: { severity: critical }
         annotations:
           summary: "MySQL에 접속할 수 없습니다. 예약, 주문, 인증이 모두 영향을 받습니다"
 
       - alert: RedisDown
         expr: redis_up == 0
-        for: 15s
+        for: 10s
         labels: { severity: critical }
         annotations:
           summary: "Redis에 접속할 수 없습니다. 대기열과 좌석 잠금이 영향을 받습니다"

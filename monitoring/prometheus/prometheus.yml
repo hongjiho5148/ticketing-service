@@ -1,7 +1,8 @@
 # docker 네트워크로 모든 서비스의 메트릭 포트(9090)를 수집한다. 여기 있는 어느 것도 바깥에 공개하지 않는다.
 global:
   scrape_interval: 10s
-  evaluation_interval: 10s
+  # 알림 규칙을 5초마다 평가한다. 저장소가 죽었을 때 알림이 늦지 않게 하려는 것이다(규칙 수가 적어 부담이 없다).
+  evaluation_interval: 5s
 
 rule_files:
   - /etc/prometheus/alerts.yml
@@ -29,6 +30,9 @@ scrape_configs:
 
   # MySQL과 Redis의 상태. 서비스가 아니라 저장소라서 따로 묶는다.
   - job_name: datastores
+    # 저장소 다운은 빨리 알아야 해서 다른 대상(10초)보다 자주 수집한다. 수집 제한 시간은 주기보다 짧아야 한다.
+    scrape_interval: 5s
+    scrape_timeout: 4s
     static_configs:
       - targets: ["mysql-exporter:9104"]
         labels: { service: mysql }
