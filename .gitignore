@@ -8,3 +8,6 @@ Thumbs.db
 # Slack 웹훅 주소 같은 비밀. 예시 파일만 올린다.
 monitoring/alertmanager/secrets/*
 !monitoring/alertmanager/secrets/*.example
+
+# 장애 시험 결과(요청별 기록이 커서 올리지 않는다). 필요한 수치는 보고서에서 문서로 옮긴다.
+loadtest/results/
