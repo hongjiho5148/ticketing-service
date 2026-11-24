@@ -52,6 +52,10 @@ jwt:
 # 이벤트는 아웃박스 테이블을 거쳐 Kafka에 닿는다(OutboxRelay 참고). 아래는 그 기본값이다.
 outbox:
   relay-interval-ms: 500
+  # 폴링을 동시에 도는 일꾼 수. 이벤트를 하나씩 보내고 Kafka 확인을 기다리는 시간이 대부분이라 늘리면 빨라진다.
+  # 이 PC에서 100명 부하로 잰 결과 1개는 약 30개/초, 4개는 약 55개/초(1.7배)였다(docs/design-notes.md "아웃박스 처리 속도").
+  # 일꾼이 여럿이어도 폴링 한 번 안의 순서 규칙과 "같은 행을 두 번 보내지 않음"은 그대로다(OutboxRelay 참고).
+  relay-workers: ${OUTBOX_RELAY_WORKERS:4}
   send-timeout-ms: 5000
   # 릴레이가 가져간 행을 얼마나 쥐고 있는지. 전송 도중 죽으면 다른 인스턴스가 넘겨받는다.
   lease-ms: 30000

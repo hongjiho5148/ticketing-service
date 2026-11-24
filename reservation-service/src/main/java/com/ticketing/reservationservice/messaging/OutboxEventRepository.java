@@ -10,18 +10,21 @@ import org.springframework.transaction.annotation.Transactional;
 
 public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> {
 
+    /** 폴링 한 번이 가져가는 행의 최대 개수. 가져간 수가 이 값이면 아직 밀려 있다는 뜻이라 릴레이는 쉬지 않고 이어서 폴링한다. */
+    int CLAIM_BATCH = 100;
+
     long countBySentAtIsNull();
 
     /** 아직 나가지 못하고 기다리는 가장 오래된 이벤트다(밀린 이벤트가 얼마나 오래 막혀 있는지 보기 위해). */
     java.util.Optional<OutboxEvent> findFirstBySentAtIsNullOrderByIdAsc();
 
     /**
-     * 아무도 유효한 임대를 쥐고 있지 않은 가장 오래된 전송 전 행을 최대 100개 잠근다. 다른 트랜잭션이 이미 잠근 행은
-     * 기다리지 않고 건너뛴다. 그 행들을 {@link #assign}하는 트랜잭션 안에서 실행해야 한다(OutboxClaimer 참고).
+     * 아무도 유효한 임대를 쥐고 있지 않은 가장 오래된 전송 전 행을 최대 {@link #CLAIM_BATCH}개 잠근다. 다른 트랜잭션이 이미
+     * 잠근 행은 기다리지 않고 건너뛴다. 그 행들을 {@link #assign}하는 트랜잭션 안에서 실행해야 한다(OutboxClaimer 참고).
      * {@code topicPattern}은 SQL LIKE 패턴이다("%" = 모든 토픽).
      */
     @Query(nativeQuery = true, value = "select id from outbox_event where sent_at is null and topic like :topicPattern "
-            + "and (claimed_until is null or claimed_until < :now) order by id limit 100 for update skip locked")
+            + "and (claimed_until is null or claimed_until < :now) order by id limit " + CLAIM_BATCH + " for update skip locked")
     List<Long> lockUnclaimedIds(@Param("now") LocalDateTime now, @Param("topicPattern") String topicPattern);
 
     @Modifying

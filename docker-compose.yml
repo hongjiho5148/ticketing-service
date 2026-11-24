@@ -174,6 +174,8 @@ services:
       # nginx의 backend 로드밸런서 포트(8081)를 거치며 backend:8080으로 바로 가지 않는다. backend에만 앞단 리졸버가
       # 필요한 이유는 그 nginx server 블록의 주석을 참고.
       BACKEND_URI: http://nginx:8081
+      # 아웃박스 릴레이가 동시에 도는 일꾼 수(OutboxRelay 참고)
+      OUTBOX_RELAY_WORKERS: ${OUTBOX_RELAY_WORKERS:-4}
     expose:
       - "8080"
 
