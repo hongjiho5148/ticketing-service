@@ -800,6 +800,50 @@ PortOne 테스트 환경에서 직접 결제와 환불을 해 보다가(정상 �
 - 일꾼 4개로도 밀릴 만큼 몰린 부하에서는 최대 대기가 47초라 알림 기준(30초)을 넘습니다. 더 줄이려면 한꺼번에 보내는 방식이 필요하고, 그것은 위의 순서 약속을 바꾸는 설계 결정이라 하지 않았습니다.
 - 측정 도중 이 PC가 잠자기에 들어가 첫 시험의 "다 비우는 시간"이 무효가 되었습니다. 이후로는 시험 중 잠자기를 막고 돌립니다.
 
+### Redis 장애 시험: 저장소가 30초 멈추면 사용자는 무엇을 겪나 (2026-11)
+
+**시험**: 사용자 50명이 줄 서기 → 예약 → 취소를 4분 동안 반복하는 중에, 부하 시작 60초 뒤 `docker stop redis`(정상 종료)로 Redis를 30초 멈췄다가 다시 켰습니다([`docs/chaos-testing.md`](./chaos-testing.md)). 합격 기준을 미리 정했습니다: 장애 중 오류를 5초 안에 받는다 / 60초 안에 알림이 울린다 / 장애가 끝나고 60초 안에 오류율이 정상으로 돌아온다 / 정합성 위반이 새로 생기지 않는다.
+
+**수정 전: 4개 중 2개 불합격**
+- **요청이 약 7초 매달렸다가 영문 모를 500으로 끝났습니다.** 줄 서기 요청의 89.5%가 실패했고, 실패 응답의 p95가 9.2초였습니다. Redisson 기본값(명령 타임아웃 3초, 재시도 4번, 재시도 간격 1.5초)에서 `RedisTimeoutException: Unable to acquire connection ... after 4 of 4 retry attempts`가 처리되지 않고 그대로 500이 됐습니다. 사용자 50명이 7초씩 매달려 다음 요청을 못 보내서 장애 중 처리량이 평소의 약 3%였습니다. 반대로 Redis를 쓰지 않는 공연 상세, 좌석 목록, 예약 취소는 100% 성공했습니다.
+- **좌석 3개가 예약 없이 HOLD로 남았습니다**(86초 뒤 스스로 풀림). event-service가 좌석 락을 잡고 DB에 홀드를 커밋한 뒤 **락을 푸는 순간** Redis가 죽어서 예외가 났고, 그 예외가 요청 실패로 번졌습니다. 정합성 검사가 찾은 좌석(`17639`)이 event-service 로그의 `lock:seat:17639` 오류와 일치했습니다. 락은 3초면 저절로 풀리는 것이라 푸는 데 실패했다고 요청을 실패시킬 이유가 없었습니다.
+- **`RedisDown` 알림이 울리지 않았습니다.** Prometheus는 다운을 약 25초 봤는데, 이 규칙은 15초 동안 계속 다운이어야 울리고 수집(10초)과 판정(10초) 주기가 겹쳐서 30초짜리 장애는 `pending`까지만 가고 Redis가 돌아왔습니다. 장애는 있었는데 알림이 침묵한 것입니다.
+
+**수정**
+- Redis 타임아웃과 재시도를 줄였습니다(명령 1.5초, 연결 1.5초, 재시도 1번, 간격 0.5초). 값은 `application.yml`에 있고 환경변수로 바꿀 수 있습니다. 코드에는 기본값을 두지 않았습니다. 처음에는 기본값이 코드에만 있어서, 값을 Redisson 기본값으로 되돌려도 테스트가 모두 통과했습니다(아래 검증 참고).
+- `RedisException`을 한글 안내가 담긴 **503**과 `Retry-After: 3`으로 바꿨습니다(backend `QUEUE_UNAVAILABLE`, event-service `SEAT_LOCK_UNAVAILABLE`). 프런트는 오류 응답의 `message`를 그대로 보여 주므로 화면은 고치지 않았습니다.
+- 좌석 락을 푸는 단계의 Redis 오류는 로그만 남기고, 이미 커밋된 결과를 정상으로 돌려줍니다.
+- 저장소 다운 알림을 빠르게: 평가 주기 10초 → 5초, MySQL·Redis 수집 주기 10초 → 5초, `MySqlDown`·`RedisDown` 대기 15초 → 10초(다운되고 최대 약 20초 안에 울림).
+
+**결정: Redis가 죽은 동안 락과 대기열을 우회하지 않고 빠르게 실패시킵니다.** 좌석 락은 몰린 요청이 MySQL에 쌓이지 않게 막는 방패입니다. DB의 `@Version`만으로 계속 받으면 정합성은 지켜도 가장 바쁜 순간에 DB가 먼저 무너질 수 있다고 판단했습니다(이 판단은 측정한 것이 아니라 추론입니다).
+
+**결과** (같은 조건으로 수정 전후 1번씩)
+
+| | 수정 전 | 수정 후 |
+|---|--:|--:|
+| 실패 응답 p95 지연 | 9.2초 | **1.2초** |
+| 줄 서기 오류의 종류 | 500 167건, 503 3건 | **500 0건, 503 670건** |
+| 장애 중 요청 수(31초) | 524 | **1,482** |
+| 장애 중 성공 요청 수 | 352 | **812** |
+| 고아 HOLD(검사 첫 시점) | 3건 | **0건** |
+| `RedisDown` 알림 | 울리지 않음 | **장애 후 14.5초** |
+| 그 밖의 알림 | - | `CircuitOpen` 9.5초(reservation-service가 backend 호출을 멈춘 것) |
+| Slack 전달 | 0건 | **2건 성공, 실패 0** |
+| 장애 전 구간 실패율 | 0.0% | **0.0%** (타임아웃을 줄인 부작용 없음) |
+| 복구 | 해제 즉시 | 해제 즉시 |
+
+**검증**
+- 새 단위 테스트 16개(좌석 락 해제 실패 처리, 오류 변환, 설정값). 코드를 일부러 되돌려 새 테스트가 잡는지 확인했습니다: 락 해제 실패를 던지게 하면 3개 실패, 503을 500으로 바꾸면 2개 실패, `application.yml`을 Redisson 기본값으로 되돌리면 1개 실패.
+- event-service 67개, backend 84개 전체 통과(backend의 Kafka 리스너 3개는 처음에 Kafka 주소 없이 돌려서 실패했고, 주소를 넣으니 통과했습니다. 위 "테스트" 절에 적었습니다).
+
+**한계**
+- 수정 전후 **1번씩만** 잰 시험이고, 정상 종료(`stop`) 30초만 해 봤습니다. 강제 종료(`kill`)와 더 긴 장애는 아직입니다. 다만 차이(7초 → 1.2초, 500 → 503, 알림 미발화 → 14.5초, 고아 HOLD 3 → 0)가 커서 방향은 분명합니다.
+- **장애 중 줄 서기는 여전히 안 됩니다**(98%가 503). 대기열 자체가 Redis에 있어서 우회할 수 없고, 의도한 동작입니다. 달라진 것은 사용자가 7초를 기다린 뒤 영문 모를 오류를 받는 대신 1.2초 만에 "잠시 후 다시 시도" 안내를 받는다는 점입니다.
+- 실패율이 32.4% → 45.2%로 **올라간 것은 나빠진 것이 아닙니다.** 빨리 실패하니 같은 시간에 더 많이 시도해서 분모가 커졌고, 성공한 요청 수는 352 → 812로 늘었습니다.
+- 예약(`reserve`)의 장애 중 최대 응답 시간이 4.05초입니다. 재시도가 겹친 것으로 짐작하지만 확인하지 않았습니다.
+- 복구 직후 1~3초 동안 503이 12건 났습니다(Redisson이 다시 연결하는 시간으로 보임).
+- 수정 후 정상 구간의 p95가 87 → 98~160ms 정도로 약간 높게 나왔습니다. 서버를 막 다시 띄운 직후라서일 수 있지만 확인하지 않았고, 실패는 0건입니다.
+
 ## 테스트
 
 서비스별 JUnit 테스트 메서드가 총 **282개**(order 85 · event 55 · auth 17 · gateway 12 · backend 78 · reservation 35) 있습니다.
@@ -814,10 +858,13 @@ PortOne 테스트 환경에서 직접 결제와 환불을 해 보다가(정상 �
 
 ```bash
 # 호스트에 설치된 MySQL이 3306을 가로채는 경우가 있어 compose 네트워크 안에서 실행합니다
-docker run --rm --network ticketing-service_default -e DB_HOST=mysql -e REDIS_HOST=redis \
+docker run --rm --network ticketing-service_default -e DB_HOST=mysql -e REDIS_HOST=redis -e KAFKA_BOOTSTRAP_SERVERS=kafka:9092 \
   -v "$(pwd)/order-service:/workspace" -w /workspace eclipse-temurin:17-jdk \
   sh -c "tr -d '\r' < gradlew > g && sh g test --no-daemon"
 ```
+
+- `KAFKA_BOOTSTRAP_SERVERS`는 Kafka를 실제로 쓰는 테스트(backend의 `ReservationConfirmedListenerTest` 등)에 필요합니다. 빠뜨리면 기본값 `localhost:9092`를 찾다가 60초 뒤 `KafkaException: Send failed`로 실패합니다.
+- 같은 DB와 Redis를 쓰므로, 테스트하는 서비스의 서버 컨테이너는 먼저 내려야 합니다(`docker compose stop backend`). 서버의 스케줄러가 테스트 데이터를 건드립니다.
 
 ## 알려진 한계
 
@@ -841,4 +888,4 @@ docker run --rm --network ticketing-service_default -e DB_HOST=mysql -e REDIS_HO
 - **좌석 목록은 최대 1초 오래될 수 있습니다**(nginx 캐시). 좌석을 잡는 일 자체는 서버가 판정하므로 오버셀과는 무관합니다.
 - **Kafka 이벤트는 최소 한 번 전달**이라 중복될 수 있고, 소비자는 멱등해야 합니다. 현재 의미 있는 소비자는 `reservation.confirmed`(대기열 슬롯 반환)뿐이고, `reservation.created`는 로그만 남깁니다.
 - **대기열에서 이탈하거나 구매하지 않는 사람은 입장권이 만료될 때까지 슬롯을 차지합니다.** 슬롯 반환은 구매를 마친 사람에게만 적용됩니다.
-- **지표, 대시보드, Slack 알림(Alertmanager)과 MySQL·Redis 상태 지표는 있습니다.** 다만 Kafka·nginx 자체 지표, 로그 모음, 요청 추적, CI/CD, 클라우드 배포는 없습니다. 알림이 실제로 울리는 것을 확인한 것은 `ServiceDown`, `OutboxBacklog`, `DbConnectionsWaiting`이고(Slack 전달까지), `MySqlDown`, `RedisDown`, `CircuitOpen`, `ServerErrorRate`는 실제 장애에서 아직 확인하지 않았습니다.
+- **지표, 대시보드, Slack 알림(Alertmanager)과 MySQL·Redis 상태 지표는 있습니다.** 다만 Kafka·nginx 자체 지표, 로그 모음, 요청 추적, CI/CD, 클라우드 배포는 없습니다. 알림이 실제로 울리는 것을 확인한 것은 `ServiceDown`, `OutboxBacklog`, `DbConnectionsWaiting`, `RedisDown`, `CircuitOpen`이고(Slack 전달까지), `MySqlDown`, `ServerErrorRate`는 실제 장애에서 아직 확인하지 않았습니다.

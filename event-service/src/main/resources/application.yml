@@ -48,7 +48,14 @@ jwt:
   # JWT_SECRET이 설정될 때까지 서비스는 시작을 거부한다(.env.example 참고).
   secret: ${JWT_SECRET}
 
+# Redis 연결 제한. Redis가 죽었을 때 요청이 얼마나 오래 매달리는지를 정한다. Redisson 기본값(명령 타임아웃 3초, 재시도 4번에
+# 재시도 간격 1.5초)에서는 요청 하나가 약 7초 뒤에 실패했다(docs/design-notes.md "Redis 장애 시험"). 평소 응답(1ms 미만)에는
+# 넉넉하고 장애에는 빠른 값이다. 이 값을 바꾸면 RedissonConfigTest가 "최악의 대기가 3초 안"인지 검사한다.
 redis:
+  timeout-ms: ${REDIS_TIMEOUT_MS:1500}
+  connect-timeout-ms: ${REDIS_CONNECT_TIMEOUT_MS:1500}
+  retry-attempts: ${REDIS_RETRY_ATTEMPTS:1}
+  retry-interval-ms: ${REDIS_RETRY_INTERVAL_MS:500}
   seat-lock:
     wait-ms: 500
     lease-ms: 3000
