@@ -21,6 +21,7 @@
 | `scripts/chaos/inject.mjs` | 컨테이너에 장애를 넣고 되돌림. 시작·종료 시각을 기록. 끊겨도 반드시 복구 |
 | `scripts/chaos/invariants.mjs` | 정합성 검사(읽기 전용). 시험 전 기준선에 없던 위반만 본다 |
 | `scripts/chaos/report.mjs` | 결과 폴더에서 보고서(Markdown) 생성 |
+| `loadtest/queue_state_after_redis_kill.mjs` | Redis가 죽었다 살아난 뒤 줄 서 있던 사람과 입장권을 든 사람의 상태가 남는지 확인(정원 10, 30명) |
 | `scripts/chaos/compare.mjs` | 여러 시험을 한 표로 비교(요청/초, p95, 아웃박스 적체 등) |
 | `scripts/chaos/chaos.test.mjs` | 위 계산 부분의 테스트 (`node --test scripts/chaos/chaos.test.mjs`) |
 | `loadtest/chaos_flow.js` | 장애 시험용 부하(사용자 N명이 처음부터 끝까지 일정하게 줄 서기 → 예약 → 취소 반복) |
@@ -66,6 +67,8 @@ node scripts/chaos/run.mjs --baseline --users 50 --label baseline-50vu
 이 PC에서는 100명이면 아웃박스가 밀려 `OutboxBacklog`가 울렸고(릴레이 일꾼을 늘려 줄였다, [`design-notes.md`](./design-notes.md#아웃박스-처리-속도-정상-부하에서도-이벤트가-몇-분씩-밀리던-문제-2026-11)), 50명은 알림 없이 깨끗했다. 장애 시험은 50명으로 한다.
 
 여러 시험을 한 표로 비교하려면 `node scripts/chaos/compare.mjs <폴더> <폴더> ...`. 같은 100명이어도 시험마다 이벤트 생산량이 20~75/초로 달랐으므로(시스템이 느리면 덜 만들어지는 부하 방식), 전후 비교는 번갈아 여러 번 재고 밀릴 만큼 몰린 시험끼리 봐야 한다.
+
+**부하 시험의 "합격"은 부하가 건드린 것에 대해서만 맞는 말이다.** `chaos_flow.js`의 사용자는 1초짜리 흐름을 반복해서 오래 사는 상태(줄 번호, 입장권)가 없다. 그래서 Redis를 강제 종료해 데이터가 사라져도 4개 기준이 모두 합격했다(Redis 로그의 `RDB age 88 seconds`가 사라진 데이터를 보여 주었다). 데이터가 사라지는 장애는 그 데이터를 쓰는 사람을 일부러 만들어 두고 확인해야 한다(`queue_state_after_redis_kill.mjs`).
 
 **장애가 알림 지연보다 짧으면 알림이 울리지 않는 것이 정상일 수 있다.** 저장소 다운 알림은 수집 5초 + 판정 5초 + 대기 10초라서 다운되고 최대 약 20초 뒤에 울린다. 그보다 짧은 장애(`--fault-for`)로는 "알림이 울린다" 기준을 판정할 수 없다. 처음 Redis 시험은 30초 장애인데 알림 지연이 약 30초여서 알림이 울리지 못했고(그것이 문제였다), 지금은 20초 안에 울린다.
 

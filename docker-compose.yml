@@ -24,6 +24,10 @@ services:
     image: redis:7-alpine
     container_name: ticketing-redis
     restart: unless-stopped
+    # 대기열의 줄 번호와 입장권이 이 Redis에 있다. 스냅샷(RDB)만 쓰면 강제로 죽었을 때 마지막 저장 이후의 상태가 사라진다(기본 규칙은
+    # 60초에 10,000건 / 300초에 100건 / 3,600초에 1건이라, 바쁠 때 약 1분, 한가할 때 수 분~1시간 전으로 돌아간다). AOF를 켜면 변경을
+    # 1초마다 로그 파일에 남겨 최악의 경우에도 약 1초치만 잃는다(docs/design-notes.md "Redis 강제 종료").
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
     ports:
       - "6379:6379"
     volumes:
