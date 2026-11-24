@@ -253,6 +253,7 @@ cd admin-frontend && npm install && npm run dev
 - 알림: 알림 규칙이 울리면 Alertmanager(`http://localhost:9093`)를 거쳐 Slack으로 나갑니다. MySQL·Redis 상태는 exporter 컨테이너가 읽어서 Prometheus에 알립니다(`mysql_up`, `redis_up`).
   - Slack 연결: Slack에서 Incoming Webhook 주소를 만든 뒤 `monitoring/alertmanager/secrets/slack_webhook_url` 파일에 한 줄로 넣습니다(예시는 같은 폴더의 `.example`). 이 파일은 git에 올라가지 않습니다. 넣은 뒤 `docker compose restart alertmanager`.
   - 이 파일이 없거나 가짜 주소면 알림이 Slack에 닿지 못하고 Alertmanager 로그(`docker compose logs alertmanager`)에 오류가 남습니다. 서비스 동작에는 영향이 없습니다.
+- 장애 시험(MySQL·Redis 같은 저장소나 서비스를 일부러 멈추고 사용자 영향, 알림, 데이터 정합성을 확인): [`docs/chaos-testing.md`](docs/chaos-testing.md)
 - 서비스 중지: `docker compose stop` (다시 켜기: `docker compose up -d`)
 - 부하테스트 방법은 [`docs/design-notes.md`](docs/design-notes.md#부하테스트-실행)에 있습니다.
 
