@@ -11,15 +11,19 @@ groups:
 
       # MySQL과 Redis는 서비스가 아니라 저장소라서 exporter가 따로 상태를 알려 준다. exporter는 살아 있어도
       # 저장소에 접속하지 못하면 mysql_up, redis_up이 0이 된다. 서비스의 up 지표로는 이 장애를 볼 수 없다.
+      #
+      # 저장소가 죽지 않고 얼어서 응답만 없을 때(docker pause 같은 상황)는 exporter의 수집이 시간 안에 끝나지 못해 mysql_up,
+      # redis_up이 0이 되는 것이 아니라 지표가 아예 사라진다. "== 0"만 보면 값이 없어서 조건이 성립하지 않으므로 이 장애에서는
+      # 영영 울리지 않는다(MySQL을 30초 얼린 시험에서 실제로 그랬다). 그래서 수집 자체가 실패한 경우(up == 0)도 함께 본다.
       - alert: MySqlDown
-        expr: mysql_up == 0
+        expr: mysql_up == 0 or up{service="mysql"} == 0
         for: 10s
         labels: { severity: critical }
         annotations:
           summary: "MySQL에 접속할 수 없습니다. 예약, 주문, 인증이 모두 영향을 받습니다"
 
       - alert: RedisDown
-        expr: redis_up == 0
+        expr: redis_up == 0 or up{service="redis"} == 0
         for: 10s
         labels: { severity: critical }
         annotations:
