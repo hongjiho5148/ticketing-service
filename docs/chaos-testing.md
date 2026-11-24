@@ -22,6 +22,7 @@
 | `scripts/chaos/invariants.mjs` | 정합성 검사(읽기 전용). 시험 전 기준선에 없던 위반만 본다 |
 | `scripts/chaos/report.mjs` | 결과 폴더에서 보고서(Markdown) 생성 |
 | `loadtest/queue_state_after_redis_kill.mjs` | Redis가 죽었다 살아난 뒤 줄 서 있던 사람과 입장권을 든 사람의 상태가 남는지 확인(정원 10, 30명) |
+| `monitoring/prometheus/alerts_test.yml` | 알림 규칙 테스트(`promtool test rules`). 저장소가 죽는 경우와 얼어서 지표가 사라지는 경우를 모두 만든다 |
 | `scripts/chaos/compare.mjs` | 여러 시험을 한 표로 비교(요청/초, p95, 아웃박스 적체 등) |
 | `scripts/chaos/chaos.test.mjs` | 위 계산 부분의 테스트 (`node --test scripts/chaos/chaos.test.mjs`) |
 | `loadtest/chaos_flow.js` | 장애 시험용 부하(사용자 N명이 처음부터 끝까지 일정하게 줄 서기 → 예약 → 취소 반복) |
